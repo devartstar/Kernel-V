@@ -32,6 +32,7 @@ A project-based, modular UNIX-like kernel developed from scratch for deep learni
 - **docs/**: Design docs, diagrams, and learning notes
 - **tests/**: Unit and integration tests for kernel modules
 
+See [docs/folder_structure.md](docs/folder_structure.md) for the full project roadmap.
 ---
 
 ## 🚀 **Getting Started**
@@ -54,12 +55,6 @@ A project-based, modular UNIX-like kernel developed from scratch for deep learni
 ---
 
 ## 🛠️ **Features & Progress**
-
-| Phase   | Component                 | Status         |
-| ------- | ------------------------ | -------------- |
-| 0       | Bootloader/Hello World   | ✅ Completed   |
-| 1       | Kernel Main & Panic      | 🚧 In Progress |
-| ...     | ...                      | ...            |
 
 See [docs/roadmap.md](docs/roadmap.md) for the full project roadmap.
 
