@@ -16,7 +16,7 @@ start:
 	; Load Kernel from LBA = 2, 16 sectors
 	; Load to 0x100000 (1Mb)
 	mov si, 0		; offset of sectors to read
-	xor cx, num_sectors	; Sector Offset (foctor for 512)
+	mov dx, 16		; Sector Offset (foctor for 512)
 
 .load_kernel:
 	push si
@@ -26,19 +26,24 @@ start:
 	; Read From Location
 	mov ch, 0x00		; Cylinder = 0
 	mov cl, 0x02		; Sector = 2
-	add cl, di		; Add the sector offset
+
+	push ax
+	mov ax, si
+	add cl, al		; Add the sector offset
+	pop ax
+
 	mov dh, 0
 	mov dl, 0x80
 	
 	mov es, word [KERN_SEG]
-	mov bx, di
+	mov bx, si
 	shl bx, 9		; bx = di * 512(2^9)
 
 	int 0x13
 	jc disk_error
 
-	inc di
-	dec si			; loop till si = 16 -> 0
+	inc si
+	dec dx			; loop till si = 16 -> 0
 	jnz .load_kernel
 
 	; Setup GDT for protected mode
