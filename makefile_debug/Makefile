@@ -15,6 +15,12 @@ KERNEL_LD        = $(KERNDIR)/linker/kernel.ld
 STAGE1_BIN = $(BUILDDIR)/stage1.bin
 STAGE2_BIN = $(BUILDDIR)/stage2.bin
 
+STAGE1_OBJ = $(BUILDDIR)/stage1.o
+STAGE2_OBJ = $(BUILDDIR)/stage2.o
+
+STAGE1_ELF = $(BUILDDIR)/stage1.elf
+STAGE2_ELF = $(BUILDDIR)/stage2.elf
+
 KERNEL_ENTRY_OBJ = $(BUILDDIR)/kernel_entry.o
 KERNEL_OBJ       = $(BUILDDIR)/kernel.o
 
@@ -33,27 +39,40 @@ all: $(DISK_IMG)
 $(BUILDDIR):
 	mkdir -p $(BUILDDIR)
 
+# --- Stage 1: binary and ELF ---
 $(STAGE1_BIN): $(STAGE1_SRC) | $(BUILDDIR)
 	nasm -f bin $< -o $@
 
+$(STAGE1_OBJ): $(STAGE1_SRC) | $(BUILDDIR)
+	nasm -f elf32 -g $< -o $@
+
+$(STAGE1_ELF): $(STAGE1_OBJ) | $(BUILDDIR)
+	ld -Ttext 0x7c00 --oformat=elf32-i386 $< -o $@
+
+# --- Stage 2: binary and ELF ---
 $(STAGE2_BIN): $(STAGE2_SRC) | $(BUILDDIR)
 	nasm -f bin $< -o $@
 
+$(STAGE2_OBJ): $(STAGE2_SRC) | $(BUILDDIR)
+	nasm -f elf32 -g $< -o $@
+
+$(STAGE2_ELF): $(STAGE2_OBJ) | $(BUILDDIR)
+	ld -Ttext 0x8000 --oformat=elf32-i386 $< -o $@
+
+# --- Kernel: ELF and BIN ---
 $(KERNEL_ENTRY_OBJ): $(KERNEL_ENTRY_SRC) | $(BUILDDIR)
 	nasm -f elf32 $< -o $@
 
 $(KERNEL_OBJ): $(KERNEL_MAIN_SRC) | $(BUILDDIR)
 	gcc -m32 -ffreestanding -g -c $< -o $@
 
-# -- Link kernel as ELF (with debug info)
 $(KERNEL_ELF): $(KERNEL_ENTRY_OBJ) $(KERNEL_OBJ) $(KERNEL_LD) | $(BUILDDIR)
 	ld -m elf_i386 -T $(KERNEL_LD) -o $@ $(KERNEL_ENTRY_OBJ) $(KERNEL_OBJ)
 
-# -- Create raw binary for booting
 $(KERNEL_BIN): $(KERNEL_ELF) | $(BUILDDIR)
 	objcopy -O binary $< $@
 
-# -- Build disk image with all components
+# --- Disk image assembly ---
 $(DISK_IMG): $(STAGE1_BIN) $(STAGE2_BIN) $(KERNEL_BIN) | $(BUILDDIR)
 	dd if=/dev/zero of=$@ bs=1K count=1440
 	dd if=$(STAGE1_BIN) of=$@ bs=512 seek=0 conv=notrunc
@@ -63,10 +82,13 @@ $(DISK_IMG): $(STAGE1_BIN) $(STAGE2_BIN) $(KERNEL_BIN) | $(BUILDDIR)
 run: $(DISK_IMG)
 	qemu-system-i386 -curses -drive format=raw,file=$(DISK_IMG)
 
-debug: $(DISK_IMG) $(KERNEL_ELF)
-	@echo "Run this in another terminal:"
-	@echo "  gdb $(KERNEL_ELF)"
-	@echo "Then in GDB:"
+debug: $(DISK_IMG) $(STAGE1_ELF) $(STAGE2_ELF) $(KERNEL_ELF)
+	@echo "In one GDB session, you can load all symbols like this:"
+	@echo ""
+	@echo "  gdb"
+	@echo "  (gdb) symbol-file $(STAGE1_ELF)"
+	@echo "  (gdb) add-symbol-file $(STAGE2_ELF) 0x8000"
+	@echo "  (gdb) add-symbol-file $(KERNEL_ELF)  0x100000"
 	@echo "  (gdb) target remote localhost:1234"
 	@echo ""
 	qemu-system-i386 -s -S -curses -drive format=raw,file=$(DISK_IMG)
