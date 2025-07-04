@@ -41,10 +41,10 @@ $(DISK_IMG): $(STAGE1_BIN) $(STAGE2_BIN) $(KERNEL_BIN) | $(BUILDDIR)
 	dd if=/dev/zero of=$@ bs=1K count=1440
 	dd if=$(STAGE1_BIN) of=$@ bs=512 seek=0 conv=notrunc
 	dd if=$(STAGE2_BIN) of=$@ bs=512 seek=1 conv=notrunc
-	dd if=$(KERNEL_BIN) of=$@ bs=512 seek=2 conv=notrunc
+	dd if=$(KERNEL_BIN) of=$@ bs=512 seek=9 conv=notrunc
 
 run: $(DISK_IMG)
-	qemu-system-i386 -drive format=raw,file=$(DISK_IMG)
+	qemu-system-i386 -drive format=raw,file=$(DISK_IMG) -display curses
 
 clean:
 	rm -rf $(BUILDDIR)
