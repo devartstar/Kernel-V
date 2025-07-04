@@ -23,10 +23,10 @@ $(BUILDDIR):
 	mkdir -p $(BUILDDIR)
 
 $(STAGE1_BIN): $(STAGE1_SRC) | $(BUILDDIR)
-	nasm -f bin $< -o $@
+	nasm -DBIN -f bin $< -o $@
 
 $(STAGE2_BIN): $(STAGE2_SRC) | $(BUILDDIR)
-	nasm -f bin $< -o $@
+	nasm -DBIN -f bin $< -o $@
 
 $(BUILDDIR)/kernel_entry.o: $(KERNEL_ENTRY_SRC) | $(BUILDDIR)
 	nasm -f elf32 $< -o $@

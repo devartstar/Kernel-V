@@ -1,7 +1,15 @@
 BITS 16
-ORG 0x8000
+%ifdef BIN
+	ORG 0x8000
+%endif
 
 start:
+	mov ah, 0x0E
+	mov al, 'A'
+	int 0x10
+	mov al, '2'
+	int 0x10
+
 	cli
 	xor ax, ax
 	mov ds, ax
@@ -94,5 +102,6 @@ gdt_desc:
 	dd gdt_start				; Base
 
 gdt_desc_end:
-
-times 4096-($-$$) db 0		; Fill upto 4K if needed
+%ifdef BIN
+	times 4096-($-$$) db 0		; Fill upto 4K if needed
+%endif
