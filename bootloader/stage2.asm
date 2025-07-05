@@ -1,6 +1,6 @@
 BITS 16
 %ifdef BIN
-	ORG 0x8000
+	ORG 0x0000
 %endif
 
 start:
@@ -11,9 +11,10 @@ start:
 	int 0x10
 
 	cli
-	xor ax, ax
+	mov ax, 0x0600
 	mov ds, ax
 	mov es, ax
+	xor ax, ax
 	mov ss, ax
 	mov sp, 0x7c00		; Stack pointer to point to any safe 
 				; known and free area below 0x8000

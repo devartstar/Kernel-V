@@ -5,11 +5,17 @@ BITS 16
 
 start:
 	; Set up the segment registers.
+	cli
 	xor ax, ax
 	mov ds, ax
 	mov es, ax
 	mov ss, ax
 	mov sp, 0x7c00
+	sti
+
+	mov ax, 0x0600
+	mov es, ax
+	xor bx, bx
 
 	; Reading from: 	1 sector from the disk - LBA = 1, CHS = (0,0,2)
 	; Reading content: 	Bootloader stage2
@@ -29,10 +35,6 @@ start:
 	; mov dl, [BOOT_DRIVE] - BOOT_DRIVE is taking value 0x5
 	mov dl, 0x80		; HDD - 0x80
 	
-	mov bx, 0x8000		; ES:BX = 0x0000:0x8000
-	mov ax, 0x0000
-	mov es, ax
-
 	int 0x13		; BIOS interrupt for Disk Read
 
 	jc disk_error		; if any error reading - carry bit is set
@@ -46,8 +48,7 @@ start:
 	jmp .print_msg_success
 
 .success_done:
-	jmp 0x0000:0x8000	; No error - jump to loaded stage 2
-
+	jmp 0x0600:0000
 
 disk_error:
 	mov si, msg_error
