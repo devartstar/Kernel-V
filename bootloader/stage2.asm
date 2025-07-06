@@ -4,6 +4,7 @@ BITS 16
 %endif
 
 start:
+	; Debug
 	mov ah, 0x0E
 	mov al, 'A'
 	int 0x10
@@ -22,19 +23,31 @@ start:
 				; 0x7c00 used by stage 1 but once it handed off
 				; control to stage 2 we can use that location
 
+	; Debug
+	mov ah, 0x0E
+	mov al, '3'
+	int 0x10
+
 	; Load Kernel from LBA = 2, 16 sectors
 	; Load to 0x100000 (1Mb)
 	mov si, 0		; offset of sectors to read
 	mov dx, 16		; Sector Offset (foctor for 512)
 
 .load_kernel:
+	push dx
 	push si
+
+	; Debug
+	mov ah, 0x0E
+	mov al, '4'
+	int 0x10
+
 	mov ah, 0x02		; Read Operation
 	mov al, 0x01		; 1 sector at a time
 
 	; Read From Location
 	mov ch, 0x00		; Cylinder = 0
-	mov cl, 0x02		; Sector = 2
+	mov cl, 0x09		; Sector = 2
 
 	push ax
 	mov ax, si
@@ -50,6 +63,9 @@ start:
 
 	int 0x13
 	jc disk_error
+
+	pop si
+	pop dx
 
 	inc si
 	dec dx			; loop till si = 16 -> 0
@@ -77,6 +93,11 @@ disk_error:
 
 [BITS 32]
 protected_mode_start:
+	; Debug
+	mov ah, 0x0E
+	mov al, '5'
+	int 0x10
+
 	mov ax, 0x10
 	mov ds, ax
 	mov es, ax
@@ -85,6 +106,11 @@ protected_mode_start:
 	; physical stack address = base of ss descriptor + esp
 
 	call dword 0x100000	; jump to the kernel
+	
+	; Debug
+	mov ah, 0x0E
+	mov al, '6'
+	int 0x10
 
 	hlt
 	jmp $

@@ -87,7 +87,7 @@ debug: $(DISK_IMG) $(STAGE1_ELF) $(STAGE2_ELF) $(KERNEL_ELF)
 	@echo ""
 	@echo "  gdb"
 	@echo "  (gdb) symbol-file $(STAGE1_ELF)"
-	@echo "  (gdb) add-symbol-file $(STAGE2_ELF) 0x8000"
+	@echo "  (gdb) add-symbol-file $(STAGE2_ELF) 0x6000"
 	@echo "  (gdb) add-symbol-file $(KERNEL_ELF)  0x100000"
 	@echo "  (gdb) target remote localhost:1234"
 	@echo ""
