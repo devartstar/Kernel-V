@@ -1,6 +1,6 @@
 BITS 16
 %ifdef BIN
-    org 0x8000
+    org 0x0000
 %endif
 
 start:
@@ -11,10 +11,13 @@ start:
     mov al, '2'
     int 0x10
 
+    ; Set up segment registers
     cli
-    xor ax, ax
+    mov ax, 0x0600           ; This must match the segment where Stage2 was loaded
     mov ds, ax
     mov es, ax
+    sti
+    xor ax, ax
     mov ss, ax
     mov sp, 0x7c00
 
