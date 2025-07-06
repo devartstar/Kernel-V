@@ -21,7 +21,6 @@ start:
     mov ss, ax
     mov sp, 0x7c00
 
-    mov cx, 16          ; Number of kernel sectors to load
     mov si, 0           ; Sector offset (0..15)
 
 .load_kernel:
@@ -37,7 +36,8 @@ start:
     mov dl, 0x80        ; First hard disk
 
     mov cl, 9           ; Sector 9 is first kernel sector
-    add cl, si          ; cl = 9 + offset (sectors 9..24)
+    mov bx, si
+    add cl, bl          ; cl = 9 + offset (sectors 9..24)
 
     mov ax, 0x1000
     mov es, ax
@@ -48,8 +48,8 @@ start:
     jc disk_error
 
     inc si
-    dec cx
-    jnz .load_kernel
+    cmp cl, 25
+    jl .load_kernel
 
     ; Print 'L' after kernel load
     mov ah, 0x0E
