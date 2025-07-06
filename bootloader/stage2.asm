@@ -4,6 +4,7 @@ BITS 16
 %endif
 
 start:
+    ; Print 'S2' at start
     mov ah, 0x0E
     mov al, 'S'
     int 0x10
@@ -17,23 +18,25 @@ start:
     mov ss, ax
     mov sp, 0x7c00
 
-    mov bl, 0           ; sector offset (0..15)
-    mov cx, 16          ; sector count
+    mov cx, 16          ; Number of kernel sectors to load
+    mov si, 0           ; Sector offset (0..15)
 
 .load_kernel:
+    ; Print '4' each sector read
     mov ah, 0x0E
     mov al, '4'
     int 0x10
 
-    mov ah, 0x02        ; BIOS read sector
+    mov ah, 0x02        ; BIOS: read sector(s)
     mov al, 1
-    mov ch, 0
-    mov cl, 9           ; Start at sector 9 (kernel's first sector in image)
-    add cl, bl          ; cl = 9 + sector offset
-    mov dh, 0
-    mov dl, 0x80
+    mov ch, 0           ; Cylinder 0
+    mov dh, 0           ; Head 0
+    mov dl, 0x80        ; First hard disk
 
-    mov ax, bx          ; ax = bl (sector offset)
+    mov ax, si
+    add ax, 9           ; Start at LBA 9 for kernel
+    mov cl, al          ; cl = 9 + offset (BIOS sectors start at 1)
+    mov ax, si
     shl ax, 9           ; ax = offset * 512
     shr ax, 4           ; ax = offset * 32
     add ax, 0x1000      ; es = 0x1000 + (offset * 32)
@@ -43,22 +46,22 @@ start:
     int 0x13
     jc disk_error
 
-    inc bl
-    loop .load_kernel
+    inc si
+    dec cx
+    jnz .load_kernel
 
+    ; Print 'L' after kernel load
     mov ah, 0x0E
     mov al, 'L'
     int 0x10
 
+    ; Setup GDT for protected mode
     lgdt [gdt_desc]
 
     cli
-    ; Switch to protected mode
-    mov eax, cr0        ; Only allowed in [BITS 32]
+    mov eax, cr0
     or  eax, 1
     mov cr0, eax
-    ; Far jump to 32-bit code
-    db 0x66            ; Operand size override prefix for far jump
     jmp 0x08:protected_mode_start
 
 disk_error:
@@ -76,7 +79,13 @@ protected_mode_start:
     mov ss, ax
     mov esp, 0x9FB00
 
+    ; Print 'P' in protected mode
+    mov byte [0xB8000], 'P'
+
     call dword 0x100000
+
+    ; Print 'K' after kernel returns
+    mov byte [0xB8002], 'K'
 
 .halt_pm:
     cli
