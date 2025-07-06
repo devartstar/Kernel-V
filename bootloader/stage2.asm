@@ -33,15 +33,13 @@ start:
     mov dh, 0           ; Head 0
     mov dl, 0x80        ; First hard disk
 
-    mov ax, si
-    add ax, 9           ; Start at LBA 9 for kernel
-    mov cl, al          ; cl = 9 + offset (BIOS sectors start at 1)
-    mov ax, si
-    shl ax, 9           ; ax = offset * 512
-    shr ax, 4           ; ax = offset * 32
-    add ax, 0x1000      ; es = 0x1000 + (offset * 32)
+    mov cl, 9           ; Sector 9 is first kernel sector
+    add cl, si          ; cl = 9 + offset (sectors 9..24)
+
+    mov ax, 0x1000
     mov es, ax
-    mov bx, 0
+    mov bx, si
+    shl bx, 9           ; bx = si * 512
 
     int 0x13
     jc disk_error
