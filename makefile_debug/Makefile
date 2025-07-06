@@ -51,13 +51,13 @@ $(STAGE1_ELF): $(STAGE1_OBJ) | $(BUILDDIR)
 
 # --- Stage 2: binary and ELF ---
 $(STAGE2_BIN): $(STAGE2_SRC) | $(BUILDDIR)
-	nasm -f bin $< -o $@
+	nasm -DBIN -f bin $< -o $@
 
 $(STAGE2_OBJ): $(STAGE2_SRC) | $(BUILDDIR)
 	nasm -f elf32 -g $< -o $@
 
 $(STAGE2_ELF): $(STAGE2_OBJ) | $(BUILDDIR)
-	ld -m elf_i386 -Ttext 0x8000 --oformat=elf32-i386 $< -o $@
+	ld -m elf_i386 -Ttext 0x6000 --oformat=elf32-i386 $< -o $@
 
 # --- Kernel: ELF and BIN ---
 $(KERNEL_ENTRY_OBJ): $(KERNEL_ENTRY_SRC) | $(BUILDDIR)
