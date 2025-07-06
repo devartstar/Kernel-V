@@ -33,7 +33,7 @@ start:
     mov dh, 0
     mov dl, 0x80
 
-    mov ax, bl          ; ax = sector offset
+    mov ax, bx          ; ax = bl (sector offset)
     shl ax, 9           ; ax = offset * 512
     shr ax, 4           ; ax = offset * 32
     add ax, 0x1000      ; es = 0x1000 + (offset * 32)
@@ -52,10 +52,13 @@ start:
 
     lgdt [gdt_desc]
 
-    mov ax, cr0
-    or  ax, 1
-    mov cr0, ax
-
+    cli
+    ; Switch to protected mode
+    mov eax, cr0        ; Only allowed in [BITS 32]
+    or  eax, 1
+    mov cr0, eax
+    ; Far jump to 32-bit code
+    db 0x66            ; Operand size override prefix for far jump
     jmp 0x08:protected_mode_start
 
 disk_error:
@@ -73,15 +76,7 @@ protected_mode_start:
     mov ss, ax
     mov esp, 0x9FB00
 
-    mov ah, 0x0E
-    mov al, 'P'
-    int 0x10
-
     call dword 0x100000
-
-    mov ah, 0x0E
-    mov al, 'K'
-    int 0x10
 
 .halt_pm:
     cli
