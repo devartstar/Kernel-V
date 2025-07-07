@@ -38,6 +38,8 @@ start:
     mov cl, 9           ; Sector 9 is first kernel sector
     mov bx, si
     add cl, bl          ; cl = 9 + offset (sectors 9..24)
+	
+    call enable_a20
 
     mov ax, 0x1000
     mov es, ax
@@ -71,7 +73,13 @@ start:
     or  eax, 1
     mov cr0, eax
     db 0x66
-    jmp 0x08:protected_mode_start
+    jmp dword 0x08:protected_mode_start
+
+enable_a20:
+    in al, 0x92
+    or al, 0x02
+    out 0x92, al
+    ret
 
 disk_error:
     mov ah, 0x0E
