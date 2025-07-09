@@ -27,9 +27,7 @@ start:
     or al, 0000_0010b
     out 0x92, al
 
-	jmp .load_kernel
 
-.load_kernel:
     ; Print '4' each sector read
     mov ah, 0x0E
     mov al, '4'
@@ -39,23 +37,21 @@ start:
     mov al, 1
     mov ch, 0           ; Cylinder 0
     mov dh, 0           ; Head 0
-    mov dl, 0x80        ; First hard disk
+    mov cl, 10
+    mov dl, 0x80
 
-    mov cl, 9           ; Sector 9 is first kernel sector
-    mov bx, si
-    add cl, bl          ; cl = 9 + offset (sectors 9..24)
 	
     mov ax, 0x1000
     mov es, ax
-    mov bx, si
-    shl bx, 9           ; bx = si * 512
+    xor bx, bx
 
+.read_sector:
     int 0x13
     jc disk_error
 
-    inc si
-    cmp cl, 25
-    jl .load_kernel
+    nop
+.read_done:
+
 
     ; Print 'L' after kernel load
     mov ah, 0x0E
@@ -66,7 +62,7 @@ start:
     ; Patch GDT base to physical address (0x6000 + offset of gdt_start)
 
     ; loads the value of mem addr where gdt to start into eax
-    mov eax, 0x7000
+    mov eax, 0x6000
     add eax, gdt_start
     mov [gdt_desc+2], eax
 
