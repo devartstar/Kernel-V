@@ -26,7 +26,8 @@ start:
     in al, 0x92
     or al, 0000_0010b
     out 0x92, al
-    ret
+
+	jmp .load_kernel
 
 .load_kernel:
     ; Print '4' each sector read
@@ -96,7 +97,7 @@ protected_mode_start:
     ; Print 'P' in protected mode
     mov byte [0xB8000], 'P'
 
-    call dword 0x100000
+    call dword 0x10000
 
     ; Print 'K' after kernel returns
     mov byte [0xB8002], 'K'
