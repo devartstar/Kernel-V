@@ -23,6 +23,11 @@ start:
 
     mov si, 0           ; Sector offset (0..15)
 
+    in al, 0x92
+    or al, 0000_0010b
+    out 0x92, al
+    ret
+
 .load_kernel:
     ; Print '4' each sector read
     mov ah, 0x0E
@@ -39,8 +44,6 @@ start:
     mov bx, si
     add cl, bl          ; cl = 9 + offset (sectors 9..24)
 	
-    call enable_a20
-
     mov ax, 0x1000
     mov es, ax
     mov bx, si
@@ -74,12 +77,6 @@ start:
     mov cr0, eax
     db 0x66
     jmp dword 0x08:protected_mode_start
-
-enable_a20:
-    in al, 0x92
-    or al, 0x02
-    out 0x92, al
-    ret
 
 disk_error:
     mov ah, 0x0E
