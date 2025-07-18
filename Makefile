@@ -1,53 +1,21 @@
 
-# ===== Paths =====
-BOOTDIR   = bootloader
-KERNDIR   = kernel
-BUILDDIR  = build
+all:
+	mkdir -p build
+	nasm -f bin -o build/stage1.bin bootloader/stage1.asm
+	nasm -f bin -o build/stage2.bin bootloader/stage2.asm
+	dd if=build/stage1.bin of=build/boot.img bs=512 count=1 conv=notrunc
+	dd if=build/stage2.bin of=build/boot.img bs=512 count=5 seek=1 conv=notrunc
 
-# ===== Files =====
-STAGE1_SRC = $(BOOTDIR)/stage1.asm
-STAGE2_SRC = $(BOOTDIR)/stage2.asm
+	gcc -m32 -ffreestanding -c kernel/main/kernel.c -o build/kernel.o -fno-pie
+	ld -m elf_i386 -o build/kernel.bin build/kernel.o -nostdlib --oformat=binary -Ttext=0x10000
 
-KERNEL_ENTRY_SRC = $(KERNDIR)/arch/x86/kernel_entry.asm
-KERNEL_MAIN_SRC  = $(KERNDIR)/main/kernel.c
-KERNEL_LD        = $(KERNDIR)/linker/kernel.ld
-
-STAGE1_BIN = $(BUILDDIR)/stage1.bin
-STAGE2_BIN = $(BUILDDIR)/stage2.bin
-KERNEL_BIN = $(BUILDDIR)/kernel.bin
-DISK_IMG   = $(BUILDDIR)/disk.img
-
-# ===== Targets =====
-all: $(DISK_IMG)
-
-$(BUILDDIR):
-	mkdir -p $(BUILDDIR)
-
-$(STAGE1_BIN): $(STAGE1_SRC) | $(BUILDDIR)
-	nasm -DBIN -f bin $< -o $@
-
-$(STAGE2_BIN): $(STAGE2_SRC) | $(BUILDDIR)
-	nasm -DBIN -f bin $< -o $@
-
-$(BUILDDIR)/kernel_entry.o: $(KERNEL_ENTRY_SRC) | $(BUILDDIR)
-	nasm -f elf32 $< -o $@
-
-$(BUILDDIR)/kernel.o: $(KERNEL_MAIN_SRC) | $(BUILDDIR)
-	gcc -m32 -ffreestanding -c $< -o $@ -fno-pie
-
-$(KERNEL_BIN): $(BUILDDIR)/kernel_entry.o $(BUILDDIR)/kernel.o $(KERNEL_LD) | $(BUILDDIR)
-	ld -m elf_i386 -T $(KERNEL_LD) -o $@ $(BUILDDIR)/kernel_entry.o $(BUILDDIR)/kernel.o
-
-$(DISK_IMG): $(STAGE1_BIN) $(STAGE2_BIN) $(KERNEL_BIN) | $(BUILDDIR)
-	dd if=/dev/zero of=$@ bs=1K count=1440
-	dd if=$(STAGE1_BIN) of=$@ bs=512 seek=0 conv=notrunc
-	dd if=$(STAGE2_BIN) of=$@ bs=512 seek=1 conv=notrunc
-	dd if=$(KERNEL_BIN) of=$@ bs=512 seek=9 conv=notrunc
-
-run: $(DISK_IMG)
-	qemu-system-i386 -drive format=raw,file=$(DISK_IMG) -display curses
+	dd if=build/kernel.bin of=build/boot.img bs=512 count=5 seek=6 conv=notrunc
+	dd if=/dev/zero of=build/boot.img bs=512 count=1 seek=11 conv=notrunc
 
 clean:
-	rm -rf $(BUILDDIR)
+	rm -rf build
+
+run:
+	qemu-system-i386 -drive format=raw,file=build/boot.img -display curses
 
 .PHONY: all clean run
