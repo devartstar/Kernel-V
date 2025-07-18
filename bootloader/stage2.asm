@@ -42,7 +42,7 @@ ReadError:
     mov bx, 0x0A
     xor dx, dx
     mov bp, MsgError
-    mov cx, MasgErrorL
+    mov cx, MsgErrorL
     int 0x10
 
 End:

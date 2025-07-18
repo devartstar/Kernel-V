@@ -30,7 +30,7 @@ Start:
 	sti
 
 LoadStage2:
-	mov si. ReadPacket
+	mov si, ReadPacket
 	mov word[si],   0x10
 	mov word[si+2], 0x05
 	mov word[si+4], 0x7E00	; Offset in Memory to Load
@@ -48,7 +48,7 @@ ReadSuccess:
 	mov bx, 0xA
 	xor dx, dx
 	mov bp, MsgSuccess
-	mov cx, MsgSuccessLen
+	mov cx, MsgSuccessL
 	int 0x10
 
 	; Transfer control to loaded memory
