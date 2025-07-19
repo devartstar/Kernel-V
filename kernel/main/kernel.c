@@ -1,8 +1,5 @@
-// Entry point that stage2 will jump to
-void _start() {
-    kernel_main();
+void main() 
+{
+    *((char *)0xb8000) = 'D';
 }
 
-void kernel_main() {
-	for(;;);
-}
