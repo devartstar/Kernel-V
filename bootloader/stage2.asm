@@ -2,6 +2,14 @@ BITS 16
 [org 0x7e00]
 
 Start:
+    mov dl, 0x80
+    mov ah, 0x41
+    mov bx, 0x55AA
+    int 0x13
+    jc NotSupported
+    cmp bx, 0xAA55
+    jne NotSupported
+
 
     ; 1. Load the Kernel
 LoadKernel:
@@ -10,7 +18,7 @@ LoadKernel:
     mov word[si+2], 0x05        ; Load 5 sectors from the Disk
     mov word[si+4], 0x00
     mov word[si+6], 0x1000      ; Segment to Load to Load
-    mov dword[si+8], 0x06        ; Read from the 7th Sector (LBA=8)
+    mov dword[si+8], 0x06        ; Read from the 7th Sector (LBA=6)
     mov dword[si+12], 0x00
 
     mov ah, 0x42
@@ -34,6 +42,15 @@ SwitchToProtectedMode:
 
 
 NotSupported:
+    mov ah, 0x13
+    mov al, 1
+    mov bx, 0x0A
+    xor dx, dx
+    mov bp, MsgNoSupport
+    mov cx, MsgNoSupportL
+    int 0x10
+    jmp End
+
 ReadError:
     mov ah, 0x13
     mov al, 1
@@ -52,6 +69,8 @@ MsgError:       db "Cannot Load Kernel", 0x0A, 0x0D, 0
 MsgErrorL:      equ $-MsgError
 MsgSuccess:     db "Successfully Loaded Kernel", 0x0A, 0x0D, 0
 MsgSuccessL:    equ $-MsgSuccess
+MsgNoSupport:   db "LBA extension support check failed", 0x0A, 0x0D, 0
+MsgNoSupportL:  equ $-MsgNoSupport
 
 
 ReadPacket:     times 16 db 0
