@@ -118,7 +118,7 @@ PMEntry:
     mov fs, ax
     mov ss, ax
 
-    mov esp, 0x7c00     ; stack pointer
+    ; mov esp, 0x7c00     ; kernel entry will set up stack pointer
 
     jmp 0x08:0x10000
     jmp $

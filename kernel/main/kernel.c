@@ -1,4 +1,4 @@
-void main() 
+void kernel_main() 
 {
     char *vga = (char *)0xb8000;
     vga[0] = 'h';
