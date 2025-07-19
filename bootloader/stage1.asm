@@ -12,9 +12,7 @@
 ; |-------------------| 0
 
 [BITS 16]
-%ifdef BIN
-	[ORG 0x7c00]
-%endif
+[ORG 0x7c00]
 
 jmp short Start
 nop
@@ -85,11 +83,9 @@ ReadPacket:	times 16 db 0
 ; b13 b14 b15 b16 (32 high bits of LBA to Read)
 
 ; [0-445] is bootloader coad
-%ifdef BIN
-	times (0x1BE-($-$$)) db 0		; Pad size to 510 bytes
-%endif
+times (0x1BE-($-$$)) db 0		; Pad size to 510 bytes
 
-; [446-460] 64 Bytes
+; [446-461] 16 Bytes
 db 0x80		; [446] Boot Flag: 0x80
 db 0,2,0	; [447-449] CHS Start: C=0 h=0 S=2
 db 0x0F		; [450] Partition FAT32
@@ -97,7 +93,7 @@ db 0xFF,0xFF,0xFF   ; [451-453] CHS End
 dd 1		; [454-457] Starting LBA = 1
 dd (29*16*63 - 1)   ; [458-461] Disk Size = 1Mb
 
-; [461-509] 48 Bytes
+; [462-509] 48 Bytes
 times (16*3) db 0
 
 ; [510-511] 2 Bytes Boot Signature

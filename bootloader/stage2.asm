@@ -1,7 +1,5 @@
 BITS 16
-%ifdef BIN
-    [org 0x7e00]
-%endif
+[org 0x7e00]
 
 Start:
 
@@ -106,6 +104,3 @@ PMEntry:
     jmp 0x08:0x10000
     jmp $
 
-%ifdef BIN
-    times 4096-($-$$) db 0
-%endif
