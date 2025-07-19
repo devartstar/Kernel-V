@@ -1,84 +1,57 @@
-# Kernel-V
+# Kernel-V_v0.1: Next Steps After Bootstrapping
 
-A project-based, modular UNIX-like kernel developed from scratch for deep learning and experimentation.  
-**Kernel-V** is built as a series of hands-on mini-projects following the design principles of classic UNIX, inspired by *The Design of the UNIX Operating System* (Maurice J. Bach).
+Wohoooo!!! My kernel boots, enters protected mode, and prints hi to me on the screen. 
 
----
+## Immediate Next Steps: Make Your Kernel Developer-Friendly
 
-## 🌟 **Project Vision**
-
-- Learn UNIX kernel architecture by building each subsystem as a mini-project.
-- Bootstrapped with a custom Stage 1/Stage 2 bootloader.
-- Incrementally build features: process management, memory, file system, drivers, userland, and more.
+Before moving to memory management or multitasking, add features that make further kernel development much easier and more enjoyable.
 
 ---
 
-## 📂 **Repository Structure**
+## 1. Console Enhancements
 
-- **bootloader/**: Stage 1 & 2 bootloaders (assembly)
-- **kernel/**: Core kernel source code, organized by subsystems
-    - `arch/` - architecture-specific code
-    - `include/` - kernel headers
-    - `mm/` - memory management
-    - `fs/` - file systems
-    - `proc/` - process management
-    - `drivers/` - device drivers
-    - `syscall/` - syscall layer
-    - `ipc/` - interprocess comm.
-    - `libk/` - kernel utility library
-- **user/**: Userland programs, minimal libc, shell, etc.
-- **scripts/**: Build, run, and debug scripts
-- **tools/**: Helper tools (disk image builder, mkfs, etc.)
-- **docs/**: Design docs, diagrams, and learning notes
-- **tests/**: Unit and integration tests for kernel modules
+**Goal:** Make it easy to print debug/info messages to the screen—your main "window" into the kernel as you develop.
 
-See [docs/folder_structure.md](docs/folder_structure.md) for the full project roadmap.
----
-
-## 🚀 **Getting Started**
-
-1. **Build the bootloader and kernel:**
-    ```sh
-    make
-    ```
-
-2. **Run in QEMU:**
-    ```sh
-    ./scripts/run.sh
-    ```
-
-3. **Development Cycle:**
-    - Edit kernel or user source.
-    - Rebuild with `make`.
-    - Test in QEMU or with scripts.
+- [ ] Implement a `print_string` function that prints C strings to the VGA text buffer at `0xb8000`.
+- [ ] Support newlines (`\n`) and simple cursor movement.
+- [ ] (Optional but recommended) Add text color support (foreground/background).
+- [ ] (Super bonus) Implement screen scrolling when the bottom is reached.
 
 ---
 
-## 🛠️ **Features & Progress**
+## 2. Panic and Assertion Handler
 
-See [docs/roadmap.md](docs/roadmap.md) for the full project roadmap.
+**Goal:** Make it clear when the kernel hits a critical error.
 
----
-
-## 🧑‍💻 **Learning Resources**
-
-- Book: *The Design of the UNIX Operating System* (Maurice J. Bach)
-- APUE: *Advanced Programming in the UNIX Environment* (Stevens/Rago)
-- Reference implementations: [xv6](https://pdos.csail.mit.edu/6.828/2022/xv6.html), [Minix], [Linux 0.11]
+- [ ] Write a `panic(const char* msg)` function that prints an error in a distinct color (e.g., red text), then halts the system.
+- [ ] Replace early kernel errors or unexpected states with calls to `panic()`.
 
 ---
 
-## 🤝 **Contributing & License**
+## 3. Quick Refactor
 
-This is a personal learning project, but contributions, bug reports, or feedback are welcome!
-See [LICENSE](LICENSE) for details.
+**Goal:** Keep the codebase clean as it grows.
 
----
-
-## 📝 **Documentation**
-
-See the [docs/](docs/) directory for design docs, implementation notes, diagrams, and the full learning log.
+- [ ] Move hardware/architecture-specific code (VGA, entry ASM, GDT/IDT setup) to their own folders/modules (e.g., `arch/x86/`, `drivers/`, etc.).
+- [ ] Document new functions and modules with comments.
 
 ---
 
-Happy hacking! 🚀
+## 4. Resume the Main Roadmap
+
+When the above are done, move on to the next planned phase:
+
+- [ ] **Phase 2: Memory Management**
+  - Parse the BIOS/bootloader memory map (E820).
+  - Implement a physical memory allocator (e.g., bitmap).
+  - Set up basic paging and kernel heap.
+
+---
+
+## 📓 Why These Steps?
+
+- **Reliable screen output** is critical for debugging every subsystem you build next (memory, interrupts, tasks, filesystems).
+- **Panic handling** makes it easy to spot bugs and track down crashes, even before you have serial or GDB working.
+- **A clean codebase** will save you time and headaches as the project gets bigger.
+
+---
