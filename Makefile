@@ -16,14 +16,22 @@ build/stage2.bin: bootloader/stage2.asm
 
 build/kernel.o: kernel/main/kernel.c
 	mkdir -p build
-	gcc -m32 -ffreestanding -c kernel/main/kernel.c -o build/kernel.o -fno-pie
+	gcc -m32 -ffreestanding -Ikernel/include -c kernel/main/kernel.c -o build/kernel.o -fno-pie
+
+build/printk.o: kernel/lib/printk.c
+	mkdir -p build
+	gcc -m32 -ffreestanding -Ikernel/include -c kernel/lib/printk.c -o build/printk.o -fno-pie
+
+build/vga.o: kernel/drivers/vga/vga.c
+	mkdir -p build
+	gcc -m32 -ffreestanding -Ikernel/include -c kernel/drivers/vga/vga.c -o build/vga.o -fno-pie
 
 build/kernel_entry.o: kernel/arch/x86/kernel_entry.asm
 	mkdir -p build
 	nasm -f elf32 -o build/kernel_entry.o kernel/arch/x86/kernel_entry.asm
 
-build/kernel.bin: build/kernel_entry.o build/kernel.o kernel/linker/kernel.ld
-	ld -m elf_i386 -T kernel/linker/kernel.ld -o build/kernel.elf build/kernel_entry.o build/kernel.o -nostdlib
+build/kernel.bin: build/kernel_entry.o build/kernel.o build/printk.o build/vga.o kernel/linker/kernel.ld
+	ld -m elf_i386 -T kernel/linker/kernel.ld -o build/kernel.elf build/kernel_entry.o build/kernel.o build/printk.o build/vga.o -nostdlib
 	objcopy -O binary build/kernel.elf build/kernel.bin
 
 clean:

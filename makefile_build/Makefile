@@ -5,8 +5,16 @@ all:
 	dd if=build/stage1.bin of=boot.img bs=512 count=1 conv=notrunc
 	dd if=build/stage2.bin of=boot.img bs=512 count=5 seek=1 conv=notrunc
 
-	gcc -m32 -ffreestanding -c kernel/main/kernel.c -o build/kernel.o -fno-pie
-	ld -m elf_i386 -o build/kernel.bin build/kernel.o -nostdlib --oformat=binary -Ttext=0x10000
+	# Compile kernel entry point
+	nasm -f elf32 kernel/arch/x86/kernel_entry.asm -o build/kernel_entry.o
+	
+	# Compile kernel source files
+	gcc -m32 -ffreestanding -Ikernel/include -c kernel/main/kernel.c -o build/kernel.o -fno-pie
+	gcc -m32 -ffreestanding -Ikernel/include -c kernel/lib/printk.c -o build/printk.o -fno-pie  
+	gcc -m32 -ffreestanding -Ikernel/include -c kernel/drivers/vga/vga.c -o build/vga.o -fno-pie
+	
+	# Link kernel
+	ld -m elf_i386 -o build/kernel.bin build/kernel_entry.o build/kernel.o build/printk.o build/vga.o -nostdlib --oformat=binary -Tkernel/linker/kernel.ld
 
 	dd if=build/kernel.bin of=boot.img bs=512 count=5 seek=6 conv=notrunc
 	dd if=/dev/zero of=boot.img bs=512 count=1 seek=11 conv=notrunc
