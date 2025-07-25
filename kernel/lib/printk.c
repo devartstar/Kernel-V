@@ -93,17 +93,84 @@ static int my_vsnprintf(char *buf, size_t size, const char *fmt, va_list args)
                 }
                 case 'd': {
                     int num = va_arg(args, int);
-                    p += snprintf(p, end - p, "%d", num);
+                    // convert signed decimal into char array
+                    int is_negative = (num < 0);
+                    unsigned int val = is_negative ? -num : num;
+                    char tmp[12];
+                    int tmplen = 0;
+                    
+                    do {
+                        tmp[tmplen++] = '0' + (val % 10);
+                        val /= 10;
+                    } while(val && tmplen < (int)sizeof(tmp));
+
+                    if(is_negative && tmplen < (int)sizeof(tmp))
+                    {
+                        tmp[tmplen++] = '-';  // Fixed: increment tmplen
+                    }
+
+                    // reverse it and store in output
+                    for(int pos = tmplen - 1; pos >= 0 && p < end; pos--)  // Fixed: start from tmplen-1
+                    {
+                        *p++ = tmp[pos];
+                    }
                     break;
                 }
                 case 'x': {
                     unsigned int num = va_arg(args, unsigned int);
-                    p += snprintf(p, end - p, "%x", num);
+                    // convert unsigned hex into char array
+                    char tmp[12];
+                    int tmplen = 0;
+                    
+                    if (num == 0) {
+                        tmp[tmplen++] = '0';
+                    } else {
+                        do {
+                            int digit = num % 16;
+                            tmp[tmplen++] = (digit < 10) ? ('0' + digit) : ('a' + digit - 10);
+                            num /= 16;
+                        } while(num && tmplen < (int)sizeof(tmp));
+                    }
+
+                    // reverse it and store in output
+                    for(int pos = tmplen - 1; pos >= 0 && p < end; pos--)
+                    {
+                        *p++ = tmp[pos];
+                    }
                     break;
                 }
                 case 'p': {
                     void *ptr = va_arg(args, void*);
-                    p += snprintf(p, end - p, "%p", ptr);
+                    // Add "0x" prefix
+                    if (p < end - 1) {
+                        *p++ = '0';
+                        *p++ = 'x';
+                    }
+                    
+                    // convert pointer to hex
+                    uintptr_t num = (uintptr_t)ptr;
+                    char tmp[20];  // Enough for 64-bit pointer
+                    int tmplen = 0;
+                    
+                    if (num == 0) {
+                        tmp[tmplen++] = '0';
+                    } else {
+                        do {
+                            int digit = num % 16;
+                            tmp[tmplen++] = (digit < 10) ? ('0' + digit) : ('a' + digit - 10);
+                            num /= 16;
+                        } while(num && tmplen < (int)sizeof(tmp));
+                    }
+
+                    // reverse it and store in output
+                    for(int pos = tmplen - 1; pos >= 0 && p < end; pos--)
+                    {
+                        *p++ = tmp[pos];
+                    }
+                    break;
+                }
+                case '%': {
+                    if(p < end) *p++ = '%';
                     break;
                 }
                 default:
