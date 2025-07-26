@@ -17,10 +17,10 @@ Start:
 LoadKernel:
     mov si, ReadPacket
     mov word[si], 0x10
-    mov word[si+2], 0x05        ; Load 5 sectors from the Disk
+    mov word[si+2], 0x08        ; Load 8 sectors from the Disk (4096 bytes)
     mov word[si+4], 0x00
     mov word[si+6], 0x1000      ; Segment to Load to Load
-    mov dword[si+8], 0x06        ; Read from the 7th Sector (LBA=6)
+    mov dword[si+8], 0x09        ; Read from the 10th Sector (LBA=9, offset 0x1200)
     mov dword[si+12], 0x00
 
     mov ah, 0x42
@@ -34,6 +34,12 @@ LoadKernel:
     mov bx, 0x0000
     mov al, [es:bx]     ; Load first byte of kernel
     ; You can set a breakpoint here to check if AL contains valid data
+    
+    ; Additional debug: Check more bytes to verify content
+    mov bl, [es:1]      ; Second byte
+    mov cl, [es:2]      ; Third byte 
+    mov dl, [es:3]      ; Fourth byte
+    ; Set breakpoint here: examine AL, BL, CL, DL in GDB
 
 SetVideoMode:
     mov ax, 0x03
