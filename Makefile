@@ -121,6 +121,14 @@ debug-kernel: $(KERNEL_ELF) $(DISK_IMG)
 	@echo "Set breakpoint with: (gdb) break kernel_main"
 	qemu-system-i386 -drive format=raw,file=$(DISK_IMG) -s -S -display curses
 
+# Debug both bootloader stages
+debug-bootloader: $(STAGE1_ELF) $(STAGE2_ELF) $(DISK_IMG)
+	@echo "Starting QEMU with GDB server for both Stage1 and Stage2 bootloader debugging..."
+	@echo "Stage1 loads at 0x7c00, Stage2 loads at 0x7e00"
+	@echo "In GDB, use: target remote :1234"
+	@echo "Set breakpoints with: (gdb) break *0x7c00 and (gdb) break *0x7e00"
+	qemu-system-i386 -drive format=raw,file=$(DISK_IMG) -s -S -display curses
+
 # === Debug target for GDB/QEMU ===
 debug: $(KERNEL_ELF) $(DISK_IMG)
 	qemu-system-i386 -drive format=raw,file=$(DISK_IMG) -s -S -display curses
@@ -139,7 +147,8 @@ help:
 	@echo ""
 	@echo "Debug targets:"
 	@echo "  make debug-stage1    - Debug bootloader stage 1"
-	@echo "  make debug-stage2    - Debug bootloader stage 2" 
+	@echo "  make debug-stage2    - Debug bootloader stage 2"
+	@echo "  make debug-bootloader - Debug both bootloader stages (recommended)"
 	@echo "  make debug-kernel    - Debug kernel"
 	@echo "  make debug-symbols   - Build all debug symbols"
 	@echo "  make verify-symbols  - Check if debug symbols are built correctly"
@@ -149,6 +158,7 @@ help:
 	@echo "  make gdb-kernel          - Create GDB script for kernel (with TUI)"
 	@echo "  make gdb-bootloader-regs - Bootloader debug with registers layout"
 	@echo "  make gdb-kernel-split    - Kernel debug with split layout"
+	@echo "  make gdb-full-debug      - Complete bootloader-to-kernel debugging"
 	@echo ""
 	@echo "Manual debugging steps:"
 	@echo "  1. Terminal 1: make debug-stage1  (note: hyphen, not underscore)"
@@ -163,9 +173,13 @@ help:
 	@echo ""
 	@echo "Correct sequence for automated debugging:"
 	@echo "  1. make clean && make"
-	@echo "  2. Terminal 1: make debug-stage1"
+	@echo "  2. Terminal 1: make debug-bootloader  (for both stages)"
 	@echo "  3. Terminal 2: make gdb-bootloader"
 	@echo "  4. Terminal 2: gdb -x build/gdb_bootloader.txt"
+	@echo ""
+	@echo "Alternative - debug individual stages:"
+	@echo "  For Stage1 only: make debug-stage1"
+	@echo "  For Stage2 only: make debug-stage2"
 	@echo ""
 	@echo "GDB TUI Layouts available:"
 	@echo "  layout src    - Source + command"
@@ -178,9 +192,9 @@ help:
 	@echo "  Ctrl+X+2      - Two windows"
 
 # === GDB Helper Scripts ===
-# Create GDB script for bootloader debugging
+# Create GDB script for bootloader debugging (both stages)
 gdb-bootloader: debug-symbols
-	@echo "Creating GDB script for bootloader debugging..."
+	@echo "Creating GDB script for bootloader debugging (Stage1 + Stage2)..."
 	@echo "# Connect to QEMU" > $(BUILDDIR)/gdb_bootloader.txt
 	@echo "target remote :1234" >> $(BUILDDIR)/gdb_bootloader.txt
 	@echo "# Set 16-bit real mode architecture" >> $(BUILDDIR)/gdb_bootloader.txt
@@ -202,8 +216,18 @@ gdb-bootloader: debug-symbols
 	@echo "# Show current state" >> $(BUILDDIR)/gdb_bootloader.txt
 	@echo "info registers" >> $(BUILDDIR)/gdb_bootloader.txt
 	@echo "x/5i $$pc" >> $(BUILDDIR)/gdb_bootloader.txt
+	@echo "# Debugging tips" >> $(BUILDDIR)/gdb_bootloader.txt
+	@echo "echo" >> $(BUILDDIR)/gdb_bootloader.txt
+	@echo "echo ==== Bootloader Debug Session ====" >> $(BUILDDIR)/gdb_bootloader.txt
+	@echo "echo Stage1 starts at 0x7c00" >> $(BUILDDIR)/gdb_bootloader.txt
+	@echo "echo Stage2 starts at 0x7e00" >> $(BUILDDIR)/gdb_bootloader.txt
+	@echo "echo Kernel starts at 0x10000" >> $(BUILDDIR)/gdb_bootloader.txt
+	@echo "echo Use 'continue' to run to first breakpoint" >> $(BUILDDIR)/gdb_bootloader.txt
+	@echo "echo Use 'stepi' to step one instruction" >> $(BUILDDIR)/gdb_bootloader.txt
+	@echo "echo Use 'info registers' to see register state" >> $(BUILDDIR)/gdb_bootloader.txt
+	@echo "echo ====================================" >> $(BUILDDIR)/gdb_bootloader.txt
 	@echo "GDB script created: $(BUILDDIR)/gdb_bootloader.txt"
-	@echo "Usage: First run 'make debug-stage1' in one terminal"
+	@echo "Usage: First run 'make debug-bootloader' in one terminal"
 	@echo "       Then run 'gdb -x $(BUILDDIR)/gdb_bootloader.txt' in another"
 
 # Create GDB script for kernel debugging  
@@ -259,5 +283,71 @@ gdb-kernel-split: debug-symbols
 	@echo "GDB script with split layout created: $(BUILDDIR)/gdb_kernel_split.txt"
 	@echo "Usage: gdb -x $(BUILDDIR)/gdb_kernel_split.txt"
 
-.PHONY: all clean run debug debug-symbols verify-symbols debug-stage1 debug-stage2 debug-kernel gdb-bootloader gdb-kernel gdb-bootloader-regs gdb-kernel-split help
+# Create GDB script for seamless bootloader-to-kernel debugging
+gdb-full-debug: debug-symbols
+	@echo "Creating comprehensive GDB script for bootloader-to-kernel debugging..."
+	@echo "# === BOOTLOADER PHASE ===" > $(BUILDDIR)/gdb_full_debug.txt
+	@echo "target remote :1234" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "set architecture i8086" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "add-symbol-file $(STAGE1_ELF) 0x7c00" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "add-symbol-file $(STAGE2_ELF) 0x7e00" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "tui enable" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "layout asm" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "focus cmd" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "hbreak *0x7c00" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "hbreak *0x7e00" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "# === KERNEL TRANSITION POINT ===" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "define switch-to-kernel" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "  set architecture i386" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "  add-symbol-file $(KERNEL_ELF) 0x10000" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "  hbreak *0x10000" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "  break kernel_main" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "  layout split" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "  echo" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "  echo ==== SWITCHED TO KERNEL DEBUGGING ====" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "  echo Now debugging in 32-bit protected mode" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "  echo Breakpoints set at 0x10000 and kernel_main" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "  echo Use 'continue' to proceed to kernel entry" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "  echo =========================================" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "  info breakpoints" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "end" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "# === KERNEL LOADING VERIFICATION ===" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "define check-kernel-loaded" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "  echo Checking if kernel was loaded at 0x10000..." >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "  x/10i 0x10000" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "  echo" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "  echo First 32 bytes of kernel memory:" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "  x/32b 0x10000" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "  echo" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "  echo If you see all zeros or repeated 0x00 0x00, kernel didn't load!" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "end" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "# === DISK LOADING DEBUG ===" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "define debug-disk-load" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "  echo Setting breakpoint at disk loading section..." >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "  # Set breakpoint right after disk read" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "  # You'll need to find the exact address in stage2" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "  echo After disk read, check:" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "  echo   x/10b 0x10000  - to see if kernel loaded" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "  echo   info registers - to check carry flag for errors" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "end" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "# === INITIAL SETUP ===" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "echo" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "echo ==== BOOTLOADER-TO-KERNEL DEBUG SESSION ====" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "echo Stage1: 0x7c00, Stage2: 0x7e00, Kernel: 0x10000" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "echo" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "echo Available commands:" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "echo   check-kernel-loaded  - Verify if kernel loaded at 0x10000" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "echo   debug-disk-load      - Debug disk loading process" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "echo   switch-to-kernel     - Switch to kernel debugging mode" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "echo" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "echo When you reach the kernel jump point:" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "echo   1. Type: check-kernel-loaded" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "echo   2. If kernel loaded: switch-to-kernel" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "echo   3. Then: continue" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "echo =============================================" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "info breakpoints" >> $(BUILDDIR)/gdb_full_debug.txt
+	@echo "GDB comprehensive debug script created: $(BUILDDIR)/gdb_full_debug.txt"
+	@echo "Usage: gdb -x $(BUILDDIR)/gdb_full_debug.txt"
+
+.PHONY: all clean run debug debug-symbols verify-symbols debug-stage1 debug-stage2 debug-bootloader debug-kernel gdb-bootloader gdb-kernel gdb-bootloader-regs gdb-kernel-split gdb-full-debug help
 
