@@ -4,5 +4,5 @@ hd
 flat
 512
 10
-boot.img
+build/boot.img
 EOF

@@ -1,6 +1,14 @@
 #include "kernel.h"
 
 void kernel_main() {
+
+    // 2 ways to printing -
+    // 1. Printk -
+    //      It prints to the consode
+    //      It writes to the in-memory circular buffer
+    // 2. vga_print_string -
+    //      It has better format options to print to console
+
     // Initialize kernel subsystems
     printk_init();
     
