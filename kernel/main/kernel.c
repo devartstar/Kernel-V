@@ -39,10 +39,10 @@ void kernel_main() {
     
     printk("\nKernel-V is running! Welcome to your custom kernel, Devjit!\n");
 }
+
 /*
 void kernel_main() 
 {
-    print_string("Hello, from Kernel-V!\n to Devjit.\n", RED_ON_WHITE);
+    vga_print_string("Hello, from Kernel-V!\n to Devjit.\n", RED_ON_WHITE);
 }
 */
-
