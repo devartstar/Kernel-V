@@ -12,7 +12,9 @@
 ; |-------------------| 0
 
 [BITS 16]
+%ifndef ELF_BUILD
 [ORG 0x7c00]
+%endif
 
 jmp short Start
 nop

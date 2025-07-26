@@ -1,5 +1,7 @@
 BITS 16
+%ifndef ELF_BUILD
 [org 0x7e00]
+%endif
 
 Start:
     mov dl, 0x80
