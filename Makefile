@@ -86,6 +86,20 @@ run: $(DISK_IMG)
 # Build all debug symbols
 debug-symbols: $(STAGE1_ELF) $(STAGE2_ELF) $(KERNEL_ELF)
 
+# Verify debug symbols are built correctly
+verify-symbols: debug-symbols
+	@echo "Verifying debug symbols..."
+	@echo "Stage1 ELF: $(STAGE1_ELF)"
+	@ls -la $(STAGE1_ELF) 2>/dev/null || echo "Stage1 ELF not found!"
+	@echo "Stage2 ELF: $(STAGE2_ELF)"  
+	@ls -la $(STAGE2_ELF) 2>/dev/null || echo "Stage2 ELF not found!"
+	@echo "Kernel ELF: $(KERNEL_ELF)"
+	@ls -la $(KERNEL_ELF) 2>/dev/null || echo "Kernel ELF not found!"
+	@echo "Checking for debug symbols in Stage1:"
+	@objdump -h $(STAGE1_ELF) 2>/dev/null | grep debug || echo "No debug symbols in Stage1"
+	@echo "Checking for debug symbols in Kernel:"
+	@objdump -h $(KERNEL_ELF) 2>/dev/null | grep debug || echo "No debug symbols in Kernel"
+
 # Debug bootloader stage1 
 debug-stage1: $(STAGE1_ELF) $(DISK_IMG)
 	@echo "Starting QEMU with GDB server for Stage1 bootloader debugging..."
@@ -127,19 +141,41 @@ help:
 	@echo "  make debug-stage1    - Debug bootloader stage 1"
 	@echo "  make debug-stage2    - Debug bootloader stage 2" 
 	@echo "  make debug-kernel    - Debug kernel"
-	@echo "  make debug-symbols  - Build all debug symbols"
+	@echo "  make debug-symbols   - Build all debug symbols"
+	@echo "  make verify-symbols  - Check if debug symbols are built correctly"
 	@echo ""
 	@echo "GDB Helper targets:"
-	@echo "  make gdb-bootloader  - Create GDB script for bootloader"
-	@echo "  make gdb-kernel     - Create GDB script for kernel"
+	@echo "  make gdb-bootloader       - Create GDB script for bootloader (with TUI)"
+	@echo "  make gdb-kernel          - Create GDB script for kernel (with TUI)"
+	@echo "  make gdb-bootloader-regs - Bootloader debug with registers layout"
+	@echo "  make gdb-kernel-split    - Kernel debug with split layout"
 	@echo ""
 	@echo "Manual debugging steps:"
-	@echo "  1. Terminal 1: make debug-stage1"
+	@echo "  1. Terminal 1: make debug-stage1  (note: hyphen, not underscore)"
 	@echo "  2. Terminal 2: gdb"
 	@echo "  3. In GDB: target remote :1234"
 	@echo "  4. In GDB: set architecture i8086"
-	@echo "  5. In GDB: hbreak *0x7c00"
-	@echo "  6. In GDB: continue"
+	@echo "  5. In GDB: add-symbol-file build/stage1.elf 0x7c00"
+	@echo "  6. In GDB: tui enable"
+	@echo "  7. In GDB: layout asm"
+	@echo "  8. In GDB: hbreak *0x7c00"
+	@echo "  9. In GDB: continue"
+	@echo ""
+	@echo "Correct sequence for automated debugging:"
+	@echo "  1. make clean && make"
+	@echo "  2. Terminal 1: make debug-stage1"
+	@echo "  3. Terminal 2: make gdb-bootloader"
+	@echo "  4. Terminal 2: gdb -x build/gdb_bootloader.txt"
+	@echo ""
+	@echo "GDB TUI Layouts available:"
+	@echo "  layout src    - Source + command"
+	@echo "  layout asm    - Assembly + command"
+	@echo "  layout split  - Source + assembly + command"
+	@echo "  layout regs   - Registers + source/asm + command"
+	@echo "  tui disable   - Exit TUI mode"
+	@echo "  Ctrl+X+A      - Toggle TUI mode"
+	@echo "  Ctrl+X+1      - Single window"
+	@echo "  Ctrl+X+2      - Two windows"
 
 # === GDB Helper Scripts ===
 # Create GDB script for bootloader debugging
@@ -149,12 +185,20 @@ gdb-bootloader: debug-symbols
 	@echo "target remote :1234" >> $(BUILDDIR)/gdb_bootloader.txt
 	@echo "# Set 16-bit real mode architecture" >> $(BUILDDIR)/gdb_bootloader.txt
 	@echo "set architecture i8086" >> $(BUILDDIR)/gdb_bootloader.txt
+	@echo "# Load symbol files" >> $(BUILDDIR)/gdb_bootloader.txt
+	@echo "add-symbol-file $(STAGE1_ELF) 0x7c00" >> $(BUILDDIR)/gdb_bootloader.txt
+	@echo "add-symbol-file $(STAGE2_ELF) 0x7e00" >> $(BUILDDIR)/gdb_bootloader.txt
+	@echo "# Enable TUI mode with layout" >> $(BUILDDIR)/gdb_bootloader.txt
+	@echo "tui enable" >> $(BUILDDIR)/gdb_bootloader.txt
+	@echo "layout asm" >> $(BUILDDIR)/gdb_bootloader.txt
+	@echo "focus cmd" >> $(BUILDDIR)/gdb_bootloader.txt
 	@echo "# Set breakpoints at key locations" >> $(BUILDDIR)/gdb_bootloader.txt
 	@echo "hbreak *0x7c00" >> $(BUILDDIR)/gdb_bootloader.txt
 	@echo "hbreak *0x7e00" >> $(BUILDDIR)/gdb_bootloader.txt
 	@echo "hbreak *0x10000" >> $(BUILDDIR)/gdb_bootloader.txt
-	@echo "# Display breakpoints" >> $(BUILDDIR)/gdb_bootloader.txt
+	@echo "# Display breakpoints and symbols" >> $(BUILDDIR)/gdb_bootloader.txt
 	@echo "info breakpoints" >> $(BUILDDIR)/gdb_bootloader.txt
+	@echo "info files" >> $(BUILDDIR)/gdb_bootloader.txt
 	@echo "# Show current state" >> $(BUILDDIR)/gdb_bootloader.txt
 	@echo "info registers" >> $(BUILDDIR)/gdb_bootloader.txt
 	@echo "x/5i $$pc" >> $(BUILDDIR)/gdb_bootloader.txt
@@ -162,12 +206,16 @@ gdb-bootloader: debug-symbols
 	@echo "Usage: First run 'make debug-stage1' in one terminal"
 	@echo "       Then run 'gdb -x $(BUILDDIR)/gdb_bootloader.txt' in another"
 
-# Create GDB script for kernel debugging
+# Create GDB script for kernel debugging  
 gdb-kernel: debug-symbols
 	@echo "Creating GDB script for kernel debugging..."
 	@echo "set architecture i386" > $(BUILDDIR)/gdb_kernel.txt
 	@echo "target remote :1234" >> $(BUILDDIR)/gdb_kernel.txt
 	@echo "symbol-file $(KERNEL_ELF)" >> $(BUILDDIR)/gdb_kernel.txt
+	@echo "# Enable TUI mode with source layout" >> $(BUILDDIR)/gdb_kernel.txt
+	@echo "tui enable" >> $(BUILDDIR)/gdb_kernel.txt
+	@echo "layout src" >> $(BUILDDIR)/gdb_kernel.txt
+	@echo "focus cmd" >> $(BUILDDIR)/gdb_kernel.txt
 	@echo "break kernel_main" >> $(BUILDDIR)/gdb_kernel.txt
 	@echo "# Show breakpoints" >> $(BUILDDIR)/gdb_kernel.txt
 	@echo "info breakpoints" >> $(BUILDDIR)/gdb_kernel.txt
@@ -175,5 +223,41 @@ gdb-kernel: debug-symbols
 	@echo "GDB script created: $(BUILDDIR)/gdb_kernel.txt"
 	@echo "Usage: gdb -x $(BUILDDIR)/gdb_kernel.txt"
 
-.PHONY: all clean run debug debug-symbols debug-stage1 debug-stage2 debug-kernel gdb-bootloader gdb-kernel help
+# Create advanced GDB script with register layout for bootloader
+gdb-bootloader-regs: debug-symbols
+	@echo "Creating advanced GDB script for bootloader debugging with registers..."
+	@echo "# Connect to QEMU" > $(BUILDDIR)/gdb_bootloader_regs.txt
+	@echo "target remote :1234" >> $(BUILDDIR)/gdb_bootloader_regs.txt
+	@echo "set architecture i8086" >> $(BUILDDIR)/gdb_bootloader_regs.txt
+	@echo "# Load symbol files" >> $(BUILDDIR)/gdb_bootloader_regs.txt
+	@echo "add-symbol-file $(STAGE1_ELF) 0x7c00" >> $(BUILDDIR)/gdb_bootloader_regs.txt
+	@echo "add-symbol-file $(STAGE2_ELF) 0x7e00" >> $(BUILDDIR)/gdb_bootloader_regs.txt
+	@echo "# Enable TUI with registers layout" >> $(BUILDDIR)/gdb_bootloader_regs.txt
+	@echo "tui enable" >> $(BUILDDIR)/gdb_bootloader_regs.txt
+	@echo "layout regs" >> $(BUILDDIR)/gdb_bootloader_regs.txt
+	@echo "focus cmd" >> $(BUILDDIR)/gdb_bootloader_regs.txt
+	@echo "hbreak *0x7c00" >> $(BUILDDIR)/gdb_bootloader_regs.txt
+	@echo "hbreak *0x7e00" >> $(BUILDDIR)/gdb_bootloader_regs.txt
+	@echo "hbreak *0x10000" >> $(BUILDDIR)/gdb_bootloader_regs.txt
+	@echo "info breakpoints" >> $(BUILDDIR)/gdb_bootloader_regs.txt
+	@echo "info files" >> $(BUILDDIR)/gdb_bootloader_regs.txt
+	@echo "GDB script with registers created: $(BUILDDIR)/gdb_bootloader_regs.txt"
+	@echo "Usage: gdb -x $(BUILDDIR)/gdb_bootloader_regs.txt"
+
+# Create advanced GDB script with split layout for kernel  
+gdb-kernel-split: debug-symbols
+	@echo "Creating advanced GDB script for kernel debugging with split layout..."
+	@echo "set architecture i386" > $(BUILDDIR)/gdb_kernel_split.txt
+	@echo "target remote :1234" >> $(BUILDDIR)/gdb_kernel_split.txt
+	@echo "symbol-file $(KERNEL_ELF)" >> $(BUILDDIR)/gdb_kernel_split.txt
+	@echo "# Enable TUI with split layout (source + assembly)" >> $(BUILDDIR)/gdb_kernel_split.txt
+	@echo "tui enable" >> $(BUILDDIR)/gdb_kernel_split.txt
+	@echo "layout split" >> $(BUILDDIR)/gdb_kernel_split.txt
+	@echo "focus cmd" >> $(BUILDDIR)/gdb_kernel_split.txt
+	@echo "break kernel_main" >> $(BUILDDIR)/gdb_kernel_split.txt
+	@echo "info breakpoints" >> $(BUILDDIR)/gdb_kernel_split.txt
+	@echo "GDB script with split layout created: $(BUILDDIR)/gdb_kernel_split.txt"
+	@echo "Usage: gdb -x $(BUILDDIR)/gdb_kernel_split.txt"
+
+.PHONY: all clean run debug debug-symbols verify-symbols debug-stage1 debug-stage2 debug-kernel gdb-bootloader gdb-kernel gdb-bootloader-regs gdb-kernel-split help
 
