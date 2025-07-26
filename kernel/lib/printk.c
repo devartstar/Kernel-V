@@ -44,22 +44,22 @@ void printk_init(void) {
 
 /**
  * Dump a string in console
- * If need advanced printing - use vga_print_string
- * This is a simple console write that writes directly to VGA memory.
+ * Now uses VGA driver for proper formatting and newline handling
  */
 static void write_console(const char* str, size_t len) 
 {
-    static size_t offset = 0;
-    volatile uint8_t *vga = (uint8_t *)VGA_ADDRESS;
-
-    for(size_t i = 0; i < len; i++) {
-        vga[offset++] = str[i];
-        vga[offset++] = WHITE_ON_BLACK;
-        if(offset >= VGA_SIZE)
-        {
-            offset = 0;
-        }
+    // Create a null-terminated string for vga_print_string
+    static char buffer[LOG_BUF_SIZE];
+    
+    // Copy the string (making sure it's null-terminated)
+    size_t copy_len = (len < sizeof(buffer) - 1) ? len : sizeof(buffer) - 1;
+    for(size_t i = 0; i < copy_len; i++) {
+        buffer[i] = str[i];
     }
+    buffer[copy_len] = '\0';
+    
+    // Use VGA driver for proper newline handling
+    vga_print_string(buffer, WHITE_ON_BLACK);
 }
 
 /**

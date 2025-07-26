@@ -26,20 +26,6 @@ LoadKernel:
     mov ah, 0x42
     int 0x13
     jc ReadError
-    
-    ; Debug: Verify kernel was loaded
-    ; Check first few bytes at 0x10000
-    mov ax, 0x1000
-    mov es, ax
-    mov bx, 0x0000
-    mov al, [es:bx]     ; Load first byte of kernel
-    ; You can set a breakpoint here to check if AL contains valid data
-    
-    ; Additional debug: Check more bytes to verify content
-    mov bl, [es:1]      ; Second byte
-    mov cl, [es:2]      ; Third byte 
-    mov dl, [es:3]      ; Fourth byte
-    ; Set breakpoint here: examine AL, BL, CL, DL in GDB
 
 SetVideoMode:
     mov ax, 0x03
