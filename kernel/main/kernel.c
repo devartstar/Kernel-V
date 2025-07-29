@@ -43,11 +43,13 @@ void kernel_main() {
     printk("Hexadecimal: 0x%x\n", 255);
     printk("Pointer: %p\n", (void*)0xDEADBEEF);
     
+    /*
     // Demonstrate scrolling with numbered lines
     printk("\nScrolling test:\n");
     for (int i = 0; i < 30; i++) {
         printk("Line %d - Testing kernel scrolling functionality\n", i);
     }
+    */
     
     printk("\nKernel-V is running! Welcome to your custom kernel, Devjit!\n");
 }

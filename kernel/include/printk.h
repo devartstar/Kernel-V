@@ -3,6 +3,7 @@
 
 #include <stdarg.h>
 #include <stddef.h>
+#include <stdint.h>
 
 /**
  * Kernel print function - similar to printf but for kernel space
