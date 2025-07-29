@@ -43,26 +43,6 @@ void printk_init(void) {
 }
 
 /**
- * Dump a string in console
- * Now uses VGA driver for proper formatting and newline handling
- */
-static void write_console(const char* str, size_t len) 
-{
-    // Create a null-terminated string for vga_print_string
-    static char buffer[LOG_BUF_SIZE];
-    
-    // Copy the string (making sure it's null-terminated)
-    size_t copy_len = (len < sizeof(buffer) - 1) ? len : sizeof(buffer) - 1;
-    for(size_t i = 0; i < copy_len; i++) {
-        buffer[i] = str[i];
-    }
-    buffer[copy_len] = '\0';
-    
-    // Use VGA driver for proper newline handling
-    vga_print_string(buffer, WHITE_ON_BLACK);
-}
-
-/**
  * My Implementation of vsnprintf 
  * snprintf (buf, size to write, template, value) writes to a buffer 
  * Supported format specifiers: %s (string), %c (char), %d (int), %x (hex), %p (pointer)
@@ -196,8 +176,8 @@ int printk(const char *fmt, ...)
     // Write to ring buffer
     ringbuf_write(tmp, len);
 
-    // Write to console
-    write_console(tmp, len);
+    // Write to console using VGA driver (handles newlines properly)
+    vga_print_string(tmp, WHITE_ON_BLACK);
 
     return len;
 }
