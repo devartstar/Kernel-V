@@ -14,7 +14,19 @@ void kernel_main() {
     
     // Print welcome message using printk
     printk("%s v%s - Hello Devjit!\n", KERNEL_NAME, KERNEL_VERSION);
-    printk("Kernel initialized successfully.\n\n");
+
+    // Test colored log levels
+    pr_info("Kernel initialized successfully.\n");
+    pr_emerg("Emergency test message\n");
+    pr_alert("Alert test message\n");
+    pr_crit("Critical test message\n");
+    pr_err("Error test message\n");
+    pr_warning("Warning test message\n");
+    pr_notice("Notice test message\n");
+    pr_debug("Debug test message\n");
+    
+    // Regular printk without level (defaults to INFO)
+    printk("Regular printk message (defaults to INFO level)\n\n");
     
     // Demonstrate VGA colors
     vga_print_string("Testing different colors:\n", WHITE_ON_BLACK);

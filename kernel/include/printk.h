@@ -13,14 +13,26 @@
 #define LOG_BUF_SIZE 1024
 
 // Log levels
-#define KERN_EMERG      0   // Emergency messages
-#define KERN_ALERT      1   // Alert messages  
-#define KERN_CRIT       2   // Critical messages
-#define KERN_ERR        3   // Error messages
-#define KERN_WARNING    4   // Warning messages
-#define KERN_NOTICE     5   // Notice messages
-#define KERN_INFO       6   // Informational messages
-#define KERN_DEBUG      7   // Debug messages
+#define KERN_SOH        "\001"              // Start of Header for Log Messages
+#define KERN_EMERG      KERN_SOH    "0"     // Emergency messages
+#define KERN_ALERT      KERN_SOH    "1"     // Alert messages
+#define KERN_CRIT       KERN_SOH    "2"     // Critical messages
+#define KERN_ERR        KERN_SOH    "3"     // Error messages
+#define KERN_WARNING    KERN_SOH    "4"     // Warning messages
+#define KERN_NOTICE     KERN_SOH    "5"     // Notice messages
+#define KERN_INFO       KERN_SOH    "6"     // Informational messages
+#define KERN_DEBUG      KERN_SOH    "7"     // Debug messages
+
+// Log level structure definition
+struct loglevel {
+    char level_char;
+    const char *name;
+    uint8_t color;
+};
+
+// External declaration of log levels array
+extern const struct loglevel loglevels[];
+extern const int num_loglevels;
 
 // Main printk function
 int printk(const char *fmt, ...) __attribute__((format(printf, 1, 2)));

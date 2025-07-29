@@ -11,6 +11,19 @@ static char log_buffer[LOG_BUF_SIZE];
 static size_t rb_head = 0;  // Position of next byte to be written
 static size_t rb_tail = 0;  // Position of oldest byte in buffer
 
+const struct loglevel loglevels[] = {
+    { '0', "EMERG",  VGA_COLOR(VGA_RED, VGA_WHITE) },
+    { '1', "ALERT",  VGA_COLOR(VGA_BLACK, VGA_LIGHT_RED) },
+    { '2', "CRIT",   VGA_COLOR(VGA_BLACK, VGA_LIGHT_MAGENTA) },
+    { '3', "ERR",    VGA_COLOR(VGA_BLACK, VGA_RED) },
+    { '4', "WARN",   VGA_COLOR(VGA_BLACK, VGA_YELLOW) },
+    { '5', "NOTICE", VGA_COLOR(VGA_BLACK, VGA_LIGHT_CYAN) },
+    { '6', "INFO",   VGA_COLOR(VGA_BLACK, VGA_WHITE) },
+    { '7', "DEBUG",  VGA_COLOR(VGA_BLACK, VGA_DARK_GREY) } 
+};
+
+const int num_loglevels = sizeof(loglevels) / sizeof(loglevels[0]);
+
 /**
  * Append one character to the circular ring buffer
  */
@@ -31,6 +44,18 @@ static void ringbuf_write(const char* str, size_t str_len) {
     for (size_t i = 0; i < str_len; i++) {
         ringbuf_putc(str[i]);
     }
+}
+
+/**
+ * Find log level by character, returns index or -1 if not found
+ */
+static int find_loglevel(char level_char) {
+    for (int i = 0; i < num_loglevels; i++) {
+        if (loglevels[i].level_char == level_char) {
+            return i;
+        }
+    }
+    return -1;
 }
 
 /**
@@ -168,16 +193,34 @@ static int my_vsnprintf(char *buf, size_t size, const char *fmt, va_list args)
 int printk(const char *fmt, ...)
 {
     char tmp[LOG_BUF_SIZE];
+    char level_prefix[32];
+    const char* actual_fmt = fmt;
+    int log_level_idx = 6;
+
+    if (fmt[0] == '\001' && fmt[1] >= '0' && fmt[1] <= '7') {
+        int idx = find_loglevel(fmt[1]);
+        if (idx >= 0) {
+            log_level_idx = idx;
+        }
+        actual_fmt = fmt + 2;
+    }
+    
     va_list args;
     va_start(args, fmt);
-    int len = my_vsnprintf(tmp, sizeof(tmp), fmt, args);
+    int len = my_vsnprintf(tmp, sizeof(tmp), actual_fmt, args);
     va_end(args);
 
-    // Write to ring buffer
+    // Create level prefix
+    int prefix_len = my_vsnprintf(level_prefix, sizeof(level_prefix), "[%s] ", 
+                                 loglevels[log_level_idx].name);
+
+    // Write to ring buffer (with level prefix)
+    ringbuf_write(level_prefix, prefix_len);
     ringbuf_write(tmp, len);
 
-    // Write to console using VGA driver (handles newlines properly)
+    // Write to console with colored level prefix
+    vga_print_string(level_prefix, loglevels[log_level_idx].color);
     vga_print_string(tmp, WHITE_ON_BLACK);
 
-    return len;
+    return len + prefix_len;
 }
