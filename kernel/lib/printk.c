@@ -207,12 +207,23 @@ int printk(const char *fmt, ...)
     }
 
     if (log_level_idx != -1) {
-        int prefix_len = my_vsnprintf(
-                            level_prefix, 
-                            sizeof(level_prefix), 
-                            "[%s] ", 
-                            loglevels[log_level_idx].name
-                        );
+        // Build the level prefix: [LEVEL] 
+        char *p = level_prefix;
+        *p++ = '[';
+        
+        // Copy the correct log level name
+        const char *name = loglevels[log_level_idx].name;
+        while (*name) {
+            *p++ = *name++;
+        }
+        
+        *p++ = ']';
+        *p++ = ' ';
+        *p = '\0';
+        
+        int prefix_len = p - level_prefix;
+        
+        // Write to ring buffer and console with colored prefix
         ringbuf_write(level_prefix, prefix_len);
         vga_print_string(level_prefix, loglevels[log_level_idx].color);
         total_len += prefix_len;
