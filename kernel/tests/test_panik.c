@@ -1,5 +1,7 @@
 #include "../include/printk.h"
 #include "../include/drivers/vga.h"
+#include "../include/panik.h"
+#include "../include/assert.h"
 #include <stddef.h>
 
 /**

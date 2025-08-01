@@ -3,13 +3,14 @@
 
 #include "panik.h"
 
-void panik(const char* fmt, ...);
 #define KASSERT(expr) \
 	do { \
 		if(!(expr)) { \
-			panik("Assertion Fields: %s %s:%d in %s()\n", #expr, __FILE__, __LINE__, __func__)); \
+			panik("Assertion Failed: %s %s:%d in %s()\n", #expr, __FILE__, __LINE__, __func__); \
 		} \
 	} while(0)
+
+#define assert(expr) KASSERT(expr)
 
 #define BUG() \
 	panik("BUG at %s:%d in %s()\n", __FILE__, __LINE__, __func__)
