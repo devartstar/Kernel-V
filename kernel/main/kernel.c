@@ -14,6 +14,7 @@ void kernel_main() {
     
     // Print welcome message using printk
     printk("%s v%s - Hello Devjit!\n", KERNEL_NAME, KERNEL_VERSION);
+    printk("\nKernel-V is running! Welcome to your custom kernel, Devjit!\n");
 
     // Test colored log levels
     pr_info("Kernel initialized successfully.\n");
@@ -50,8 +51,13 @@ void kernel_main() {
         printk("Line %d - Testing kernel scrolling functionality\n", i);
     }
     */
+
+    // Run panic unit tests
+    printk("\n==================================================\n");
+    printk("Running Kernel Panic Unit Tests...\n");
+    run_panik_unit_tests();
+    printk("Unit tests completed.\n");
     
-    printk("\nKernel-V is running! Welcome to your custom kernel, Devjit!\n");
 }
 
 /*

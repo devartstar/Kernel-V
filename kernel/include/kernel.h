@@ -8,6 +8,8 @@
 #include "printk.h"
 #include "drivers/vga.h"
 
+#include "tests/test_panik.h"
+
 // Kernel version information
 #define KERNEL_NAME     "Kernel-V"
 #define KERNEL_VERSION  "0.2"

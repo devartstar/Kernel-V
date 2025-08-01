@@ -17,6 +17,8 @@ PRINTK_SRC       = $(KERNDIR)/lib/printk.c
 PRINTK_HDR       = $(KERNDIR)/include/printk.h
 VGA_SRC		 = $(KERNDIR)/drivers/vga/vga.c
 VGA_HDR		 = $(KERNDIR)/include/drivers/vga.h
+TEST_PANIK_SRC   = $(KERNDIR)/tests/test_panik.c
+EST_PANIK_HDR   = $(KERNDIR)/include/tests/test_panik.h
 
 STAGE1_BIN = $(BUILDDIR)/stage1.bin
 STAGE2_BIN = $(BUILDDIR)/stage2.bin
@@ -32,6 +34,7 @@ STAGE2_ELF = $(BUILDDIR)/stage2.elf
 PRINTK_OBJ = $(BUILDDIR)/printk.o
 KERNEL_OBJ = $(BUILDDIR)/kernel.o
 VGA_OBJ	   = $(BUILDDIR)/vga.o
+KERNEL_PANIK_OBJ = $(BUILDDIR)/test_panik.o
 KERNEL_ENTRY_OBJ = $(BUILDDIR)/kernel_entry.o
 
 all: $(DISK_IMG)
@@ -61,14 +64,17 @@ $(PRINTK_OBJ): $(PRINTK_SRC) $(PRINTK_HDR) | $(BUILDDIR)
 $(VGA_OBJ): $(VGA_SRC) $(VGA_HDR) | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
 
+$(TEST_PANIK_OBJ): $(TEST_PANIK_SRC) $(TEST_PANIK_HDR) | $(BUILDDIR)
+	$(CC) $(CFLAGS) $< -o $@
+
 $(KERNEL_OBJ): $(KERNEL_MAIN_SRC) | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
 
 $(KERNEL_ENTRY_OBJ): $(KERNEL_ENTRY_SRC) | $(BUILDDIR)
 	$(NASM) $(NASMFLAGS) -f elf32 $< -o $@
 
-$(KERNEL_ELF): $(KERNEL_ENTRY_OBJ) $(PRINTK_OBJ) $(VGA_OBJ) $(KERNEL_OBJ) $(KERNEL_LD) | $(BUILDDIR)
-	ld -m elf_i386 -T $(KERNEL_LD) -o $@ $(KERNEL_ENTRY_OBJ) $(PRINTK_OBJ) $(VGA_OBJ) $(KERNEL_OBJ) -nostdlib
+$(KERNEL_ELF): $(KERNEL_ENTRY_OBJ) $(PRINTK_OBJ) $(VGA_OBJ) $(TEST_PANIK_OBJ) $(KERNEL_OBJ) $(KERNEL_LD) | $(BUILDDIR)
+	ld -m elf_i386 -T $(KERNEL_LD) -o $@ $(KERNEL_ENTRY_OBJ) $(PRINTK_OBJ) $(VGA_OBJ) $(TEST_PANIK_OBJ) $(KERNEL_OBJ) -nostdlib
 
 $(KERNEL_BIN): $(KERNEL_ELF) | $(BUILDDIR)
 	objcopy -O binary $< $@

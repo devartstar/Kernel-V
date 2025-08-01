@@ -190,11 +190,11 @@ static int my_vsnprintf(char *buf, size_t size, const char *fmt, va_list args)
     return p - buf;  
 }
 
-int vprintk(cont char* fmt, va_list args)
+int vprintk(const char* fmt, va_list args)
 {
     char tmp[LOG_BUF_SIZE];
     
-    int len = my_vsnprintf(tmp, sizeof(tmp), actual_fmt, args);
+    int len = my_vsnprintf(tmp, sizeof(tmp), fmt, args);
 
     ringbuf_write(tmp, len);
 
@@ -244,7 +244,7 @@ int printk(const char *fmt, ...)
 
     va_list args;
     va_start(args, fmt);
-    int msg_len = vprintk(fmt, args);
+    int msg_len = vprintk(actual_fmt, args);
     va_end(args);
 
     total_len += msg_len;
