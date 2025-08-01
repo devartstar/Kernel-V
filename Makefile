@@ -37,6 +37,7 @@ PRINTK_OBJ = $(BUILDDIR)/printk.o
 KERNEL_OBJ = $(BUILDDIR)/kernel.o
 VGA_OBJ	   = $(BUILDDIR)/vga.o
 PANIK_OBJ  = $(BUILDDIR)/panik.o
+TEST_PANIK_OBJ = $(BUILDDIR)/test_panik.o
 KERNEL_PANIK_OBJ = $(BUILDDIR)/test_panik.o
 KERNEL_ENTRY_OBJ = $(BUILDDIR)/kernel_entry.o
 
