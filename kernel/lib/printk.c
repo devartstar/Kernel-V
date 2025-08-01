@@ -40,7 +40,7 @@ static void ringbuf_putc(char ch) {
 /**
  * Write a string to the ring buffer
  */
-static void ringbuf_write(const char* str, size_t str_len) {
+void ringbuf_write(const char* str, size_t str_len) {
     for (size_t i = 0; i < str_len; i++) {
         ringbuf_putc(str[i]);
     }

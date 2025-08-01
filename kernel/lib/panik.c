@@ -1,9 +1,10 @@
 #include <stdarg.h>
 #include "../include/printk.h"
 #include "../include/drivers/vga.h"
+#include "../include/panik.h"
 
 // Panic mode and state tracking
-static panik_mode_t current_panik_mode = PANIC_MODE_NORMAL;
+static panik_mode_t current_panik_mode = PANIK_MODE_NORMAL;
 static panik_state_t panik_state = {0};
 
 /**

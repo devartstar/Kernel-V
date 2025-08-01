@@ -1,3 +1,6 @@
+#ifndef PANIK_H
+#define PANIK_H
+
 #include "assert.h"
 
 typedef enum {
@@ -19,5 +22,6 @@ const panik_state_t* get_panik_state(void);
 
 void panik(const char* fmt, ...) __attribute__((format(printf,1,2))) __attribute__((noreturn));
 
+#endif /* PANIK_H */
 
 

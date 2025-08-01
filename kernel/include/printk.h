@@ -52,4 +52,10 @@ int printk(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 // Initialize printk subsystem
 void printk_init(void);
 
+// Internal formatting function (used by panik.c)
+int my_vsnprintf(char *buf, size_t size, const char *fmt, va_list args);
+
+// Ring buffer write function (used by panik.c)
+void ringbuf_write(const char* str, size_t str_len);
+
 #endif /* KERNEL_PRINTK_H */
