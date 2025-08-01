@@ -17,7 +17,7 @@ void set_panik_mode(panik_mode_t mode)
 /**
  * Get current panic mode
  */
-panic_mode_t get_panik_mode(void)
+panik_mode_t get_panik_mode(void)
 {
     return current_panik_mode;
 }
@@ -25,7 +25,7 @@ panic_mode_t get_panik_mode(void)
 /**
  * Get panic state for testing
  */
-const panic_state_t* get_panik_state(void)
+const panik_state_t* get_panik_state(void)
 {
     return &panik_state;
 }
@@ -70,7 +70,7 @@ void panik(const char* fmt, ...)
 
 
 	vga_print_string("[PANIC] ", VGA_COLOR(VGA_RED, VGA_WHITE));
-	vga_print_string(panic_state.last_panic_msg, VGA_COLOR(VGA_BLACK, VGA_LIGHT_RED));
+	vga_print_string(panik_state.last_panik_msg, VGA_COLOR(VGA_BLACK, VGA_LIGHT_RED));
 	vga_print_string("\n", WHITE_ON_BLACK);
 
 	// Print system halt message
