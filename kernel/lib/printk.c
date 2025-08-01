@@ -74,7 +74,7 @@ void printk_init(void) {
  * Return number of characters written
  * TODO: Modify this buffer generation as desired
  */
-static int my_vsnprintf(char *buf, size_t size, const char *fmt, va_list args)
+int my_vsnprintf(char *buf, size_t size, const char *fmt, va_list args)
 {
     char *p = buf;
     char *end = buf + size - 1;

@@ -41,7 +41,6 @@ void reset_panik_state(void)
     panik_state.last_panik_msg[0] = '\0';
 }
 
-__attribute__((noreturn))
 void panik(const char* fmt, ...)
 {
 	// update panik state
@@ -58,6 +57,7 @@ void panik(const char* fmt, ...)
 	if (current_panik_mode == PANIK_MODE_TEST)
 	{
 		pr_emerg("[TEST PANIK] %s\n", panik_state.last_panik_msg);
+		// In test mode, just return to allow tests to continue
 		return;
 	}
 

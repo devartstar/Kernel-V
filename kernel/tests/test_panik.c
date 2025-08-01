@@ -153,7 +153,7 @@ void run_panik_unit_tests(void)
     pr_notice("=== KERNEL panik TESTS - Real Scenarios ===\n");
     
     // Set test mode for safe testing
-    set_panik_mode(panik_MODE_TEST);
+    set_panik_mode(PANIK_MODE_TEST);
     pr_info("panik mode: TEST (safe for testing)\n");
     
     // Initialize counters
@@ -196,7 +196,7 @@ void run_panik_unit_tests(void)
     // Uncomment to test REAL panik (WILL HALT SYSTEM):
     /*
     pr_crit("TESTING REAL panik - SYSTEM WILL HALT!\n");
-    set_panik_mode(panik_MODE_NORMAL);
+    set_panik_mode(PANIK_MODE_NORMAL);
     panik("Real panik test - system should halt now!");
     */
 }
