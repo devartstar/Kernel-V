@@ -21,6 +21,8 @@ PANIK_SRC        = $(KERNDIR)/lib/panik.c
 PANIK_HDR        = $(KERNDIR)/include/panik.h
 TEST_PANIK_SRC   = $(KERNDIR)/tests/test_panik.c
 TEST_PANIK_HDR   = $(KERNDIR)/include/tests/test_panik.h
+MEMORY_MAP_SRC   = $(KERNDIR)/memory/memory_map.c
+MEMORY_MAP_HDR   = $(KERNDIR)/include/memory_map.h
 
 STAGE1_BIN = $(BUILDDIR)/stage1.bin
 STAGE2_BIN = $(BUILDDIR)/stage2.bin
@@ -38,6 +40,7 @@ KERNEL_OBJ = $(BUILDDIR)/kernel.o
 VGA_OBJ	   = $(BUILDDIR)/vga.o
 PANIK_OBJ  = $(BUILDDIR)/panik.o
 TEST_PANIK_OBJ = $(BUILDDIR)/test_panik.o
+MEMORY_MAP_OBJ = $(BUILDDIR)/memory_map.o
 KERNEL_PANIK_OBJ = $(BUILDDIR)/test_panik.o
 KERNEL_ENTRY_OBJ = $(BUILDDIR)/kernel_entry.o
 
@@ -74,14 +77,17 @@ $(PANIK_OBJ): $(PANIK_SRC) $(PANIK_HDR) | $(BUILDDIR)
 $(TEST_PANIK_OBJ): $(TEST_PANIK_SRC) $(TEST_PANIK_HDR) | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
 
+$(MEMORY_MAP_OBJ): $(MEMORY_MAP_SRC) $(MEMORY_MAP_HDR) | $(BUILDDIR)
+	$(CC) $(CFLAGS) $< -o $@
+
 $(KERNEL_OBJ): $(KERNEL_MAIN_SRC) | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
 
 $(KERNEL_ENTRY_OBJ): $(KERNEL_ENTRY_SRC) | $(BUILDDIR)
 	$(NASM) $(NASMFLAGS) -f elf32 $< -o $@
 
-$(KERNEL_ELF): $(KERNEL_ENTRY_OBJ) $(PRINTK_OBJ) $(VGA_OBJ) $(PANIK_OBJ) $(TEST_PANIK_OBJ) $(KERNEL_OBJ) $(KERNEL_LD) | $(BUILDDIR)
-	ld -m elf_i386 -T $(KERNEL_LD) -o $@ $(KERNEL_ENTRY_OBJ) $(PRINTK_OBJ) $(VGA_OBJ) $(PANIK_OBJ) $(TEST_PANIK_OBJ) $(KERNEL_OBJ) -nostdlib
+$(KERNEL_ELF): $(KERNEL_ENTRY_OBJ) $(PRINTK_OBJ) $(VGA_OBJ) $(PANIK_OBJ) $(TEST_PANIK_OBJ) $(MEMORY_MAP_OBJ) $(KERNEL_OBJ) $(KERNEL_LD) | $(BUILDDIR)
+	ld -m elf_i386 -T $(KERNEL_LD) -o $@ $(KERNEL_ENTRY_OBJ) $(PRINTK_OBJ) $(VGA_OBJ) $(PANIK_OBJ) $(TEST_PANIK_OBJ) $(MEMORY_MAP_OBJ) $(KERNEL_OBJ) -nostdlib
 
 $(KERNEL_BIN): $(KERNEL_ELF) | $(BUILDDIR)
 	objcopy -O binary $< $@

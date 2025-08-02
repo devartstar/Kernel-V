@@ -8,6 +8,7 @@
 #include "printk.h"
 #include "drivers/vga.h"
 #include "panik.h"
+#include "memory_map.h"
 
 #include "tests/test_panik.h"
 
