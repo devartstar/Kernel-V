@@ -17,7 +17,7 @@ Start:
 LoadKernel:
     mov si, ReadPacket
     mov word[si], 0x10
-    mov word[si+2], 0x011        ; Load 8 sectors from the Disk (4096 bytes)
+    mov word[si+2], 0x0C        ; Load 12 sectors from the Disk (6144 bytes)
     mov word[si+4], 0x00
     mov word[si+6], 0x1000      ; Segment to Load to Load
     mov dword[si+8], 0x09        ; Read from the 10th Sector (LBA=9, offset 0x1200)
@@ -26,6 +26,33 @@ LoadKernel:
     mov ah, 0x42
     int 0x13
     jc ReadError
+
+GetMemoryMap:
+    xor ax, ax
+    xor ebx, ebx
+    mov di, 0x5000              ; di = destination index for an entry (16 bit)
+    mov es, ax                  ; es = segment where the memory map will be stored 
+    xor cx, cx
+    mov word [memmap_count], 0
+
+.e820_loop:
+    mov eax, 0xe820
+    mov edx, 0x534D4150         ; "SMAP" signature
+    mov ecx, 24                 ; size of the E820 entry
+    int 0x15
+    jc .e820_done
+    cmp eax, 0x534D4150         ; Check if the signature matches
+    jne .e820_done
+
+    add di, 24
+    inc word [memmap_count]     ; Increment the memory map count
+    test ebx, ebx               ; when ebx != 0 more entries are available
+    jnz .e820_loop
+
+.e820_done:
+    mov dword   [0x2000], 0x5000
+    mov word    ax, [memmap_count]
+    mov word    [0x2004], ax
 
 SetVideoMode:
     mov ax, 0x03
@@ -41,7 +68,6 @@ SwitchToProtectedMode:
     mov cr0, eax
 
     jmp 0x08:PMEntry
-
 
 NotSupported:
     mov ah, 0x13
@@ -76,6 +102,7 @@ MsgNoSupportL:  equ $-MsgNoSupport
 
 
 ReadPacket:     times 16 db 0
+memmap_count:   dw 0
 
 ; Global Descriptor Table
 GDT32:
