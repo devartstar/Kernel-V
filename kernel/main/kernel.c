@@ -1,17 +1,6 @@
 #include "kernel.h"
 
-void kernel_main() {
-
-    // 2 ways to printing -
-    // 1. Printk -
-    //      It prints to the consode
-    //      It writes to the in-memory circular buffer
-    // 2. vga_print_string -
-    //      It has better format options to print to console
-
-    // Initialize kernel subsystems
-    printk_init();
-    
+void run_all_tests() {
     // Print welcome message using printk
     printk("%s v%s - Hello Devjit!\n", KERNEL_NAME, KERNEL_VERSION);
     printk("\nKernel-V is running! Welcome to your custom kernel, Devjit!\n");
@@ -44,20 +33,28 @@ void kernel_main() {
     printk("Hexadecimal: 0x%x\n", 255);
     printk("Pointer: %p\n", (void*)0xDEADBEEF);
     
-    /*
     // Demonstrate scrolling with numbered lines
-    printk("\nScrolling test:\n");
-    for (int i = 0; i < 30; i++) {
-        printk("Line %d - Testing kernel scrolling functionality\n", i);
-    }
-    */
+    // printk("\nScrolling test:\n");
+    // for (int i = 0; i < 30; i++) {
+        // printk("Line %d - Testing kernel scrolling functionality\n", i);
+    // }
 
     // Run panic unit tests
-    printk("\n==================================================\n");
-    printk("Running Kernel Panic Unit Tests...\n");
-    run_panik_unit_tests();
-    printk("Unit tests completed.\n");
+    // printk("\n==================================================\n");
+    // printk("Running Kernel Panic Unit Tests...\n");
+    // run_panik_unit_tests();
+    // printk("Unit tests completed.\n");
+}
+
+void kernel_main() {
+
+    // Initialize kernel subsystems
+    printk_init();
     
+    // Run all tests
+    run_all_tests();
+
+    printk("\n==================================================\n");
 }
 
 /*
