@@ -1,84 +1,132 @@
-# Kernel-V
+# Kernel-V Phase 3: Memory Management
 
-A project-based, modular UNIX-like kernel developed from scratch for deep learning and experimentation.  
-**Kernel-V** is built as a series of hands-on mini-projects following the design principles of classic UNIX, inspired by *The Design of the UNIX Operating System* (Maurice J. Bach).
+## Overview
 
----
-
-## 🌟 **Project Vision**
-
-- Learn UNIX kernel architecture by building each subsystem as a mini-project.
-- Bootstrapped with a custom Stage 1/Stage 2 bootloader.
-- Incrementally build features: process management, memory, file system, drivers, userland, and more.
+This phase builds core memory management systems for the kernel, including physical memory tracking, paging support, and dynamic heap allocation. The system is designed to be modular, extensible, and production-quality.
 
 ---
 
-## 📂 **Repository Structure**
+## 1. Memory Map Parsing (e820 Interface)
 
-- **bootloader/**: Stage 1 & 2 bootloaders (assembly)
-- **kernel/**: Core kernel source code, organized by subsystems
-    - `arch/` - architecture-specific code
-    - `include/` - kernel headers
-    - `mm/` - memory management
-    - `fs/` - file systems
-    - `proc/` - process management
-    - `drivers/` - device drivers
-    - `syscall/` - syscall layer
-    - `ipc/` - interprocess comm.
-    - `libk/` - kernel utility library
-- **user/**: Userland programs, minimal libc, shell, etc.
-- **scripts/**: Build, run, and debug scripts
-- **tools/**: Helper tools (disk image builder, mkfs, etc.)
-- **docs/**: Design docs, diagrams, and learning notes
-- **tests/**: Unit and integration tests for kernel modules
+**Objective:** Parse the memory map provided by the BIOS using the e820 interface to identify usable and reserved regions.
 
-See [docs/folder_structure.md](docs/folder_structure.md) for the full project roadmap.
----
+**Features:**
 
-## 🚀 **Getting Started**
+* Interface with bootloader to receive e820 map
+* Parse and store memory regions: base address, length, type
+* Display parsed memory regions at boot
+* Classify regions as:
 
-1. **Build the bootloader and kernel:**
-    ```sh
-    make
-    ```
+  * Available
+  * Reserved
+  * ACPI
+  * Unusable
 
-2. **Run in QEMU:**
-    ```sh
-    ./scripts/run.sh
-    ```
+**Implementation:**
 
-3. **Development Cycle:**
-    - Edit kernel or user source.
-    - Rebuild with `make`.
-    - Test in QEMU or with scripts.
+* `src/memory/memmap.c` and `memmap.h`
+* Exported memory descriptor table to kernel
+* Logs on-screen with type decoding
 
 ---
 
-## 🛠️ **Features & Progress**
+## 2. Physical Page Frame Allocator (Bitmap-Based)
 
-See [docs/roadmap.md](docs/roadmap.md) for the full project roadmap.
+**Objective:** Implement a physical frame allocator using a bitmap, where each bit represents one 4KiB frame.
 
----
+**Features:**
 
-## 🧑‍💻 **Learning Resources**
+* Allocates and frees physical frames
+* Marks reserved regions as unavailable
+* Lazy bitmap initialization based on e820
 
-- Book: *The Design of the UNIX Operating System* (Maurice J. Bach)
-- APUE: *Advanced Programming in the UNIX Environment* (Stevens/Rago)
-- Reference implementations: [xv6](https://pdos.csail.mit.edu/6.828/2022/xv6.html), [Minix], [Linux 0.11]
+**API:**
 
----
+* `void* pmm_alloc_frame()`
+* `void  pmm_free_frame(void*)`
 
-## 🤝 **Contributing & License**
+**Implementation:**
 
-This is a personal learning project, but contributions, bug reports, or feedback are welcome!
-See [LICENSE](LICENSE) for details.
-
----
-
-## 📝 **Documentation**
-
-See the [docs/](docs/) directory for design docs, implementation notes, diagrams, and the full learning log.
+* `src/memory/pmm.c` and `pmm.h`
+* Debug logs and assertions for safety
+* Integration with memory map for usable regions
 
 ---
 
-Happy hacking! 🚀
+## 3. Paging and Virtual Memory Initialization
+
+**Objective:** Enable x86 paging to provide virtual memory abstraction.
+
+**Features:**
+
+* Identity map kernel regions
+* Set up page directory and page tables
+* Enable MMU by writing to CR3 and CR0
+* Add stub for page fault handler
+
+**Implementation:**
+
+* `src/memory/paging.c` and `paging.h`
+* `init_paging()` to construct mappings
+* VGA, kernel code/data, heap are mapped
+* Page fault ISR for diagnostics
+
+---
+
+## 4. Kernel Heap and Dynamic Allocator
+
+**Objective:** Provide `kmalloc`/`kfree` for dynamic memory use in kernel.
+
+**Features:**
+
+* Simple bump or stack allocator
+* Aligns allocations to word/page boundaries
+* Tracks allocated blocks (optionally with metadata)
+* Configurable heap region (start and max end)
+
+**API:**
+
+* `void* kmalloc(size_t size)`
+* `void  kfree(void* ptr)`
+
+**Implementation:**
+
+* `src/memory/heap.c` and `heap.h`
+* Allocator grows using physical frame allocator
+* Optional debug features (block sizes, tags)
+
+---
+
+## 5. Innovation and Custom Enhancements
+
+**Objective:** Add unique, differentiating features to make the kernel memory system more usable, educational, or powerful.
+
+**Ideas:**
+
+* **Memory Visualizer:** Real-time VGA visualization of memory regions
+* **Reference Counters:** Track frame usage over time
+* **Fault Logger:** Capture stack trace on page faults
+* **Region Tagging:** Label memory blocks (DMA-safe, device-owned, etc.)
+* **Guard Pages:** Use unmapped guard pages to detect overflows
+
+**Implementation:**
+
+* Add feature toggles in config headers
+* Modularize enhancements into separate files (`memviz.c`, `guard.c`, etc.)
+* Document rationale and benefit of each feature
+
+---
+
+## References
+
+* **The Design of the UNIX Operating System – Maurice Bach:** Ch. 2.2, 9
+* **Advanced Programming in the UNIX Environment (APUE):** Ch. 7.8, 7.11
+
+---
+
+## Developer Notes
+
+* Place memory modules in `src/memory/`
+* Shared kernel state and interfaces go in `include/kernel/`
+* Enable debug macros to trace memory flow
+* Write tests in the boot/early init phase to validate allocators
