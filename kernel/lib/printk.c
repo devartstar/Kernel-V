@@ -70,7 +70,7 @@ void printk_init(void) {
 /**
  * My Implementation of vsnprintf 
  * snprintf (buf, size to write, template, value) writes to a buffer 
- * Supported format specifiers: %s (string), %c (char), %d (int), %x (hex), %p (pointer)
+ * Supported format specifiers: %s (string), %c (char), %d (int), %u (unsigned int), %x (hex), %p (pointer)
  * Return number of characters written
  * TODO: Modify this buffer generation as desired
  */
@@ -83,9 +83,50 @@ int my_vsnprintf(char *buf, size_t size, const char *fmt, va_list args)
     {
         if(*fmt == '%') {
             fmt++;
+
+            // Handle Padding
+            int pad_width = 0;
+            char pad_char = ' ';
+            // Handle zero padding
+            if(*fmt == '0')
+            {
+                pad_char = '0';
+                fmt++;
+            }
+            // Handle Padding width
+            while(*fmt >= '0' && *fmt <= '9') {
+                pad_width = pad_width * 10 + (*fmt - '0');
+                fmt++;
+            }
+
             switch(*fmt) {
                 case 's': {
                     const char *str = va_arg(args, const char*);
+                    int str_len = 0;
+                    
+                    // Handle null strings
+                    if (!str) str = "(null)";  
+
+                    // Calculate string length
+                    char *s = str;
+                    while(*s++) str_len++;
+
+                    // claculate the padding needed
+                    int to_pad_width;
+                    if(str_len > pad_width)
+                    {
+                        to_pad_width = 0;
+                    } else
+                    {
+                        to_pad_width = pad_width - str_len;
+                    }
+
+                    // Write padding if needed
+                    while(to_pad_width-- > 0 && p < end) {
+                        *p++ = pad_char; 
+                    }
+
+                    // Write the string
                     while(*str && p < end) {
                         *p++ = *str++;
                     }
@@ -93,6 +134,17 @@ int my_vsnprintf(char *buf, size_t size, const char *fmt, va_list args)
                 }
                 case 'c': {
                     char c = (char)va_arg(args, int);
+
+                    // calculate the padding needed
+                    int to_pad_width = pad_width - 1;
+                    if(to_pad_width < 0) to_pad_width = 0;
+
+                    // Write padding if needed
+                    while(to_pad_width-- > 0 && p < end) {
+                        *p++ = pad_char; 
+                    }
+
+                    // Write the character
                     if(p < end) *p++ = c;
                     break;
                 }
@@ -112,6 +164,42 @@ int my_vsnprintf(char *buf, size_t size, const char *fmt, va_list args)
                     if(is_negative && tmplen < (int)sizeof(tmp))
                     {
                         tmp[tmplen++] = '-';  // Fixed: increment tmplen
+                    }
+
+                    // calculate the padding needed
+                    int to_pad_width = pad_width - tmplen;
+                    if(to_pad_width < 0) to_pad_width = 0;
+
+                    // Write padding if needed
+                    while(to_pad_width-- > 0 && p < end) {
+                        *p++ = pad_char; 
+                    }
+
+                    // reverse it and store in output
+                    for(int pos = tmplen - 1; pos >= 0 && p < end; pos--)  // Fixed: start from tmplen-1
+                    {
+                        *p++ = tmp[pos];
+                    }
+                    break;
+                }
+                case 'u': {
+                    int num = va_arg(args, int);
+                    
+                    char tmp[12];
+                    int tmplen = 0;
+                    
+                    do {
+                        tmp[tmplen++] = '0' + (num % 10);
+                        num /= 10;
+                    } while(num && tmplen < (int)sizeof(tmp));
+
+                    // calculate the padding needed
+                    int to_pad_width = pad_width - tmplen;
+                    if(to_pad_width < 0) to_pad_width = 0;
+
+                    // Write padding if needed
+                    while(to_pad_width-- > 0 && p < end) {
+                        *p++ = pad_char; 
                     }
 
                     // reverse it and store in output
@@ -135,6 +223,15 @@ int my_vsnprintf(char *buf, size_t size, const char *fmt, va_list args)
                             tmp[tmplen++] = (digit < 10) ? ('0' + digit) : ('a' + digit - 10);
                             num /= 16;
                         } while(num && tmplen < (int)sizeof(tmp));
+                    }
+
+                    // calculate the padding needed
+                    int to_pad_width = pad_width - tmplen;
+                    if(to_pad_width < 0) to_pad_width = 0;
+
+                    // Write padding if needed
+                    while(to_pad_width-- > 0 && p < end) {
+                        *p++ = pad_char; 
                     }
 
                     // reverse it and store in output

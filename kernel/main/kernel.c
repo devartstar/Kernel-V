@@ -39,11 +39,6 @@ void run_all_tests() {
         // printk("Line %d - Testing kernel scrolling functionality\n", i);
     // }
 
-    // Parse and display BIOS memory map
-    printk("\n==================================================\n");
-    printk("Parsing BIOS Memory Map (E820)...\n");
-    parse_and_print_e820_map();
-
     // Run panic unit tests
     // printk("\n==================================================\n");
     // printk("Running Kernel Panic Unit Tests...\n");
@@ -57,7 +52,12 @@ void kernel_main() {
     printk_init();
     
     // Run all tests
-    run_all_tests();
+    // run_all_tests();
+
+    // Parse and display BIOS memory map
+    printk("\n==================================================\n");
+    printk("Parsing BIOS Memory Map (E820)...\n");
+    parse_and_print_e820_map();
 
     printk("\n==================================================\n");
 }
