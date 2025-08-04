@@ -19,6 +19,23 @@ Phase 3: Memory Management
 * `memmap.c/.h` with a clean memory region parser.
 * Kernel boot prints parsed map on screen.
 
+```
+==================================================
+Parsing BIOS Memory Map (E820)...
+
+[MEMORY MAP] BIOS provided 6 entries:
+[0] Base: 0x0000000000000000, Length: 0x000000000009fc00, Type: Available
+[1] Base: 0x000000000009fc00, Length: 0x0000000000000400, Type: Reserved
+[2] Base: 0x00000000000f0000, Length: 0x0000000000010000, Type: Reserved
+[3] Base: 0x0000000000100000, Length: 0x0000000007ee0000, Type: Available
+[4] Base: 0x0000000007fe0000, Length: 0x0000000000020000, Type: Reserved
+[5] Base: 0x00000000fffc0000, Length: 0x0000000000040000, Type: Reserved
+
+[MEMORY MAP] Usable memory regions count: 2
+
+==================================================
+```
+
 ---
 
 ### 🔨 Week 2: Physical Memory Frame Allocator (Bitmap)

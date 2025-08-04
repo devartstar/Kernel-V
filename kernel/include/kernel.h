@@ -18,7 +18,10 @@
 #define KERNEL_AUTHOR   "Devjit"
 
 // Common macros
-#define NULL            ((void*)0)
+#ifndef NULL
+#define NULL            ((void*)0)  
+#endif
+
 #define ARRAY_SIZE(x)   (sizeof(x) / sizeof((x)[0]))
 
 // Kernel main function (called from assembly)

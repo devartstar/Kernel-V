@@ -108,7 +108,7 @@ int my_vsnprintf(char *buf, size_t size, const char *fmt, va_list args)
                     if (!str) str = "(null)";  
 
                     // Calculate string length
-                    char *s = str;
+                    const char *s = str;
                     while(*s++) str_len++;
 
                     // claculate the padding needed

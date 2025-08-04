@@ -23,4 +23,15 @@ typedef struct {
 #define E820_MAP_ADDRESS 0x5000
 #define E820_MAP_COUNT_PTR 0x2004
 
+// Memory map structure for storing usable memory regions
+typedef struct {
+    uint64_t base;          // Start address of the memory region
+    uint64_t length;        // Length of the memory region
+    uint32_t type;          // Type of the memory region (E820_TYPE_*)
+} memory_region_t;
+
+#define MAX_MEMORY_REGIONS 32
+
 extern void parse_and_print_e820_map(void);
+extern memory_region_t usable_memory_region[MAX_MEMORY_REGIONS];
+extern uint16_t usable_memory_region_count;
