@@ -1,8 +1,8 @@
 #include "memory_map.h"
 #include "printk.h"
 
-extern uint16_t usable_memory_region_count = 0;
-extern memory_region_t usable_memory_region[MAX_MEMORY_REGIONS];
+uint16_t usable_memory_region_count = 0;
+memory_region_t usable_memory_region[MAX_MEMORY_REGIONS];
 
 static const char* region_type_to_string (uint32_t type)
 {

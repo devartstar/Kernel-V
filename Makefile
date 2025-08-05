@@ -19,15 +19,19 @@ PRINTK_SRC       = $(KERNDIR)/lib/printk.c
 VGA_SRC          = $(KERNDIR)/drivers/vga/vga.c
 PANIK_SRC        = $(KERNDIR)/lib/panik.c
 TEST_PANIK_SRC   = $(KERNDIR)/tests/test_panik.c
-MEMORY_MAP_SRC   = $(KERNDIR)/memory/memory_map.c
 TEST_PRINTK_SRC  = $(KERNDIR)/tests/test_printk.c
+MEMORY_MAP_SRC   = $(KERNDIR)/memory/memory_map.c
+MEMORY_MNG_SRC   = $(KERNDIR)/memory/pmm.c
 
 # --- Header Files ---
 PRINTK_HDR       = $(KERNDIR)/include/printk.h
 VGA_HDR          = $(KERNDIR)/include/drivers/vga.h
 PANIK_HDR        = $(KERNDIR)/include/panik.h
-TEST_PANIK_HDR   = $(KERNDIR)/include/tests/test_panik.h
+
 MEMORY_MAP_HDR   = $(KERNDIR)/include/memory_map.h
+MEMORY_MNG_HDR	 = $(KERNDIR)/include/memory/pmm.h
+
+TEST_PANIK_HDR   = $(KERNDIR)/include/tests/test_panik.h
 TEST_PRINTK_HDR  = $(KERNDIR)/include/tests/test_printk.h
 
 # --- Output Files ---
@@ -44,12 +48,14 @@ KERNEL_OBJ      = $(BUILDDIR)/kernel.o
 VGA_OBJ         = $(BUILDDIR)/vga.o
 PANIK_OBJ       = $(BUILDDIR)/panik.o
 TEST_PANIK_OBJ  = $(BUILDDIR)/test_panik.o
-MEMORY_MAP_OBJ  = $(BUILDDIR)/memory_map.o
 KERNEL_ENTRY_OBJ= $(BUILDDIR)/kernel_entry.o
 TEST_PRINTK_OBJ = $(BUILDDIR)/test_printk.o
 
+MEMORY_MAP_OBJ  = $(BUILDDIR)/memory_map.o
+MEMORY_MNG_OBJ  = $(BUILDDIR)/pmm.o
+
 # --- Object Groups ---
-KERNEL_OBJS = $(KERNEL_ENTRY_OBJ) $(PRINTK_OBJ) $(VGA_OBJ) $(PANIK_OBJ) $(TEST_PANIK_OBJ) $(MEMORY_MAP_OBJ) $(KERNEL_OBJ)
+KERNEL_OBJS = $(KERNEL_ENTRY_OBJ) $(PRINTK_OBJ) $(VGA_OBJ) $(PANIK_OBJ) $(TEST_PANIK_OBJ) $(MEMORY_MAP_OBJ) $(MEMORY_MNG_OBJ) $(KERNEL_OBJ)
 KERNEL_TEST_OBJS = $(KERNEL_OBJS) $(TEST_PRINTK_OBJ)
 
 # --- Kernel ELF/BIN for test and non-test ---

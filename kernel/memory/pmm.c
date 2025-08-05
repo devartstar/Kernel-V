@@ -1,5 +1,6 @@
 #include "pmm.h"
 #include "memory_map.h"
+#include "printk.h"
 
 static uint8_t frame_bitmap[FRAME_BITMAP_SIZE];
 static uint32_t total_frames = 0;
