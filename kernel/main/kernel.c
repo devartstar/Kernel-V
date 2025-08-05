@@ -59,6 +59,21 @@ void kernel_main() {
     printk("Parsing BIOS Memory Map (E820)...\n");
     parse_and_print_e820_map();
 
+    pmm_init();
+    void* frame1 = pmm_alloc_frame();
+    if (frame1) {
+        printk("Allocated frame at address: %p\n", frame1);
+    } else {
+        printk("Failed to allocate frame\n");
+    }
+
+    void* frame2 = pmm_alloc_frame();
+    if (frame2) {
+        printk("Allocated another frame at address: %p\n", frame2); 
+    } else {
+        printk("Failed to allocate another frame\n");
+    }
+
     printk("\n==================================================\n");
 }
 

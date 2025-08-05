@@ -9,6 +9,7 @@
 #include "drivers/vga.h"
 #include "panik.h"
 #include "memory_map.h"
+#include "pmm.h"
 
 #include "tests/test_panik.h"
 
