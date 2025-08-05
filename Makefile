@@ -1,111 +1,142 @@
+# --- Toolchain ---
 CC      := gcc
 CFLAGS  := -m32 -ffreestanding -c -g -fno-pie -I kernel/include
 NASM    := nasm
 NASMFLAGS := -g -F stabs
 
+# --- Directories ---
 BOOTDIR   = bootloader
 KERNDIR   = kernel
 BUILDDIR  = build
 
+# --- Source Files ---
 STAGE1_SRC = $(BOOTDIR)/stage1.asm
 STAGE2_SRC = $(BOOTDIR)/stage2.asm
-
 KERNEL_ENTRY_SRC = $(KERNDIR)/arch/x86/kernel_entry.asm
 KERNEL_MAIN_SRC  = $(KERNDIR)/main/kernel.c
 KERNEL_LD        = $(KERNDIR)/linker/kernel.ld
 PRINTK_SRC       = $(KERNDIR)/lib/printk.c
-PRINTK_HDR       = $(KERNDIR)/include/printk.h
-VGA_SRC		 = $(KERNDIR)/drivers/vga/vga.c
-VGA_HDR		 = $(KERNDIR)/include/drivers/vga.h
+VGA_SRC          = $(KERNDIR)/drivers/vga/vga.c
 PANIK_SRC        = $(KERNDIR)/lib/panik.c
-PANIK_HDR        = $(KERNDIR)/include/panik.h
 TEST_PANIK_SRC   = $(KERNDIR)/tests/test_panik.c
-TEST_PANIK_HDR   = $(KERNDIR)/include/tests/test_panik.h
 MEMORY_MAP_SRC   = $(KERNDIR)/memory/memory_map.c
-MEMORY_MAP_HDR   = $(KERNDIR)/include/memory_map.h
+TEST_PRINTK_SRC  = $(KERNDIR)/tests/test_printk.c
 
+# --- Header Files ---
+PRINTK_HDR       = $(KERNDIR)/include/printk.h
+VGA_HDR          = $(KERNDIR)/include/drivers/vga.h
+PANIK_HDR        = $(KERNDIR)/include/panik.h
+TEST_PANIK_HDR   = $(KERNDIR)/include/tests/test_panik.h
+MEMORY_MAP_HDR   = $(KERNDIR)/include/memory_map.h
+TEST_PRINTK_HDR  = $(KERNDIR)/include/tests/test_printk.h
+
+# --- Output Files ---
 STAGE1_BIN = $(BUILDDIR)/stage1.bin
 STAGE2_BIN = $(BUILDDIR)/stage2.bin
-KERNEL_BIN = $(BUILDDIR)/kernel.bin
-KERNEL_ELF = $(BUILDDIR)/kernel.elf
-DISK_IMG   = $(BUILDDIR)/disk.img
 
 # Debug files with symbols
 STAGE1_ELF = $(BUILDDIR)/stage1.elf
 STAGE2_ELF = $(BUILDDIR)/stage2.elf
 
-# --- Kernel objects ---
-PRINTK_OBJ = $(BUILDDIR)/printk.o
-KERNEL_OBJ = $(BUILDDIR)/kernel.o
-VGA_OBJ	   = $(BUILDDIR)/vga.o
-PANIK_OBJ  = $(BUILDDIR)/panik.o
-TEST_PANIK_OBJ = $(BUILDDIR)/test_panik.o
-MEMORY_MAP_OBJ = $(BUILDDIR)/memory_map.o
-KERNEL_PANIK_OBJ = $(BUILDDIR)/test_panik.o
-KERNEL_ENTRY_OBJ = $(BUILDDIR)/kernel_entry.o
+# --- Object Files ---
+PRINTK_OBJ      = $(BUILDDIR)/printk.o
+KERNEL_OBJ      = $(BUILDDIR)/kernel.o
+VGA_OBJ         = $(BUILDDIR)/vga.o
+PANIK_OBJ       = $(BUILDDIR)/panik.o
+TEST_PANIK_OBJ  = $(BUILDDIR)/test_panik.o
+MEMORY_MAP_OBJ  = $(BUILDDIR)/memory_map.o
+KERNEL_ENTRY_OBJ= $(BUILDDIR)/kernel_entry.o
+TEST_PRINTK_OBJ = $(BUILDDIR)/test_printk.o
 
+# --- Object Groups ---
+KERNEL_OBJS = $(KERNEL_ENTRY_OBJ) $(PRINTK_OBJ) $(VGA_OBJ) $(PANIK_OBJ) $(TEST_PANIK_OBJ) $(MEMORY_MAP_OBJ) $(KERNEL_OBJ)
+KERNEL_TEST_OBJS = $(KERNEL_OBJS) $(TEST_PRINTK_OBJ)
+
+# --- Kernel ELF/BIN for test and non-test ---
+KERNEL_ELF        = $(BUILDDIR)/kernel.elf
+KERNEL_BIN        = $(BUILDDIR)/kernel.bin
+KERNEL_TEST_ELF   = $(BUILDDIR)/kernel_test.elf
+KERNEL_TEST_BIN   = $(BUILDDIR)/kernel_test.bin
+
+# --- Disk images ---
+DISK_IMG      = $(BUILDDIR)/disk.img
+DISK_TEST_IMG = $(BUILDDIR)/disk_test.img
+
+# --- Default target ---
 all: $(DISK_IMG)
 
+# --- Directory creation ---
 $(BUILDDIR):
 	mkdir -p $(BUILDDIR)
 
+# --- Bootloader ---
 $(STAGE1_BIN): $(STAGE1_SRC) | $(BUILDDIR)
 	$(NASM) -f bin $< -o $@
-
-# Build stage1 with ELF format for debugging symbols
-$(STAGE1_ELF): $(STAGE1_SRC) | $(BUILDDIR)
-	$(NASM) -g -f elf32 -DELF_BUILD $< -o $(BUILDDIR)/stage1.o
-	ld -m elf_i386 -Ttext=0x7c00 --oformat=elf32-i386 $(BUILDDIR)/stage1.o -o $@
 
 $(STAGE2_BIN): $(STAGE2_SRC) | $(BUILDDIR)
 	$(NASM) -f bin $< -o $@
 
-# Build stage2 with ELF format for debugging symbols  
+# --- Bootloader ELF for debugging ---
+$(STAGE1_ELF): $(STAGE1_SRC) | $(BUILDDIR)
+	$(NASM) -g -f elf32 -DELF_BUILD $< -o $(BUILDDIR)/stage1.o
+	ld -m elf_i386 -Ttext=0x7c00 --oformat=elf32-i386 $(BUILDDIR)/stage1.o -o $@
+
 $(STAGE2_ELF): $(STAGE2_SRC) | $(BUILDDIR)
 	$(NASM) -g -f elf32 -DELF_BUILD $< -o $(BUILDDIR)/stage2.o
 	ld -m elf_i386 -Ttext=0x7e00 --oformat=elf32-i386 $(BUILDDIR)/stage2.o -o $@
 
-$(PRINTK_OBJ): $(PRINTK_SRC) $(PRINTK_HDR) | $(BUILDDIR)
+# --- Pattern rules for C objects ---
+$(BUILDDIR)/%.o: $(KERNDIR)/lib/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
-
-$(VGA_OBJ): $(VGA_SRC) $(VGA_HDR) | $(BUILDDIR)
+$(BUILDDIR)/%.o: $(KERNDIR)/drivers/vga/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
-
-$(PANIK_OBJ): $(PANIK_SRC) $(PANIK_HDR) | $(BUILDDIR)
+$(BUILDDIR)/%.o: $(KERNDIR)/main/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
-
-$(TEST_PANIK_OBJ): $(TEST_PANIK_SRC) $(TEST_PANIK_HDR) | $(BUILDDIR)
+$(BUILDDIR)/%.o: $(KERNDIR)/memory/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
-
-$(MEMORY_MAP_OBJ): $(MEMORY_MAP_SRC) $(MEMORY_MAP_HDR) | $(BUILDDIR)
+$(BUILDDIR)/%.o: $(KERNDIR)/tests/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
-
-$(KERNEL_OBJ): $(KERNEL_MAIN_SRC) | $(BUILDDIR)
-	$(CC) $(CFLAGS) $< -o $@
-
-$(KERNEL_ENTRY_OBJ): $(KERNEL_ENTRY_SRC) | $(BUILDDIR)
+$(BUILDDIR)/%.o: $(KERNDIR)/arch/x86/%.asm | $(BUILDDIR)
 	$(NASM) $(NASMFLAGS) -f elf32 $< -o $@
 
-$(KERNEL_ELF): $(KERNEL_ENTRY_OBJ) $(PRINTK_OBJ) $(VGA_OBJ) $(PANIK_OBJ) $(TEST_PANIK_OBJ) $(MEMORY_MAP_OBJ) $(KERNEL_OBJ) $(KERNEL_LD) | $(BUILDDIR)
-	ld -m elf_i386 -T $(KERNEL_LD) -o $@ $(KERNEL_ENTRY_OBJ) $(PRINTK_OBJ) $(VGA_OBJ) $(PANIK_OBJ) $(TEST_PANIK_OBJ) $(MEMORY_MAP_OBJ) $(KERNEL_OBJ) -nostdlib
+# --- Kernel ELF/BIN (non-test) ---
+$(KERNEL_ELF): $(KERNEL_OBJS) $(KERNEL_LD) | $(BUILDDIR)
+	ld -m elf_i386 -T $(KERNEL_LD) -o $@ $(KERNEL_OBJS) -nostdlib
 
 $(KERNEL_BIN): $(KERNEL_ELF) | $(BUILDDIR)
 	objcopy -O binary $< $@
 
+# --- Kernel ELF/BIN (test build) ---
+$(KERNEL_TEST_ELF): $(KERNEL_TEST_OBJS) $(KERNEL_LD) | $(BUILDDIR)
+	ld -m elf_i386 -T $(KERNEL_LD) -o $@ $(KERNEL_TEST_OBJS) -nostdlib
+
+$(KERNEL_TEST_BIN): $(KERNEL_TEST_ELF) | $(BUILDDIR)
+	objcopy -O binary $< $@
+
+# --- Disk images ---
 $(DISK_IMG): $(STAGE1_BIN) $(STAGE2_BIN) $(KERNEL_BIN) | $(BUILDDIR)
 	dd if=/dev/zero of=$@ bs=1K count=1440
 	dd if=$(STAGE1_BIN) of=$@ bs=512 seek=0 conv=notrunc
 	dd if=$(STAGE2_BIN) of=$@ bs=512 seek=1 conv=notrunc
 	dd if=$(KERNEL_BIN) of=$@ bs=512 seek=9 conv=notrunc
 
+$(DISK_TEST_IMG): $(STAGE1_BIN) $(STAGE2_BIN) $(KERNEL_TEST_BIN) | $(BUILDDIR)
+	dd if=/dev/zero of=$@ bs=1K count=1440
+	dd if=$(STAGE1_BIN) of=$@ bs=512 seek=0 conv=notrunc
+	dd if=$(STAGE2_BIN) of=$@ bs=512 seek=1 conv=notrunc
+	dd if=$(KERNEL_TEST_BIN) of=$@ bs=512 seek=9 conv=notrunc
+
+# --- Run targets ---
 run: $(DISK_IMG)
 	qemu-system-i386 -drive format=raw,file=$(DISK_IMG) -display curses
 
-# === Debug targets ===
-# Build all debug symbols
+test: CFLAGS += -DKERNEL_TESTS
+test: $(DISK_TEST_IMG)
+	qemu-system-i386 -drive format=raw,file=$(DISK_TEST_IMG) -display curses
+
+# --- Debug targets ---
 debug-symbols: $(STAGE1_ELF) $(STAGE2_ELF) $(KERNEL_ELF)
 
-# Verify debug symbols are built correctly
 verify-symbols: debug-symbols
 	@echo "Verifying debug symbols..."
 	@echo "Stage1 ELF: $(STAGE1_ELF)"
@@ -119,43 +150,26 @@ verify-symbols: debug-symbols
 	@echo "Checking for debug symbols in Kernel:"
 	@objdump -h $(KERNEL_ELF) 2>/dev/null | grep debug || echo "No debug symbols in Kernel"
 
-# Debug bootloader stage1 
 debug-stage1: $(STAGE1_ELF) $(DISK_IMG)
-	@echo "Starting QEMU with GDB server for Stage1 bootloader debugging..."
-	@echo "Stage1 loads at 0x7c00. In GDB, use: target remote :1234"
-	@echo "Set breakpoint with: (gdb) break *0x7c00"
 	qemu-system-i386 -drive format=raw,file=$(DISK_IMG) -s -S -display curses
 
-# Debug bootloader stage2
 debug-stage2: $(STAGE2_ELF) $(DISK_IMG)
-	@echo "Starting QEMU with GDB server for Stage2 bootloader debugging..."
-	@echo "Stage2 loads at 0x7e00. In GDB, use: target remote :1234" 
-	@echo "Set breakpoint with: (gdb) break *0x7e00"
 	qemu-system-i386 -drive format=raw,file=$(DISK_IMG) -s -S -display curses
 
-# Debug kernel
 debug-kernel: $(KERNEL_ELF) $(DISK_IMG)
-	@echo "Starting QEMU with GDB server for Kernel debugging..."
-	@echo "Kernel loads at 0x10000. In GDB, use: target remote :1234"
-	@echo "Set breakpoint with: (gdb) break kernel_main"
 	qemu-system-i386 -drive format=raw,file=$(DISK_IMG) -s -S -display curses
 
-# Debug both bootloader stages
 debug-bootloader: $(STAGE1_ELF) $(STAGE2_ELF) $(DISK_IMG)
-	@echo "Starting QEMU with GDB server for both Stage1 and Stage2 bootloader debugging..."
-	@echo "Stage1 loads at 0x7c00, Stage2 loads at 0x7e00"
-	@echo "In GDB, use: target remote :1234"
-	@echo "Set breakpoints with: (gdb) break *0x7c00 and (gdb) break *0x7e00"
 	qemu-system-i386 -drive format=raw,file=$(DISK_IMG) -s -S -display curses
 
-# === Debug target for GDB/QEMU ===
 debug: $(KERNEL_ELF) $(DISK_IMG)
 	qemu-system-i386 -drive format=raw,file=$(DISK_IMG) -s -S -display curses
 
+# --- Clean ---
 clean:
 	rm -rf $(BUILDDIR)
 
-# === Help target ===
+# --- Help ---
 help:
 	@echo "Kernel-V Build and Debug Targets:"
 	@echo ""
@@ -163,24 +177,25 @@ help:
 	@echo "  make           - Build complete OS image"
 	@echo "  make clean     - Clean build directory"
 	@echo "  make run       - Build and run in QEMU"
+	@echo "  make test      - Build and run kernel with tests enabled"
 	@echo ""
 	@echo "Debug targets:"
 	@echo "  make debug-stage1    - Debug bootloader stage 1"
 	@echo "  make debug-stage2    - Debug bootloader stage 2"
-	@echo "  make debug-bootloader - Debug both bootloader stages (recommended)"
+	@echo "  make debug-bootloader - Debug both bootloader stages"
 	@echo "  make debug-kernel    - Debug kernel"
 	@echo "  make debug-symbols   - Build all debug symbols"
 	@echo "  make verify-symbols  - Check if debug symbols are built correctly"
 	@echo ""
 	@echo "GDB Helper targets:"
 	@echo "  make gdb-bootloader       - Create GDB script for bootloader (with TUI)"
-	@echo "  make gdb-kernel          - Create GDB script for kernel (with TUI)"
-	@echo "  make gdb-bootloader-regs - Bootloader debug with registers layout"
-	@echo "  make gdb-kernel-split    - Kernel debug with split layout"
-	@echo "  make gdb-full-debug      - Complete bootloader-to-kernel debugging"
+	@echo "  make gdb-kernel           - Create GDB script for kernel (with TUI)"
+	@echo "  make gdb-bootloader-regs  - Bootloader debug with registers layout"
+	@echo "  make gdb-kernel-split     - Kernel debug with split layout"
+	@echo "  make gdb-full-debug       - Complete bootloader-to-kernel debugging"
 	@echo ""
 	@echo "Manual debugging steps:"
-	@echo "  1. Terminal 1: make debug-stage1  (note: hyphen, not underscore)"
+	@echo "  1. Terminal 1: make debug-stage1"
 	@echo "  2. Terminal 2: gdb"
 	@echo "  3. In GDB: target remote :1234"
 	@echo "  4. In GDB: set architecture i8086"
@@ -192,7 +207,7 @@ help:
 	@echo ""
 	@echo "Correct sequence for automated debugging:"
 	@echo "  1. make clean && make"
-	@echo "  2. Terminal 1: make debug-bootloader  (for both stages)"
+	@echo "  2. Terminal 1: make debug-bootloader"
 	@echo "  3. Terminal 2: make gdb-bootloader"
 	@echo "  4. Terminal 2: gdb -x build/gdb_bootloader.txt"
 	@echo ""
@@ -210,7 +225,7 @@ help:
 	@echo "  Ctrl+X+1      - Single window"
 	@echo "  Ctrl+X+2      - Two windows"
 
-# === GDB Helper Scripts ===
+# --- GDB Helper Scripts ---
 # Create GDB script for bootloader debugging (both stages)
 gdb-bootloader: debug-symbols
 	@echo "Creating GDB script for bootloader debugging (Stage1 + Stage2)..."
@@ -368,5 +383,4 @@ gdb-full-debug: debug-symbols
 	@echo "GDB comprehensive debug script created: $(BUILDDIR)/gdb_full_debug.txt"
 	@echo "Usage: gdb -x $(BUILDDIR)/gdb_full_debug.txt"
 
-.PHONY: all clean run debug debug-symbols verify-symbols debug-stage1 debug-stage2 debug-bootloader debug-kernel gdb-bootloader gdb-kernel gdb-bootloader-regs gdb-kernel-split gdb-full-debug help
-
+.PHONY: all clean run test debug debug-symbols verify-symbols debug-stage1 debug-stage2 debug-bootloader debug-kernel help

@@ -11,7 +11,10 @@
 #include "memory_map.h"
 #include "pmm.h"
 
+#ifdef KERNEL_TESTS
+#include "tests/test_printk.h"
 #include "tests/test_panik.h"
+#endif
 
 // Kernel version information
 #define KERNEL_NAME     "Kernel-V"

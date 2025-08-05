@@ -1,5 +1,8 @@
 {
     "files.associations": {
-        "kernel.h": "c"
+        "kernel.h": "c",
+        "printk.h": "c",
+        "stdint.h": "c",
+        "pmm.h": "c"
     }
 }
