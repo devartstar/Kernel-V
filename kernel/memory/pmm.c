@@ -55,7 +55,9 @@ void pmm_init(void)
 
 void* pmm_alloc_frame (void)
 {
-    for (uint32_t frame_idx = 0; frame_idx < total_frames; frame_idx++)
+    // Start from frame 1 to avoid allocating frame 0 (address 0x0)
+    // often reserved by BIOS.
+    for (uint32_t frame_idx = 1; frame_idx < total_frames; frame_idx++)
     {
         if (!BITMAP_GET(frame_idx))
         {
