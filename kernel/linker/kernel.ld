@@ -2,18 +2,27 @@ ENTRY(_start)
 
 SECTIONS
 {
-	. = 0x10000;
+    . = 0x10000;
 
-	.text : {
-		*(.text*)
-	}
+    kernel_start = .;
 
-	.data : {
-		*(.data*)
-	}
+    .text : {
+        *(.text*)
+    }
 
-	.bss : {
-		*(.bss*)
-	}
+    .rodata : {
+        *(.rodata*)
+    }
+
+    .data : {
+        *(.data*)
+    }
+
+    .bss : {
+        __bss_start = .;
+        *(.bss*)
+        __bss_end = .;
+    }
+
+    kernel_end = .;
 }
-

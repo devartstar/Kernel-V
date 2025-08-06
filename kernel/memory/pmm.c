@@ -70,6 +70,60 @@ void pmm_init(void)
     used_frames = 0;
     printk("[PMM] Total Usable Frames: %u\n", total_frames);
 
+    pmm_reserve_memory_region();
+
+}
+
+void pmm_reserve_memory_region(void)
+{
+    // < 1Mib Reserve all memory below 1Mb for BIOS, IVT, VGA
+    for (uint32_t addr = 0; addr < 0x100000; addr += PAGE_SIZE)
+    {
+        uint32_t frame_index = FRAME_INDEX(addr);
+        if (!BITMAP_GET(frame_index))
+        {
+            BITMAP_SET(frame_index);
+            used_frames++;
+        }
+    }
+
+    // We load the kernel at 0x100000, get it from the linker script
+    // reserve the memory used to load the kernel
+    extern uint32_t kernel_start;
+    extern uint32_t kernel_end;
+
+    uint32_t kernel_memory_start = (uint32_t)&kernel_start;
+    uint32_t kernel_memory_end = (uint32_t)&kernel_end;
+
+    for (uint32_t addr = kernel_memory_start; addr < kernel_memory_end; addr += PAGE_SIZE)
+    {
+        uint32_t frame_index = FRAME_INDEX(addr);
+        if (!BITMAP_GET(frame_index))
+        {
+            BITMAP_SET(frame_index);
+            used_frames++;
+        }
+    }
+
+    // each frame - 1 bit -> max_frame_idx / 8 + 1 gives total bytes of bitmap
+    uint32_t bitmap_bytes = (max_frame_idx / 8) + 1;
+    // Reserve memory used by memory bitmap
+    uint32_t bitmap_start = (uint32_t)frame_bitmap;
+    uint32_t bitmap_end = bitmap_start + bitmap_bytes;
+    for (uint32_t addr = bitmap_start; addr < bitmap_end; addr += PAGE_SIZE)
+    {
+        uint32_t frame_index = FRAME_INDEX(addr);
+        if (!BITMAP_GET(frame_index))
+        {
+            BITMAP_SET(frame_index);
+            used_frames++;
+        }
+    }
+
+    printk("[PMM] Reserved kernel range: 0x%u - 0x%u\n", kernel_memory_start, kernel_memory_end);
+    printk("[PMM] Reserved bitmap: 0x%u - 0x%u (%u bytes)\n", bitmap_start, bitmap_end, bitmap_bytes);
+    printk("[PMM] Total usable frames: %u\n", total_frames);
+    printk("[PMM] Total reserved frames: %u\n", used_frames);
 }
 
 void* pmm_alloc_frame (void)
