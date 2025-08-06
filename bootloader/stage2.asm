@@ -12,8 +12,16 @@ Start:
     cmp bx, 0xAA55
     jne NotSupported
 
-
-    ; 1. Load the Kernel
+    ; ReadPacket - 16 Bytes.
+    ; si = *ReadPacket
+    ; [si]              - to store the size of Read Packet
+    ; [si+1]            - Reserved (must be 0)
+    ; [si+2] [si+3]     - to store the number of sectors to Read
+    ; [si+4] [si+5]     - Offset to Load the Read content
+    ; [si+6] [si+7]     - Segment to Load the Read content
+    ; [si+8] [si+15]    - LBA to Read from the Disk
+    ; 1. Load the Kernel into memory 0x10000 ()
+    ; [PMM] Reserved kernel range: 0x65536 - 0x78800 
 LoadKernel:
     mov si, ReadPacket
     mov word[si], 0x10

@@ -89,11 +89,11 @@ void pmm_reserve_memory_region(void)
 
     // We load the kernel at 0x100000, get it from the linker script
     // reserve the memory used to load the kernel
-    extern uint32_t kernel_start;
-    extern uint32_t kernel_end;
+    extern char kernel_start;
+    extern char kernel_end;
 
     uint32_t kernel_memory_start = (uint32_t)&kernel_start;
-    uint32_t kernel_memory_end = (uint32_t)&kernel_end;
+    uint32_t kernel_memory_end   = (uint32_t)&kernel_end;
 
     for (uint32_t addr = kernel_memory_start; addr < kernel_memory_end; addr += PAGE_SIZE)
     {

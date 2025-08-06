@@ -56,9 +56,6 @@ Parsing BIOS Memory Map (E820)...
 Allocated frame at address: 0x1000
 Allocated another frame at address: 0x2000
 
-==================================================
-```
-
 ---
 
 ### 🔨 Week 2: Physical Memory Frame Allocator (Bitmap)
@@ -78,6 +75,35 @@ Allocated another frame at address: 0x2000
 
 * `pmm.c/.h` with alloc/free logic.
 * Unit test kernel mode bitmap allocator and validate frame reuse.
+
+```
+==================================================
+Kernel-V v0.2 - Hello Devjit!
+
+Kernel-V is running! Welcome to your custom kernel, Devjit!
+
+==================================================
+Parsing BIOS Memory Map (E820)...
+
+[MEMORY MAP] BIOS provided 6 entries:
+[0] Base: 0x0000000000000000, Length: 0x000000000009fc00, Type: Available
+[1] Base: 0x000000000009fc00, Length: 0x0000000000000400, Type: Reserved
+[2] Base: 0x00000000000f0000, Length: 0x0000000000010000, Type: Reserved
+[3] Base: 0x0000000000100000, Length: 0x0000000007ee0000, Type: Available
+[4] Base: 0x0000000007fe0000, Length: 0x0000000000020000, Type: Reserved
+[5] Base: 0x00000000fffc0000, Length: 0x0000000000040000, Type: Reserved
+
+[MEMORY MAP] Usable memory regions count: 2
+[PMM] Total Usable Frames: 32640
+[PMM] Reserved kernel range: 0x65536 - 0x78800
+[PMM] Reserved bitmap: 0x589824 - 0x593917 (4093 bytes)
+[PMM] Total usable frames: 32640
+[PMM] Total reserved frames: 160
+Allocated frame at address: 0x100000
+Allocated another frame at address: 0x101000
+
+==================================================
+```
 
 ---
 
