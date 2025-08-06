@@ -2,9 +2,10 @@
 #include "memory_map.h"
 #include "printk.h"
 
-static uint8_t frame_bitmap[FRAME_BITMAP_SIZE];
+static uint8_t* frame_bitmap = NULL;;
 static uint32_t total_frames = 0;
 static uint32_t used_frames = 0;
+static uint32_t max_frame_idx = 0;
 
 // frame_bitmap[x] -> byte entry (8 bits) => array_index = bitmap_index / 8 
 // now within that 8 bits -> need to update the correct bit at (bitmap_index % 8)
@@ -20,26 +21,44 @@ static uint32_t used_frames = 0;
 //
 void pmm_init(void)
 {
-
-    for (int frame = 0; frame < FRAME_BITMAP_SIZE; frame++)
-    {
-        frame_bitmap[frame] = 0xFF;
-    }
-
     total_frames = 0;
     used_frames = 0;
 
+    // Step1: Calculate the maximum frame index based on the usable memory regions
     for (uint32_t usable_memory_region_idx = 0; usable_memory_region_idx < usable_memory_region_count; usable_memory_region_idx++)
     {
         // base and length of the usable memory region
-        uint32_t base = usable_memory_region[usable_memory_region_idx].base;
-        uint32_t length = usable_memory_region[usable_memory_region_idx].length;
+        uint32_t region_base = usable_memory_region[usable_memory_region_idx].base;
+        uint32_t region_length = usable_memory_region[usable_memory_region_idx].length;
+        uint32_t region_end = region_base + region_length;
+        uint32_t current_frame_idx = FRAME_INDEX(region_end);
 
-        // iterate through the usable memory region
-        for(uint32_t memory_addr = base; memory_addr < base + length; memory_addr += PAGE_SIZE)
+        if (current_frame_idx > max_frame_idx)
         {
-            uint32_t frame_index = FRAME_INDEX(memory_addr);
-            if (frame_index < MAX_FRAMES)
+            max_frame_idx = current_frame_idx;
+        }
+    }
+
+    // Step2: Allocate address for bitmap array in a safe memory region
+    frame_bitmap = (uint8_t*)0x90000;
+    uint32_t max_frame_bitmap_idx = (max_frame_idx / 8) + 1; 
+
+    // Step3: Initialize the bitmap to 1 (all frames are used)
+    for (uint32_t frame = 0; frame < max_frame_bitmap_idx; frame++)
+    {
+        frame_bitmap[frame] = 0xFF;
+    }     
+
+    // Step4: Iterate through the usable memory regions and mark frames as free
+    for (uint32_t usable_memory_region_idx = 0; usable_memory_region_idx < usable_memory_region_count; usable_memory_region_idx++)
+    {
+        uint32_t region_base = usable_memory_region[usable_memory_region_idx].base;
+        uint32_t region_length = usable_memory_region[usable_memory_region_idx].length;
+        
+        for (uint32_t addr = region_base; addr < region_base + region_length; addr += PAGE_SIZE)
+        {
+            uint32_t frame_index = FRAME_INDEX(addr);
+            if (frame_index < max_frame_idx)
             {
                 BITMAP_CLEAR(frame_index);
                 total_frames++;
