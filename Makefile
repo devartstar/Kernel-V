@@ -10,52 +10,58 @@ KERNDIR   = kernel
 BUILDDIR  = build
 
 # --- Source Files ---
-STAGE1_SRC = $(BOOTDIR)/stage1.asm
-STAGE2_SRC = $(BOOTDIR)/stage2.asm
-KERNEL_ENTRY_SRC = $(KERNDIR)/arch/x86/kernel_entry.asm
-KERNEL_MAIN_SRC  = $(KERNDIR)/main/kernel.c
-KERNEL_LD        = $(KERNDIR)/linker/kernel.ld
-PRINTK_SRC       = $(KERNDIR)/lib/printk.c
-VGA_SRC          = $(KERNDIR)/drivers/vga/vga.c
-PANIK_SRC        = $(KERNDIR)/lib/panik.c
-TEST_PANIK_SRC   = $(KERNDIR)/tests/test_panik.c
-TEST_PRINTK_SRC  = $(KERNDIR)/tests/test_printk.c
-MEMORY_MAP_SRC   = $(KERNDIR)/memory/memory_map.c
-MEMORY_MNG_SRC   = $(KERNDIR)/memory/pmm.c
+STAGE1_SRC 			= $(BOOTDIR)/stage1.asm
+STAGE2_SRC 			= $(BOOTDIR)/stage2.asm
+KERNEL_ENTRY_SRC 	= $(KERNDIR)/arch/x86/kernel_entry.asm
+KERNEL_MAIN_SRC  	= $(KERNDIR)/main/kernel.c
+KERNEL_LD        	= $(KERNDIR)/linker/kernel.ld
+
+VGA_SRC          	= $(KERNDIR)/drivers/vga/vga.c
+
+PRINTK_SRC       	= $(KERNDIR)/lib/printk.c
+PANIK_SRC        	= $(KERNDIR)/lib/panik.c
+TEST_PANIK_SRC   	= $(KERNDIR)/tests/test_panik.c
+TEST_PRINTK_SRC  	= $(KERNDIR)/tests/test_printk.c
+
+MEMORY_MAP_SRC   	= $(KERNDIR)/memory/memory_map.c
+MEMORY_MNG_SRC   	= $(KERNDIR)/memory/pmm.c
+MEMORY_PAGING_SRC 	= $(KERNDIR)/memory/paging.c
 
 # --- Header Files ---
-PRINTK_HDR       = $(KERNDIR)/include/printk.h
-VGA_HDR          = $(KERNDIR)/include/drivers/vga.h
-PANIK_HDR        = $(KERNDIR)/include/panik.h
+PRINTK_HDR       	= $(KERNDIR)/include/printk.h
+VGA_HDR          	= $(KERNDIR)/include/drivers/vga.h
+PANIK_HDR        	= $(KERNDIR)/include/panik.h
 
-MEMORY_MAP_HDR   = $(KERNDIR)/include/memory_map.h
-MEMORY_MNG_HDR	 = $(KERNDIR)/include/memory/pmm.h
+MEMORY_MAP_HDR   	= $(KERNDIR)/include/memory_map.h
+MEMORY_MNG_HDR	 	= $(KERNDIR)/include/memory/pmm.h
+MEMORY_PAGING_HDR 	= $(KERNDIR)/include/memory/paging.h
 
-TEST_PANIK_HDR   = $(KERNDIR)/include/tests/test_panik.h
-TEST_PRINTK_HDR  = $(KERNDIR)/include/tests/test_printk.h
+TEST_PANIK_HDR   	= $(KERNDIR)/include/tests/test_panik.h
+TEST_PRINTK_HDR  	= $(KERNDIR)/include/tests/test_printk.h
 
 # --- Output Files ---
-STAGE1_BIN = $(BUILDDIR)/stage1.bin
-STAGE2_BIN = $(BUILDDIR)/stage2.bin
+STAGE1_BIN 			= $(BUILDDIR)/stage1.bin
+STAGE2_BIN 			= $(BUILDDIR)/stage2.bin
 
 # Debug files with symbols
-STAGE1_ELF = $(BUILDDIR)/stage1.elf
-STAGE2_ELF = $(BUILDDIR)/stage2.elf
+STAGE1_ELF 			= $(BUILDDIR)/stage1.elf
+STAGE2_ELF 			= $(BUILDDIR)/stage2.elf
 
 # --- Object Files ---
-PRINTK_OBJ      = $(BUILDDIR)/printk.o
-KERNEL_OBJ      = $(BUILDDIR)/kernel.o
-VGA_OBJ         = $(BUILDDIR)/vga.o
-PANIK_OBJ       = $(BUILDDIR)/panik.o
-TEST_PANIK_OBJ  = $(BUILDDIR)/test_panik.o
-KERNEL_ENTRY_OBJ= $(BUILDDIR)/kernel_entry.o
-TEST_PRINTK_OBJ = $(BUILDDIR)/test_printk.o
+PRINTK_OBJ      	= $(BUILDDIR)/printk.o
+KERNEL_OBJ      	= $(BUILDDIR)/kernel.o
+VGA_OBJ         	= $(BUILDDIR)/vga.o
+PANIK_OBJ       	= $(BUILDDIR)/panik.o
+TEST_PANIK_OBJ  	= $(BUILDDIR)/test_panik.o
+KERNEL_ENTRY_OBJ	= $(BUILDDIR)/kernel_entry.o
+TEST_PRINTK_OBJ 	= $(BUILDDIR)/test_printk.o
 
-MEMORY_MAP_OBJ  = $(BUILDDIR)/memory_map.o
-MEMORY_MNG_OBJ  = $(BUILDDIR)/pmm.o
+MEMORY_MAP_OBJ  	= $(BUILDDIR)/memory_map.o
+MEMORY_MNG_OBJ  	= $(BUILDDIR)/pmm.o
+MEMORY_PAGING_OBJ	= $(BUILDDIR)/paging.o
 
 # --- Object Groups ---
-KERNEL_OBJS = $(KERNEL_ENTRY_OBJ) $(PRINTK_OBJ) $(VGA_OBJ) $(PANIK_OBJ) $(TEST_PANIK_OBJ) $(MEMORY_MAP_OBJ) $(MEMORY_MNG_OBJ) $(KERNEL_OBJ)
+KERNEL_OBJS = $(KERNEL_ENTRY_OBJ) $(PRINTK_OBJ) $(VGA_OBJ) $(PANIK_OBJ) $(TEST_PANIK_OBJ) $(MEMORY_MAP_OBJ) $(MEMORY_MNG_OBJ) $(MEMORY_PAGING_OBJ) $(KERNEL_OBJ)
 KERNEL_TEST_OBJS = $(KERNEL_OBJS) $(TEST_PRINTK_OBJ)
 
 # --- Kernel ELF/BIN for test and non-test ---

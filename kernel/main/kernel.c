@@ -30,6 +30,12 @@ void kernel_main() {
 
     printk("\n==================================================\n");
 
+    printk("Initializing Paging...\n");
+    paging_init();
+    printk("Paging initialized successfully!\n");
+
+    printk("\n==================================================\n");
+
     
     #ifdef KERNEL_TESTS
     printk("\n==================================================\n");

@@ -10,6 +10,7 @@
 #include "panik.h"
 #include "memory_map.h"
 #include "pmm.h"
+#include "paging.h"
 
 #ifdef KERNEL_TESTS
 #include "tests/test_printk.h"
