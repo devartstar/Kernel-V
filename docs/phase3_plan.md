@@ -148,6 +148,10 @@ Allocated another frame at address: 0x101000
 Initializing Paging...
 [PAGING] Initializing Paging structures...
 [PAGING] Directory at 0x80000, Table[0] at 0x81000
+[PMM] Page Directory: 0x524288 - 0x528384 (4096 bytes)
+[PMM] Page Table: 0x528384 - 0x532480 (4096 bytes)
+[PMM] Total usable frames: 32640
+[PMM] Total reserved frames: 162
 Paging initialized successfully!
 ==================================================
 ```
