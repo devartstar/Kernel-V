@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include "memory_map.h"
 
 #define PAGE_SIZE 4096
 
