@@ -6,6 +6,6 @@
 
 // pmm - process memory management utilities
 void pmm_init(void);
-void pmm_reserve_memory_region(void);
+void pmm_reserve_memory_region(reserved_memory_type_t reserved_type);
 void* pmm_alloc_frame(void);
 void pmm_free_frame(void* addr);

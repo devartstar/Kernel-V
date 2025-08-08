@@ -3,6 +3,8 @@
         "kernel.h": "c",
         "printk.h": "c",
         "stdint.h": "c",
-        "pmm.h": "c"
+        "pmm.h": "c",
+        "memory_map.h": "c",
+        "stddef.h": "c"
     }
 }

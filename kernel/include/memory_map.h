@@ -11,6 +11,17 @@
 #define E820_TYPE_ACPI_NVS 4
 #define E820_TYPE_UNUSABLE 5
 
+// Reserved Memory Regions
+typedef enum {
+    RESERVED_TYPE_INIT          = (1 << 0) | (1 << 1) | (1 << 2),
+    RESERVED_TYPE_BIOS          = 1 << 0,
+    RESERVED_TYPE_IVT           = 1 << 1,
+    RESERVED_TYPE_VGA           = 1 << 2,
+    RESERVED_TYPE_KERNEL        = 1 << 3,
+    RESERVED_TYPE_BITMAP        = 1 << 4,
+    RESERVED_TYPE_PAGE_TABLE    = 1 << 5,
+} reserved_memory_type_t;
+
 // BIOS provided memory map entry structure
 typedef struct {
     uint64_t base;      // Start address of the memory region
@@ -20,8 +31,8 @@ typedef struct {
 } __attribute__((packed)) e820_entry_t;
 
 // Exposed for parsing
-#define E820_MAP_ADDRESS 0x5000
-#define E820_MAP_COUNT_PTR 0x2004
+#define E820_MAP_ADDRESS    0x5000
+#define E820_MAP_COUNT_PTR  0x2004
 
 // Memory map structure for storing usable memory regions
 typedef struct {

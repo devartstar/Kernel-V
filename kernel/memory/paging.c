@@ -1,8 +1,8 @@
 #include "paging.h"
 #include "printk.h"
 
-static uint32_t* page_directory = (uint32_t*)0x80000;
-static uint32_t* first_page_table     = (uint32_t*)0x81000;
+static uint32_t* page_directory         = (uint32_t*)PAGE_DIR_START_ADDR;
+static uint32_t* first_page_table       = (uint32_t*)PAGE_TABLE_START_ADDR;
 
 void paging_init()
 {

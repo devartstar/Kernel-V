@@ -14,6 +14,11 @@ void kernel_main() {
     parse_and_print_e820_map();
 
     pmm_init();
+
+    pmm_reserve_memory_region(RESERVED_TYPE_INIT);
+    pmm_reserve_memory_region(RESERVED_TYPE_KERNEL);
+    pmm_reserve_memory_region(RESERVED_TYPE_BITMAP);
+
     void* frame1 = pmm_alloc_frame();
     if (frame1) {
         printk("Allocated frame at address: %p\n", frame1);
@@ -32,6 +37,7 @@ void kernel_main() {
 
     printk("Initializing Paging...\n");
     paging_init();
+    pmm_reserve_memory_region(RESERVED_TYPE_PAGE_TABLE);
     printk("Paging initialized successfully!\n");
 
     printk("\n==================================================\n");
