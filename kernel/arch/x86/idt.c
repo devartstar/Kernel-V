@@ -1,0 +1,1 @@
+extern void isr_page_fault(void);

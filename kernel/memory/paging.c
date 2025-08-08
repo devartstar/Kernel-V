@@ -27,4 +27,39 @@ void paging_init()
     page_directory[0] = (uint32_t)first_page_table | PAGE_PRESENT | PAGE_WRITE;
 
     printk ("[PAGING] Directory at %p, Table[0] at %p\n", page_directory, first_page_table);
+
+    // Load the page directory address into CR3
+    __asm__ __volatile__ (
+        "mov %0, %%cr3"
+        :
+        : "r"(page_directory)
+    );
+
+    // Store the cr0 register value int variable
+    uint32_t cr0;
+    __asm__ __volatile__ (
+        "mov %%cr0, %0"
+        : "=r"(cr0)  
+    );
+
+    // Set the paging bit cr0.pg (bit 31)
+    cr0 |= 0x80000000; 
+
+    // Write the value back to cr0
+    __asm__ __volatile__ (
+        "mov %0, %%cr0"
+        :
+        : "r"(cr0)
+    );
+
+    // From now on all memory access will be virtual
+    printk("[PAGING] Paging enabled successfully!\n");
+}
+
+// need to register this handler in the Interrupt Descriptor Table (IDT) for vector 14
+void page_fault_handler()
+{
+    printk("[PAGING] !!! PAGE FAULT !!!\n");
+
+    while(1) { __asm__ __volatile__("hlt"); }
 }
