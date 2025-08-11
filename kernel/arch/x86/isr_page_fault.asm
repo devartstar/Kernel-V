@@ -1,5 +1,6 @@
 [BITs 32]
 [GLOBAL isr_page_fault]
+[EXTERN page_fault_handler]
 
 ; The CPU pushes (in order): error code, eip, cs, eflags, esp (if privilege change)
 isr_page_fault:

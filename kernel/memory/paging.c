@@ -55,11 +55,3 @@ void paging_init()
     // From now on all memory access will be virtual
     printk("[PAGING] Paging enabled successfully!\n");
 }
-
-// need to register this handler in the Interrupt Descriptor Table (IDT) for vector 14
-void page_fault_handler()
-{
-    printk("[PAGING] !!! PAGE FAULT !!!\n");
-
-    while(1) { __asm__ __volatile__("hlt"); }
-}

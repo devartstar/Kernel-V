@@ -11,6 +11,7 @@
 #include "memory_map.h"
 #include "pmm.h"
 #include "paging.h"
+#include "idt.h"
 
 #ifdef KERNEL_TESTS
 #include "tests/test_printk.h"
