@@ -1,5 +1,6 @@
-#include <stdint.h>
+#include "page_fault.h"
 #include "printk.h"
+#include <stdint.h>
 
 void page_fault_handler (uint32_t error_code)
 {

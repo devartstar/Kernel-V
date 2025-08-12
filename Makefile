@@ -26,6 +26,9 @@ TEST_PRINTK_SRC  	= $(KERNDIR)/tests/test_printk.c
 MEMORY_MAP_SRC   	= $(KERNDIR)/memory/memory_map.c
 MEMORY_MNG_SRC   	= $(KERNDIR)/memory/pmm.c
 MEMORY_PAGING_SRC 	= $(KERNDIR)/memory/paging.c
+MEMORY_PAGE_FAULT_SRC = $(KERNDIR)/memory/page_fault.c
+
+IDT_SRC          	= $(KERNDIR)/arch/x86/idt.c
 
 # --- Header Files ---
 PRINTK_HDR       	= $(KERNDIR)/include/printk.h
@@ -38,6 +41,8 @@ MEMORY_PAGING_HDR 	= $(KERNDIR)/include/memory/paging.h
 
 TEST_PANIK_HDR   	= $(KERNDIR)/include/tests/test_panik.h
 TEST_PRINTK_HDR  	= $(KERNDIR)/include/tests/test_printk.h
+
+IDT_HDR		  		= $(KERNDIR)/include/idt.h
 
 # --- Output Files ---
 STAGE1_BIN 			= $(BUILDDIR)/stage1.bin
@@ -59,9 +64,14 @@ TEST_PRINTK_OBJ 	= $(BUILDDIR)/test_printk.o
 MEMORY_MAP_OBJ  	= $(BUILDDIR)/memory_map.o
 MEMORY_MNG_OBJ  	= $(BUILDDIR)/pmm.o
 MEMORY_PAGING_OBJ	= $(BUILDDIR)/paging.o
+MEMORY_PAGE_FAULT_OBJ = $(BUILDDIR)/page_fault.o
+
+IDT_OBJ				= $(BUILDDIR)/idt.o
+IDT_FLUSH_OBJ      = $(BUILDDIR)/idt_flush.o
+ISR_PAGE_FAULT_OBJ = $(BUILDDIR)/isr_page_fault.o
 
 # --- Object Groups ---
-KERNEL_OBJS = $(KERNEL_ENTRY_OBJ) $(PRINTK_OBJ) $(VGA_OBJ) $(PANIK_OBJ) $(TEST_PANIK_OBJ) $(MEMORY_MAP_OBJ) $(MEMORY_MNG_OBJ) $(MEMORY_PAGING_OBJ) $(KERNEL_OBJ)
+KERNEL_OBJS = $(KERNEL_ENTRY_OBJ) $(PRINTK_OBJ) $(VGA_OBJ) $(PANIK_OBJ) $(TEST_PANIK_OBJ) $(MEMORY_MAP_OBJ) $(MEMORY_MNG_OBJ) $(MEMORY_PAGING_OBJ) $(MEMORY_PAGE_FAULT_OBJ) $(IDT_OBJ) $(IDT_FLUSH_OBJ) $(ISR_PAGE_FAULT_OBJ) $(KERNEL_OBJ)
 KERNEL_TEST_OBJS = $(KERNEL_OBJS) $(TEST_PRINTK_OBJ)
 
 # --- Kernel ELF/BIN for test and non-test ---
@@ -110,6 +120,8 @@ $(BUILDDIR)/%.o: $(KERNDIR)/tests/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
 $(BUILDDIR)/%.o: $(KERNDIR)/arch/x86/%.asm | $(BUILDDIR)
 	$(NASM) $(NASMFLAGS) -f elf32 $< -o $@
+$(BUILDDIR)/%.o: $(KERNDIR)/arch/x86/%.c | $(BUILDDIR)
+	$(CC) $(CFLAGS) $< -o $@
 
 # --- Kernel ELF/BIN (non-test) ---
 $(KERNEL_ELF): $(KERNEL_OBJS) $(KERNEL_LD) | $(BUILDDIR)

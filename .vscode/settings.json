@@ -5,6 +5,7 @@
         "stdint.h": "c",
         "pmm.h": "c",
         "memory_map.h": "c",
-        "stddef.h": "c"
+        "stddef.h": "c",
+        "idt.h": "c"
     }
 }

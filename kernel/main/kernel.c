@@ -13,6 +13,7 @@ void kernel_main() {
     // Initializing IDT (Interrupt Descriptor Table)
     // -------------------------------------------------------------------------
     idt_init();
+    // enabling hardware interrupts
     __asm__ __volatile__("sti");
 
     // -------------------------------------------------------------------------
