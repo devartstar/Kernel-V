@@ -3,6 +3,7 @@
 
 extern void idt_flush(uint32_t);
 
+// IDT (Interrupt Descriptor Table) Declaration
 idt_entry_t idt[IDT_ENTRIES];
 idt_ptr_t idt_ptr;
 
