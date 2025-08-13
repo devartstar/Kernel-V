@@ -11,7 +11,7 @@ void page_fault_handler (uint32_t error_code)
     printk("[PAGE FAULT] at address: 0x%x, error code: 0x%x]\n", fault_address, error_code);
 
     /*
-    Error Code:
+    Error Code for Page Fault:
     Bit 0 (P)   : (0 = Page not present)    (1 = Protection Violation)
     Bit 1 (W/R) : (0 = Fault on Read)       (1 = Fault on Write) 
     Bit 2 (U/s) : (0 = Fault in Kernel Mode)(1 = Fault in User Mode)

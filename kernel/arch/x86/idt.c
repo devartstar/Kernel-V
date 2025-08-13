@@ -7,6 +7,13 @@ extern void idt_flush(uint32_t);
 idt_entry_t idt[IDT_ENTRIES];
 idt_ptr_t idt_ptr;
 
+/*
+Function to set an IDT entry
+    num: Interrupt vector number
+    base: Address of the ISR (Interrupt Service Routine)
+    sel: Kernel code segment selector
+    flags: Flags for the IDT entry (Present, DPL, Gate Type)
+*/
 void idt_set_gate(int num, uint32_t base, uint16_t sel, uint8_t flags)
 {
     idt[num].base_low  = (base & 0xFFFF);
@@ -16,6 +23,9 @@ void idt_set_gate(int num, uint32_t base, uint16_t sel, uint8_t flags)
     idt[num].flags     = flags;
 }
 
+/*
+Initialize the IDT
+*/
 void idt_init ()
 {
     idt_ptr.limit = sizeof(idt_entry_t) * IDT_ENTRIES - 1;
@@ -31,7 +41,7 @@ void idt_init ()
 
     extern void isr_page_fault();
     // add entry for page fault handler in idt
-    // Present, DPL=0, Interrupt Gate
+    // P=1(Present), DPL=0(Kernel only access), Type=0xE(Interrupt Gate)
     idt_set_gate(14, (uint32_t)isr_page_fault, 0x08, 0x8E); 
 
     idt_flush((uint32_t)&idt_ptr);
