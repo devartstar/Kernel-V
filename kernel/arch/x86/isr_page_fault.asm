@@ -34,10 +34,10 @@ isr_page_fault:
     ; [ error code ]                    ; [2] 4 bytes pushed by CPU     <---- esp + 48
     ; [ eip, cs, eflags, ...]           ; CPU stuff
 
-    push dword [esp + 48]   ; Push the error code onto the stack for the handler to access
+    push esp                ; Push the current stack pointer as argument to the handler
     call page_fault_handler ; call the page fault handler
 
-    add esp, 4  ; Clean up the error code from the stack
+    add esp, 4  ; Clean up the stack pointer from the stack
     pop gs
     pop fs
     pop es

@@ -13,4 +13,4 @@
 #define PAGE_USER       0x4
 
 void paging_init();
-void page_fault_handler();
+void page_fault_handler(); // do we need this ? dupplicate of page_fault.h

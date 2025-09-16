@@ -1,6 +1,5 @@
 #include "kernel.h"
 
-
 void kernel_main() {
     // -------------------------------------------------------------------------
     // Console and Logger Initialization
