@@ -48,9 +48,16 @@ void kernel_main() {
     // -------------------------------------------------------------------------
     // Optional: Trigger a page fault for testing
     // -------------------------------------------------------------------------
+
+    printk("Triggering demand-paged heap access...\n");
+    volatile int *heap_ptr = (int *)(KERNEL_HEAP_START + 0x1234);
+    *heap_ptr = 42;
+    printk("Heap page mapped and write succeeded!\n");
+
     printk("\nTriggering page fault...\n");
     volatile int *ptr = (int *)0xDEADBEEF;  // This address is not mapped
     *ptr = 123;                             // Will cause interrupt 14 (page fault)
+
 
     // -------------------------------------------------------------------------
     // Optional Unit Tests

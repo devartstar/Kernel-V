@@ -6,6 +6,7 @@
         "pmm.h": "c",
         "memory_map.h": "c",
         "stddef.h": "c",
-        "idt.h": "c"
+        "idt.h": "c",
+        "vga.h": "c"
     }
 }

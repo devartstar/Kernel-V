@@ -1,5 +1,8 @@
 #include "page_fault.h"
+#include "paging.h"
+#include "pmm.h"
 #include "printk.h"
+#include "panik.h"
 #include <stdint.h>
 
 void page_fault_handler (page_fault_stack_t* frame)
@@ -8,7 +11,27 @@ void page_fault_handler (page_fault_stack_t* frame)
     uint32_t fault_address;
     __asm__ __volatile__("mov %%cr2, %0" : "=r"(fault_address));
 
-    printk("[PAGE FAULT] at address: 0x%x, error code: 0x%x]\n", fault_address, frame->error_code);
+    printk("[PAGE FAULT] at address: 0x%x, error code: 0x%x [eip=0x%x]\n", 
+            fault_address, 
+            frame->error_code, 
+            frame->eip);
+
+    // Check if the fault_address is in the kernel heap range
+    if (fault_address >= KERNEL_HEAP_START && fault_address < KERNEL_HEAP_END) 
+    {
+        printk("[PAGE FAULT] Address within kernel heap region: allocating and mapping new page.\n");
+
+        void* new_frame = pmm_alloc_frame();
+        if(!new_frame)
+        {
+            panik("Out of memory: Unable to allocate frame for page fault at address 0x%x", fault_address);
+        }
+        paging_map_page(fault_address, (uint32_t)new_frame, PAGE_PRESENT | PAGE_WRITE);
+        return;
+    }
+
+    // Todo: similarly for kernel stack growth
+    // Todo: user space page fault handling - signal the fault back to the process
 
     /*
     Error Code for Page Fault:
