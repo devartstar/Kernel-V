@@ -31,22 +31,18 @@ void page_fault_handler (page_fault_stack_t* frame)
     }
 
     // Check if the fault_address is in the kernel stack range and faulting within a small gap below ESP
-    const uint32_t STACK_GROWTH_GAP = 32;
-    if (fault_address >= KERNEL_STACK_BOTTOM && fault_address <= KERNEL_STACK_TOP)
-    {
-        if (fault_address < frame->esp && fault_address >= (frame->esp - STACK_GROWTH_GAP))
-        {
-            printk("[PAGE FAULT] Stack growth: Mapping new stack page at 0x%x (esp=0x%x)\n", fault_address, frame->esp);
-
+    // Typical stack growth threshold: only map if faulting within N bytes below ESP
+    const uint32_t STACK_GROWTH_GAP = 32; // or 128, or 0
+    if (fault_address >= KERNEL_STACK_BOTTOM && fault_address < KERNEL_STACK_TOP) {
+        if (fault_address >= frame->esp - STACK_GROWTH_GAP && fault_address < frame->esp) {
+            printk("[PF] Stack growth: mapping new stack page at 0x%x (esp=0x%x)\n", fault_address, frame->esp);
             void* new_frame = pmm_alloc_frame();
-            if(!new_frame)
-            {
-                panik("Out of memory: Unable to allocate frame for page fault at address 0x%x", fault_address);
-            }
+            if (!new_frame) panik("Out of memory in stack PF recovery");
             paging_map_page(fault_address, (uint32_t)new_frame, PAGE_PRESENT | PAGE_WRITE);
             return;
         }
     }
+
 
     // Todo: similarly for kernel stack growth
     // Todo: user space page fault handling - signal the fault back to the process

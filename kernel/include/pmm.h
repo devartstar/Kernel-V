@@ -9,11 +9,11 @@
 #define KERNEL_HEAP_START   0xC1000000
 #define KERNEL_HEAP_END     0xC2000000
 
-// Stack size = 1MB
 // stack grows downwards
 // ESP starts at KERNEL_STACK_TOP and goes down to KERNEL_STACK_BOTTOM
-#define KERNEL_STACK_TOP        0xC3000000  
-#define KERNEL_STACK_BOTTOM     0xC2F00000
+#define KERNEL_STACK_TOP        0x9FB00
+#define KERNEL_STACK_BOTTOM     0x9A000
+// Todo: update it with some larger value.
 
 // pmm - process memory management utilities
 void pmm_init(void);
