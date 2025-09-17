@@ -7,6 +7,7 @@
         "memory_map.h": "c",
         "stddef.h": "c",
         "idt.h": "c",
-        "vga.h": "c"
+        "vga.h": "c",
+        "test_printk.h": "c"
     }
 }

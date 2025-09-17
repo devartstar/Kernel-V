@@ -33,4 +33,6 @@
 // Kernel main function (called from assembly)
 void kernel_main(void);
 
+void grow_stack(int depth);
+
 #endif /* KERNEL_H */

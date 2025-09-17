@@ -1,5 +1,15 @@
 #include "kernel.h"
 
+// Simulate stack overflow by recursing
+void grow_stack(int depth) {
+    volatile char big_buffer[4096]; // Touches new page each time
+    big_buffer[0] = depth;
+    printk("Recursing at depth %d, esp=0x%x\n", depth, &depth);
+    if (depth < 32) grow_stack(depth + 1);
+    else printk("Reached max recursion depth!\n");
+}
+
+
 void kernel_main() {
     // -------------------------------------------------------------------------
     // Console and Logger Initialization
@@ -54,10 +64,13 @@ void kernel_main() {
     *heap_ptr = 42;
     printk("Heap page mapped and write succeeded!\n");
 
+    /*
     printk("\nTriggering page fault...\n");
     volatile int *ptr = (int *)0xDEADBEEF;  // This address is not mapped
     *ptr = 123;                             // Will cause interrupt 14 (page fault)
+    */
 
+    grow_stack(0);
 
     // -------------------------------------------------------------------------
     // Optional Unit Tests

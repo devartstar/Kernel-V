@@ -5,8 +5,15 @@
 
 #define PAGE_SIZE           4096
 
+// Heap size = 16MB
 #define KERNEL_HEAP_START   0xC1000000
 #define KERNEL_HEAP_END     0xC2000000
+
+// Stack size = 1MB
+// stack grows downwards
+// ESP starts at KERNEL_STACK_TOP and goes down to KERNEL_STACK_BOTTOM
+#define KERNEL_STACK_TOP        0xC3000000  
+#define KERNEL_STACK_BOTTOM     0xC2F00000
 
 // pmm - process memory management utilities
 void pmm_init(void);
