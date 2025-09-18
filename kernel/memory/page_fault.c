@@ -9,12 +9,17 @@ void page_fault_handler (page_fault_stack_t* frame)
 {
     // cr2 holds the fault linear address for the most recent page fault
     uint32_t fault_address;
+    uint32_t esp, ebp;
+    asm volatile("mov %%esp, %0" : "=r"(esp));
+    asm volatile("mov %%ebp, %0" : "=r"(ebp));
     __asm__ __volatile__("mov %%cr2, %0" : "=r"(fault_address));
 
-    printk("[PAGE FAULT] at address: 0x%x, error code: 0x%x [eip=0x%x]\n", 
+    printk("[PAGE FAULT] at address: 0x%x, error code: 0x%x [eip=0x%x, esp=0x%x, ebp=0x%x]\n", 
             fault_address, 
             frame->error_code, 
-            frame->eip);
+            frame->eip,
+            esp,
+            ebp);
 
     // Check if the fault_address is in the kernel heap range
     if (fault_address >= KERNEL_HEAP_START && fault_address < KERNEL_HEAP_END) 

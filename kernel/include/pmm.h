@@ -12,11 +12,12 @@
 // stack grows downwards
 // ESP starts at KERNEL_STACK_TOP and goes down to KERNEL_STACK_BOTTOM
 #define KERNEL_STACK_TOP_VIRT   0xC3000000
-#define KERNEL_STACK_BOTTOM_VIRT (KERNEL_STACK_TOP_VIRT - 0x4000)
+#define KERNEL_STACK_BOTTOM_VIRT (KERNEL_STACK_TOP_VIRT - 0x20000)
 // Todo: update it with some larger value.
 
 // pmm - process memory management utilities
 void pmm_init(void);
 void pmm_reserve_memory_region(reserved_memory_type_t reserved_type);
+void pmm_set_frame_bitmap(uint32_t start_address, uint32_t end_address);
 void* pmm_alloc_frame(void);
 void pmm_free_frame(void* addr);

@@ -84,7 +84,8 @@ void paging_map_page (uint32_t virtual_addr, uint32_t physical_addr, uint32_t fl
     {
         // Allocate a new Page Table
 
-        // allocate a 4Kb frame
+        // allocate a 4Kb frame for a new Page Table.
+        // pmm_alloc_frame returns the physical address of the allocated frame (page table)
         page_table = (uint32_t*)pmm_alloc_frame(); 
         if (!page_table)
         {
