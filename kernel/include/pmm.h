@@ -11,8 +11,8 @@
 
 // stack grows downwards
 // ESP starts at KERNEL_STACK_TOP and goes down to KERNEL_STACK_BOTTOM
-#define KERNEL_STACK_TOP        0x9FB00
-#define KERNEL_STACK_BOTTOM     0x9A000
+#define KERNEL_STACK_TOP_VIRT   0xC3000000
+#define KERNEL_STACK_BOTTOM_VIRT (KERNEL_STACK_TOP_VIRT - 0x4000)
 // Todo: update it with some larger value.
 
 // pmm - process memory management utilities

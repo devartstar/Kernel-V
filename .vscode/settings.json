@@ -8,6 +8,7 @@
         "stddef.h": "c",
         "idt.h": "c",
         "vga.h": "c",
-        "test_printk.h": "c"
+        "test_printk.h": "c",
+        "paging.h": "c"
     }
 }

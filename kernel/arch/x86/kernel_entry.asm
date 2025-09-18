@@ -7,6 +7,12 @@ _start:
     mov esp, 0x9FB00
     call kernel_main
 
+global switch_to_high_stack
+
+switch_to_high_stack:
+    mov esp, [esp+4]        ; get new_esp from stack argument
+    jmp [esp+8]             ; jump to function pointer argument
+
 .hang:
     cli
     hlt
