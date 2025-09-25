@@ -42,6 +42,7 @@ struct tss_entry {
 
 extern struct tss_entry tss_df;
 extern void double_fault_handler(void);  // Assembly handler
+void update_tss_cr3(void);
 void init_tss();
 
 #endif // TSS_H

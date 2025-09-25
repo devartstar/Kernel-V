@@ -12,8 +12,7 @@ global switch_to_high_stack
 switch_to_high_stack:
     mov eax, [esp+8]      ; function pointer
     mov esp, [esp+4]      ; set new stack pointer (which already has a fake return addr)
-    call eax              ; CALL, not JMP, so the return address is popped
-    jmp .hang             ; Never return; hang
+    jmp eax               ; JMP, instead of CALL, so that we don't push return addr
 
 .hang:
     cli

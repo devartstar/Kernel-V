@@ -9,7 +9,19 @@ extern void switch_to_high_stack(uint32_t new_esp, void (*entry_func)());
 void test_stack_overflow(int depth) {
     volatile uint8_t dummy[512]; // Forces at least 512 bytes stack usage per call
     dummy[0] = (uint8_t)depth;   // Actually touch the memory
-    printk("Stack depth: %d, ESP=0x%x\n", depth, &depth);
+    
+    // Get current stack pointer
+    uint32_t current_esp;
+    asm volatile ("mov %%esp, %0" : "=r"(current_esp));
+    
+    printk("Stack depth: %d, ESP=0x%08x\n", depth, current_esp);
+    
+    // Check if we're getting close to the guard page
+    if (current_esp <= KERNEL_STACK_BOTTOM_VIRT + PAGE_SIZE + 0x1000) {
+        printk("WARNING: Approaching guard page at 0x%08x!\n", KERNEL_STACK_BOTTOM_VIRT);
+        printk("Current ESP: 0x%08x, Guard page: 0x%08x\n", current_esp, KERNEL_STACK_BOTTOM_VIRT);
+    }
+    
     test_stack_overflow(depth + 1); // Recursive call
 }
 
@@ -101,12 +113,23 @@ void kernel_main() {
     paging_init();
     pmm_reserve_memory_region(RESERVED_TYPE_PAGE_TABLE);
 
+    update_tss_cr3();
+    // Debug: Verify double fault handler setup
+    printk("\n==================================================\n");
+    printk("Double fault TSS configured:\n");
+    printk("  TSS address: 0x%08x\n", (uint32_t)&tss_df);
+    printk("  Handler EIP: 0x%08x\n", tss_df.eip);
+    printk("  Handler ESP: 0x%08x\n", tss_df.esp);
+    printk("  Handler CR3: 0x%08x\n", tss_df.cr3);
+    printk("\n==================================================\n");
+    
+
     // Map stack region: high virtual address -> physical address
     uint32_t stack_size = KERNEL_STACK_TOP_VIRT - KERNEL_STACK_BOTTOM_VIRT;
     printk("Mapping stack pages...\n");
     // Guard page at KERNEL_STACK_BOTTOM_VIRT (first page) is left unmapped
     // If the stack overflows, it will hit this unmapped page and cause a page fault
-    for (uint32_t off = 10*PAGE_SIZE; off < stack_size; off += PAGE_SIZE) {
+    for (uint32_t off = PAGE_SIZE; off < stack_size; off += PAGE_SIZE) {
         uint32_t virt = KERNEL_STACK_BOTTOM_VIRT + off;
         void* phys_frame = pmm_alloc_frame();
         if (!phys_frame) {
@@ -123,9 +146,9 @@ void kernel_main() {
     // Switch ESP to high virtual address (inside mapped page, not at page boundary)
     printk("About to switch to high virtual stack...\n");
     // Prepare the top of the new stack:
-    uint32_t* stack = (uint32_t*)KERNEL_STACK_TOP_VIRT;
-    *(--stack) = (uint32_t)0;                // Fake return address
-    switch_to_high_stack(stack, high_stack_entry);
+    uint32_t new_stack_ptr = KERNEL_STACK_TOP_VIRT - 16; // Leave some space from the very top
+    printk("New stack pointer: 0x%08x\n", new_stack_ptr);
+    switch_to_high_stack(new_stack_ptr, high_stack_entry);
     printk("Switched to high virtual stack!\n");
 
     // Execution continues from high_stack_entry()

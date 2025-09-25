@@ -14,6 +14,10 @@ void init_tss() {
     for (int i = 0; i < sizeof(struct tss_entry); i++) {
         ((uint8_t*)&tss_df)[i] = 0;
     }
+
+    // Get current CR3 value (page directory)
+    uint32_t current_cr3;
+    __asm__ volatile("mov %%cr3, %0" : "=r"(current_cr3));
     
     // Set up double fault TSS using the stack from pmm.h
     tss_df.ss = 0x10;   // Data segment
@@ -21,7 +25,14 @@ void init_tss() {
     tss_df.cs = 0x08;   // Code segment
     tss_df.eip = (uint32_t)double_fault_handler; // Handler address (assembly version)
     tss_df.eflags = 0x202; // Interrupt flag set
+    tss_df.cr3 = current_cr3; // Current page directory
     tss_df.ds = tss_df.es = tss_df.fs = tss_df.gs = 0x10; // Data segments
     
     // esp0/ss0 are for privilege level changes, not needed for double fault task switching
+}
+
+void update_tss_cr3(void) {
+    uint32_t current_cr3;
+    __asm__ volatile("mov %%cr3, %0" : "=r"(current_cr3));
+    tss_df.cr3 = current_cr3;
 }
