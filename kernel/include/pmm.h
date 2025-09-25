@@ -15,10 +15,6 @@
 #define KERNEL_STACK_TOP_VIRT   0xC3000000
 #define KERNEL_STACK_BOTTOM_VIRT (KERNEL_STACK_TOP_VIRT - 0x10000)
 
-// Double fault stack (4KB)
-#define DOUBLE_FAULT_STACK_SIZE 0x1000 
-extern uint8_t double_fault_stack[DOUBLE_FAULT_STACK_SIZE];
-
 // pmm - process memory management utilities
 void pmm_init(void);
 void pmm_reserve_memory_region(reserved_memory_type_t reserved_type);

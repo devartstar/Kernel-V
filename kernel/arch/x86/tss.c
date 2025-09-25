@@ -1,5 +1,7 @@
 #include "arch/x86/tss.h"
-#include "pmm.h"
+
+// Define the double fault stack
+uint8_t double_fault_stack[DOUBLE_FAULT_STACK_SIZE];
 
 // Double fault TSS instance
 struct tss_entry tss_df;

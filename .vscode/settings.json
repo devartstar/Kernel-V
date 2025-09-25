@@ -10,6 +10,7 @@
         "vga.h": "c",
         "test_printk.h": "c",
         "paging.h": "c",
-        "tss.h": "c"
+        "tss.h": "c",
+        "gdt.h": "c"
     }
 }

@@ -1,5 +1,7 @@
 #include "kernel.h"
 #include "pmm.h"
+#include "arch/x86/tss.h"
+#include "arch/x86/gdt.h"
 #include "paging.h"
 
 extern void switch_to_high_stack(uint32_t new_esp, void (*entry_func)());
@@ -66,7 +68,8 @@ void kernel_main() {
     // Initializing IDT (Interrupt Descriptor Table)
     // -------------------------------------------------------------------------
     idt_init();
-    tss_init();
+    init_tss();
+    gdt_init();
     // Do NOT enable interrupts yet
 
     // -------------------------------------------------------------------------

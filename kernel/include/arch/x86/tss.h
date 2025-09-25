@@ -1,4 +1,13 @@
+#ifndef TSS_H
+#define TSS_H
+
 #include <stdint.h>
+
+
+// Double fault stack (4KB)
+#define DOUBLE_FAULT_STACK_SIZE 0x1000 
+extern uint8_t double_fault_stack[DOUBLE_FAULT_STACK_SIZE];
+
 
 // Complete TSS structure for task switching
 struct tss_entry {
@@ -34,4 +43,6 @@ struct tss_entry {
 extern struct tss_entry tss_df;
 extern void double_fault_handler(void);  // Assembly handler
 void init_tss();
+
+#endif // TSS_H
 

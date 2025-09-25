@@ -58,8 +58,8 @@ void idt_init ()
     // P=1(Present), DPL=0(Kernel only access), Type=0xE(Interrupt Gate)
     idt_set_gate(14, (uint32_t)isr_page_fault, 0x08, 0x8E); 
 
-    // Load TSS
-    __asm__ volatile("ltr %%ax" : : "a"(0x18));
+    // TSS loading should be done after TSS is properly set up in GDT
+    // __asm__ volatile("ltr %%ax" : : "a"(0x18));
 
     idt_flush((uint32_t)&idt_ptr);
 }
