@@ -35,10 +35,17 @@ void page_fault_handler (page_fault_stack_t* frame)
         return;
     }
 
+    // Fault accessing Guard Page: Stack Overflow
+    if (fault_address >= KERNEL_STACK_BOTTOM_VIRT && fault_address < KERNEL_STACK_BOTTOM_VIRT + PAGE_SIZE) 
+    {
+        printk("!!! KERNEL STACK OVERFLOW !!! Accessed guard page at address 0x%x", fault_address);
+        panik("Kernel stack overflow detected!");
+    }
+
     // Check if the fault_address is in the kernel stack range and faulting within a small gap below ESP
     // Typical stack growth threshold: only map if faulting within N bytes below ESP
     const uint32_t STACK_GROWTH_GAP = 32; // or 128, or 0
-    if (fault_address >= KERNEL_STACK_BOTTOM_VIRT && fault_address < KERNEL_STACK_TOP_VIRT) {
+    if (fault_address >= KERNEL_STACK_BOTTOM_VIRT + PAGE_SIZE && fault_address < KERNEL_STACK_TOP_VIRT) {
         if (fault_address >= frame->esp - STACK_GROWTH_GAP && fault_address < frame->esp) {
             printk("[PF] Stack growth: mapping new stack page at 0x%x (esp=0x%x)\n", fault_address, frame->esp);
             void* new_frame = pmm_alloc_frame();

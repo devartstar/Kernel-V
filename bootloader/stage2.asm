@@ -138,6 +138,18 @@ DataSegment32:
     db 0b11001111
     db 0
 
+TSSBase      equ tss_df
+TSSLimit     equ sizeof.tss_entry - 1
+
+; TSS descriptor (32-bit, present)
+TSSDesc32:
+    dw TSSLimit               ; [0-1] Limit low
+    dw TSSBase & 0xFFFF       ; [2-3] Base low
+    db (TSSBase >> 16) & 0xFF ; [4]   Base mid
+    db 10001001b              ; [5]   Access: 1 0 0 0 1 0 0 1 (present, system, type 9)
+    db (TSSLimit >> 16)       ; [6]   Limit high (usually 0)
+    db (TSSBase >> 24) & 0xFF ; [7]   Base high
+
 GDT32Len:       equ $-GDT32
 
 GDT32Pointer:   dw GDT32Len - 1         ; Length of GDT

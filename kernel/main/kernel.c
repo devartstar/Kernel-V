@@ -4,6 +4,13 @@
 
 extern void switch_to_high_stack(uint32_t new_esp, void (*entry_func)());
 
+void test_stack_overflow(int depth) {
+    volatile uint8_t dummy[512]; // Forces at least 512 bytes stack usage per call
+    dummy[0] = (uint8_t)depth;   // Actually touch the memory
+    printk("Stack depth: %d, ESP=0x%x\n", depth, &depth);
+    test_stack_overflow(depth + 1); // Recursive call
+}
+
 __attribute__((noreturn))
 void high_stack_entry() {
     printk("Switched to high virtual stack!\n");
@@ -25,9 +32,12 @@ void high_stack_entry() {
     *heap_ptr = 42;
     printk("Heap page mapped and write succeeded!\n");
 
-    printk("\nTriggering page fault...\n");
-    volatile int *ptr = (int *)0xDEADBEEF;  // This address is not mapped
-    *ptr = 123;                             // Will cause interrupt 14 (page fault)
+    // printk("\nTriggering page fault...\n");
+    // volatile int *ptr = (int *)0xDEADBEEF;  // This address is not mapped
+    // *ptr = 123;                             // Will cause interrupt 14 (page fault)
+
+    printk("Testing stack overflow...\n");
+    test_stack_overflow(0);
 
     // while (1) { __asm__ __volatile__("hlt"); }
 
@@ -56,6 +66,7 @@ void kernel_main() {
     // Initializing IDT (Interrupt Descriptor Table)
     // -------------------------------------------------------------------------
     idt_init();
+    tss_init();
     // Do NOT enable interrupts yet
 
     // -------------------------------------------------------------------------
@@ -90,7 +101,9 @@ void kernel_main() {
     // Map stack region: high virtual address -> physical address
     uint32_t stack_size = KERNEL_STACK_TOP_VIRT - KERNEL_STACK_BOTTOM_VIRT;
     printk("Mapping stack pages...\n");
-    for (uint32_t off = 0; off < stack_size; off += 0x1000) {
+    // Guard page at KERNEL_STACK_BOTTOM_VIRT (first page) is left unmapped
+    // If the stack overflows, it will hit this unmapped page and cause a page fault
+    for (uint32_t off = 10*PAGE_SIZE; off < stack_size; off += PAGE_SIZE) {
         uint32_t virt = KERNEL_STACK_BOTTOM_VIRT + off;
         void* phys_frame = pmm_alloc_frame();
         if (!phys_frame) {

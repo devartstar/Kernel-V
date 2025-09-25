@@ -9,11 +9,15 @@
 #define KERNEL_HEAP_START   0xC1000000
 #define KERNEL_HEAP_END     0xC2000000
 
+// Stack size = 64KB
 // stack grows downwards
 // ESP starts at KERNEL_STACK_TOP and goes down to KERNEL_STACK_BOTTOM
 #define KERNEL_STACK_TOP_VIRT   0xC3000000
-#define KERNEL_STACK_BOTTOM_VIRT (KERNEL_STACK_TOP_VIRT - 0x20000)
-// Todo: update it with some larger value.
+#define KERNEL_STACK_BOTTOM_VIRT (KERNEL_STACK_TOP_VIRT - 0x10000)
+
+// Double fault stack (4KB)
+#define DOUBLE_FAULT_STACK_SIZE 0x1000 
+extern uint8_t double_fault_stack[DOUBLE_FAULT_STACK_SIZE];
 
 // pmm - process memory management utilities
 void pmm_init(void);

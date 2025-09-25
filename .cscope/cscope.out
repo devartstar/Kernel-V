@@ -1,0 +1,5766 @@
+cscope 15 $HOME -q 0000000361 0000037219
+	@/home/devch/Projects/Kernel-V/kernel/arch/x86/idt.c
+
+1 
+	~"idt.h
+"
+
+2 
+	~<°rög.h
+>
+
+4 
+idt_Êush
+(
+uöt32_t
+);
+
+7 
+idt_íåy_t
+ 
+	gidt
+[
+IDT_ENTRIES
+];
+
+8 
+idt_±r_t
+ 
+	gidt_±r
+;
+
+17 
+	$idt_£t_g©e
+(
+num
+, 
+uöt32_t
+ 
+ba£
+, 
+uöt16_t
+ 
+£l
+, 
+uöt8_t
+ 
+Êags
+)
+
+19 
+idt
+[
+num
+].
+ba£_low
+ = (
+ba£
+ & 0xFFFF);
+
+20 
+idt
+[
+num
+].
+ba£_high
+ = (
+ba£
+ >> 16) & 0xFFFF;
+
+21 
+idt
+[
+num
+].
+£l
+ = sel;
+
+22 
+idt
+[
+num
+].
+Æways0
+ = 0;
+
+23 
+idt
+[
+num
+].
+Êags
+ = flags;
+
+24 
+	}
+}
+
+29 
+	$idt_öô
+ ()
+
+31 
+idt_±r
+.
+limô
+ = (
+idt_íåy_t
+Ë* 
+IDT_ENTRIES
+ - 1;
+
+32 
+idt_±r
+.
+ba£
+ = (
+uöt32_t
+)&
+idt
+;
+
+34 
+i
+ = 0; i < 
+IDT_ENTRIES
+; i++) {
+
+35 
+idt
+[
+i
+].
+ba£_low
+ = 0;
+
+36 
+idt
+[
+i
+].
+ba£_high
+ = 0;
+
+37 
+idt
+[
+i
+].
+£l
+ = 0;
+
+38 
+idt
+[
+i
+].
+Æways0
+ = 0;
+
+39 
+idt
+[
+i
+].
+Êags
+ = 0;
+
+42 
+	`i§_∑ge_Áu…
+();
+
+45 
+	`idt_£t_g©e
+(14, (
+uöt32_t
+)
+i§_∑ge_Áu…
+, 0x08, 0x8E);
+
+47 
+	`idt_Êush
+((
+uöt32_t
+)&
+idt_±r
+);
+
+48 
+	}
+}
+
+	@/home/devch/Projects/Kernel-V/kernel/drivers/vga/vga.c
+
+1 
+	~"drivîs/vga.h
+"
+
+4 
+	gcurs‹_row
+ = 0;
+
+5 
+	gcurs‹_cﬁ
+ = 0;
+
+8 
+ölöe
+ 
+	$outb
+(
+uöt16_t
+ 
+p‹t
+, 
+uöt8_t
+ 
+vÆ
+) {
+
+9 
+__asm__
+ vﬁ©ûê("outb %0, %1" : : "a"(
+vÆ
+), "Nd"(
+p‹t
+));
+
+10 
+	}
+}
+
+15 
+	$vga_öô
+() {
+
+16 
+curs‹_row
+ = 0;
+
+17 
+curs‹_cﬁ
+ = 0;
+
+18 
+	`vga_˛ór_s¸ìn
+();
+
+19 
+	`vga_move_curs‹
+();
+
+20 
+	}
+}
+
+25 
+	$vga_˛ór_s¸ìn
+() {
+
+26 vﬁ©ûê* 
+vga
+ = (*)
+VGA_ADDRESS
+;
+
+28 
+i
+ = 0; i < 
+VGA_WIDTH
+ * 
+VGA_HEIGHT
+; i++) {
+
+29 
+vga
+[
+i
+ * 2] = ' ';
+
+30 
+vga
+[
+i
+ * 2 + 1] = 
+WHITE_ON_BLACK
+;
+
+33 
+curs‹_row
+ = 0;
+
+34 
+curs‹_cﬁ
+ = 0;
+
+35 
+	`vga_move_curs‹
+();
+
+36 
+	}
+}
+
+41 
+	$vga_£t_curs‹_posôi⁄
+(
+row
+, 
+cﬁ
+) {
+
+42 i‡(
+row
+ >0 &&Ñow < 
+VGA_HEIGHT
+ && 
+cﬁ
+ >0 && cﬁ < 
+VGA_WIDTH
+) {
+
+43 
+curs‹_row
+ = 
+row
+;
+
+44 
+curs‹_cﬁ
+ = 
+cﬁ
+;
+
+45 
+	`vga_move_curs‹
+();
+
+47 
+	}
+}
+
+52 
+	$vga_gë_curs‹_posôi⁄
+(* 
+row
+, * 
+cﬁ
+) {
+
+53 i‡(
+row
+Ë*row = 
+curs‹_row
+;
+
+54 i‡(
+cﬁ
+Ë*cﬁ = 
+curs‹_cﬁ
+;
+
+55 
+	}
+}
+
+61 
+	$vga_move_curs‹
+() {
+
+62 
+cuºít_pos
+ = 
+curs‹_row
+ * 
+VGA_WIDTH
+ + 
+curs‹_cﬁ
+;
+
+65 
+	`outb
+(
+VGA_CTRL_PORT
+, 0x0f);
+
+66 
+	`outb
+(
+VGA_DATA_PORT
+, (
+uöt8_t
+)(
+cuºít_pos
+ & 0xff));
+
+69 
+	`outb
+(
+VGA_CTRL_PORT
+, 0x0e);
+
+70 
+	`outb
+(
+VGA_DATA_PORT
+, (
+uöt8_t
+)((
+cuºít_pos
+ >> 8) & 0xff));
+
+71 
+	}
+}
+
+77 
+	$vga_put_ch¨
+(
+c
+, 
+cﬁ‹
+) {
+
+78 vﬁ©ûê* 
+vga
+ = (*)
+VGA_ADDRESS
+;
+
+79 
+off£t
+ = 2 * (
+curs‹_row
+ * 
+VGA_WIDTH
+ + 
+curs‹_cﬁ
+);
+
+80 
+vga
+[
+off£t
+] = 
+c
+;
+
+81 
+vga
+[
+off£t
+ + 1] = 
+cﬁ‹
+;
+
+82 
+	}
+}
+
+88 
+	$vga_s¸ﬁl_up
+() {
+
+89 vﬁ©ûê* 
+vga
+ = (*)
+VGA_ADDRESS
+;
+
+92 
+row
+ = 1;Ñow < 
+VGA_HEIGHT
+;Ñow++) {
+
+93 
+cﬁ
+ = 0; cﬁ < 
+VGA_WIDTH
+; col++) {
+
+94 
+§c_off£t
+ = 2 * (
+row
+ * 
+VGA_WIDTH
+ + 
+cﬁ
+);
+
+95 
+d°_off£t
+ = 2 * ((
+row
+ - 1Ë* 
+VGA_WIDTH
+ + 
+cﬁ
+);
+
+96 
+vga
+[
+d°_off£t
+] = vga[
+§c_off£t
+];
+
+97 
+vga
+[
+d°_off£t
+ + 1] = vga[
+§c_off£t
+ + 1];
+
+102 
+cﬁ
+ = 0; cﬁ < 
+VGA_WIDTH
+; col++) {
+
+103 
+off£t
+ = 2 * ((
+VGA_HEIGHT
+ - 1Ë* 
+VGA_WIDTH
+ + 
+cﬁ
+);
+
+104 
+vga
+[
+off£t
+] = ' ';
+
+105 
+vga
+[
+off£t
+ + 1] = 
+WHITE_ON_BLACK
+;
+
+107 
+	}
+}
+
+112 
+	$vga_¥öt_°rög
+(c⁄° * 
+°r
+, 
+cﬁ‹
+) {
+
+113 *
+°r
+) {
+
+114 i‡(*
+°r
+ == '\n') {
+
+115 
+curs‹_row
+++;
+
+116 
+curs‹_cﬁ
+ = 0;
+
+118 
+	`vga_put_ch¨
+(*
+°r
+, 
+cﬁ‹
+);
+
+119 
+curs‹_cﬁ
+++;
+
+122 i‡(
+curs‹_cﬁ
+ >
+VGA_WIDTH
+) {
+
+123 
+curs‹_row
+++;
+
+124 
+curs‹_cﬁ
+ = 0;
+
+129 i‡(
+curs‹_row
+ >
+VGA_HEIGHT
+) {
+
+130 
+	`vga_s¸ﬁl_up
+();
+
+131 
+curs‹_row
+ = 
+VGA_HEIGHT
+ - 1;
+
+132 
+curs‹_cﬁ
+ = 0;
+
+135 
+	`vga_move_curs‹
+();
+
+136 
+°r
+++;
+
+138 
+	}
+}
+
+	@/home/devch/Projects/Kernel-V/kernel/include/assert.h
+
+1 #i‚de‡
+KERN_ASSERT_H
+
+
+2 
+	#KERN_ASSERT_H
+
+
+	)
+
+4 
+	~"∑nik.h
+"
+
+6 
+	#KASSERT
+(
+ex¥
+) \
+
+8 if(!(
+ex¥
+)) { \
+
+9 
+	`∑nik
+("As£πi⁄ Faûed: %†%s:%d i¿%s()\n", #ex¥, 
+__FILE__
+, 
+__LINE__
+, 
+__func__
+); \
+
+11 } 0)
+
+	)
+
+13 
+	#as£π
+(
+ex¥
+Ë
+	`KASSERT
+”x¥)
+
+	)
+
+15 
+	#BUG
+() \
+
+16 
+	`∑nik
+("BUGáà%s:%d i¿%s()\n", 
+__FILE__
+, 
+__LINE__
+, 
+__func__
+)
+
+	)
+
+18 
+	#BUG_ON
+(
+c⁄dôi⁄
+) \
+
+20 i‡(
+c⁄dôi⁄
+) { \
+
+21 
+	`BUG
+(); \
+
+23 } 0)
+
+	)
+
+	@/home/devch/Projects/Kernel-V/kernel/include/drivers/vga.h
+
+1 #i‚de‡
+DRIVERS_VGA_H
+
+
+2 
+	#DRIVERS_VGA_H
+
+
+	)
+
+4 
+	~<°döt.h
+>
+
+19 
+	#VGA_ADDRESS
+ 0xb8000
+
+	)
+
+20 
+	#VGA_WIDTH
+ 80
+
+	)
+
+21 
+	#VGA_HEIGHT
+ 25
+
+	)
+
+23 
+	#VGA_SIZE
+ (
+VGA_WIDTH
+ * 
+VGA_HEIGHT
+ * 2)
+
+	)
+
+26 
+	#VGA_CTRL_PORT
+ 0x3d4
+
+	)
+
+27 
+	#VGA_DATA_PORT
+ 0x3d5
+
+	)
+
+30 
+	evga_cﬁ‹
+ {
+
+31 
+	mVGA_BLACK
+ = 0,
+
+32 
+	mVGA_BLUE
+ = 1,
+
+33 
+	mVGA_GREEN
+ = 2,
+
+34 
+	mVGA_CYAN
+ = 3,
+
+35 
+	mVGA_RED
+ = 4,
+
+36 
+	mVGA_MAGENTA
+ = 5,
+
+37 
+	mVGA_BROWN
+ = 6,
+
+38 
+	mVGA_LIGHT_GREY
+ = 7,
+
+39 
+	mVGA_DARK_GREY
+ = 8,
+
+40 
+	mVGA_LIGHT_BLUE
+ = 9,
+
+41 
+	mVGA_LIGHT_GREEN
+ = 10,
+
+42 
+	mVGA_LIGHT_CYAN
+ = 11,
+
+43 
+	mVGA_LIGHT_RED
+ = 12,
+
+44 
+	mVGA_LIGHT_MAGENTA
+ = 13,
+
+45 
+	mVGA_YELLOW
+ = 14,
+
+46 
+	mVGA_WHITE
+ = 15,
+
+50 
+	#VGA_COLOR
+(
+bg
+, 
+fg
+Ë(((bgË<< 0x04Ë| ((fgË& 0x0f))
+
+	)
+
+51 
+	#WHITE_ON_BLACK
+ 
+	`VGA_COLOR
+(
+VGA_BLACK
+, 
+VGA_WHITE
+)
+
+	)
+
+52 
+	#RED_ON_WHITE
+ 
+	`VGA_COLOR
+(
+VGA_WHITE
+, 
+VGA_RED
+)
+
+	)
+
+53 
+	#BLUE_ON_YELLOW
+ 
+	`VGA_COLOR
+(
+VGA_YELLOW
+, 
+VGA_BLUE
+)
+
+	)
+
+54 
+	#GREEN_ON_BLACK
+ 
+	`VGA_COLOR
+(
+VGA_BLACK
+, 
+VGA_GREEN
+)
+
+	)
+
+55 
+	#YELLOW_ON_BLACK
+ 
+	`VGA_COLOR
+(
+VGA_BLACK
+, 
+VGA_YELLOW
+)
+
+	)
+
+58 
+vga_öô
+();
+
+59 
+vga_˛ór_s¸ìn
+();
+
+60 
+vga_put_ch¨
+(
+c
+, 
+cﬁ‹
+);
+
+61 
+vga_¥öt_°rög
+(c⁄° * 
+°r
+, 
+cﬁ‹
+);
+
+62 
+vga_move_curs‹
+();
+
+63 
+vga_s¸ﬁl_up
+();
+
+64 
+vga_£t_curs‹_posôi⁄
+(
+row
+, 
+cﬁ
+);
+
+65 
+vga_gë_curs‹_posôi⁄
+(* 
+row
+, * 
+cﬁ
+);
+
+	@/home/devch/Projects/Kernel-V/kernel/include/idt.h
+
+1 #¥agm®
+⁄˚
+
+
+2 
+	~<°döt.h
+>
+
+14 
+	#IDT_ENTRIES
+ 256
+
+	)
+
+19 
+uöt16_t
+ 
+	mlimô
+;
+
+20 
+uöt32_t
+ 
+	mba£
+;
+
+21 } 
+	t__©åibuã__
+((
+	t∑cked
+)Ë
+	tidt_±r_t
+;
+
+32 
+uöt16_t
+ 
+	mba£_low
+;
+
+33 
+uöt16_t
+ 
+	m£l
+;
+
+34 
+uöt8_t
+ 
+	mÆways0
+;
+
+58 
+uöt8_t
+ 
+	mÊags
+;
+
+60 
+uöt16_t
+ 
+	mba£_high
+;
+
+61 } 
+	t__©åibuã__
+((
+	t∑cked
+)Ë
+	tidt_íåy_t
+;
+
+64 
+idt_£t_g©e
+(
+num
+, 
+uöt32_t
+ 
+ba£
+, 
+uöt16_t
+ 
+£l
+, 
+uöt8_t
+ 
+Êags
+);
+
+65 
+idt_öô
+();
+
+	@/home/devch/Projects/Kernel-V/kernel/include/kernel.h
+
+1 #i‚de‡
+KERNEL_H
+
+
+2 
+	#KERNEL_H
+
+
+	)
+
+4 
+	~<°döt.h
+>
+
+5 
+	~<°ddef.h
+>
+
+8 
+	~"¥ötk.h
+"
+
+9 
+	~"drivîs/vga.h
+"
+
+10 
+	~"∑nik.h
+"
+
+11 
+	~"mem‹y_m≠.h
+"
+
+12 
+	~"pmm.h
+"
+
+13 
+	~"∑gög.h
+"
+
+14 
+	~"idt.h
+"
+
+16 #ifde‡
+KERNEL_TESTS
+
+
+17 
+	~"ã°s/ã°_¥ötk.h
+"
+
+18 
+	~"ã°s/ã°_∑nik.h
+"
+
+22 
+	#KERNEL_NAME
+ "Kî√l-V"
+
+	)
+
+23 
+	#KERNEL_VERSION
+ "0.2"
+
+	)
+
+24 
+	#KERNEL_AUTHOR
+ "Devjô"
+
+	)
+
+27 #i‚de‡
+NULL
+
+
+28 
+	#NULL
+ ((*)0)
+
+	)
+
+31 
+	#ARRAY_SIZE
+(
+x
+Ë((xË/ ((x)[0]))
+
+	)
+
+34 
+kî√l_maö
+();
+
+36 
+grow_°ack
+(
+dïth
+);
+
+	@/home/devch/Projects/Kernel-V/kernel/include/memory_map.h
+
+1 #¥agm®
+⁄˚
+
+
+3 
+	~<°döt.h
+>
+
+5 
+	#E820_MAX_ENTRIES
+ 128
+
+	)
+
+8 
+	#E820_TYPE_AVAILABLE
+ 1
+
+	)
+
+9 
+	#E820_TYPE_RESERVED
+ 2
+
+	)
+
+10 
+	#E820_TYPE_ACPI_RECLAIMABLE
+ 3
+
+	)
+
+11 
+	#E820_TYPE_ACPI_NVS
+ 4
+
+	)
+
+12 
+	#E820_TYPE_UNUSABLE
+ 5
+
+	)
+
+16 
+	mRESERVED_TYPE_INIT
+ = (1 << 0) | (1 << 1) | (1 << 2),
+
+17 
+	mRESERVED_TYPE_BIOS
+ = 1 << 0,
+
+18 
+	mRESERVED_TYPE_IVT
+ = 1 << 1,
+
+19 
+	mRESERVED_TYPE_VGA
+ = 1 << 2,
+
+20 
+	mRESERVED_TYPE_KERNEL
+ = 1 << 3,
+
+21 
+	mRESERVED_TYPE_BITMAP
+ = 1 << 4,
+
+22 
+	mRESERVED_TYPE_PAGE_TABLE
+ = 1 << 5,
+
+23 } 
+	tª£rved_mem‹y_ty≥_t
+;
+
+27 
+uöt64_t
+ 
+	mba£
+;
+
+28 
+uöt64_t
+ 
+	mÀngth
+;
+
+29 
+uöt32_t
+ 
+	mty≥
+;
+
+30 
+uöt32_t
+ 
+	mª£rved
+;
+
+31 } 
+	t__©åibuã__
+((
+	t∑cked
+)Ë
+	te820_íåy_t
+;
+
+34 
+	#E820_MAP_ADDRESS
+ 0x5000
+
+	)
+
+35 
+	#E820_MAP_COUNT_PTR
+ 0x2004
+
+	)
+
+39 
+uöt64_t
+ 
+	mba£
+;
+
+40 
+uöt64_t
+ 
+	mÀngth
+;
+
+41 
+uöt32_t
+ 
+	mty≥
+;
+
+42 } 
+	tmem‹y_ªgi⁄_t
+;
+
+44 
+	#MAX_MEMORY_REGIONS
+ 32
+
+	)
+
+46 
+∑r£_™d_¥öt_e820_m≠
+();
+
+47 
+mem‹y_ªgi⁄_t
+ 
+ußbÀ_mem‹y_ªgi⁄
+[
+MAX_MEMORY_REGIONS
+];
+
+48 
+uöt16_t
+ 
+ußbÀ_mem‹y_ªgi⁄_cou¡
+;
+
+	@/home/devch/Projects/Kernel-V/kernel/include/page_fault.h
+
+1 #¥agm®
+⁄˚
+
+
+2 
+	~<°döt.h
+>
+
+5 
+uöt32_t
+ 
+	mds
+;
+
+6 
+uöt32_t
+ 
+	medi
+, 
+	mesi
+, 
+	mebp
+, 
+	me•
+, 
+	mebx
+, 
+	medx
+, 
+	mecx
+, 
+	móx
+;
+
+7 
+uöt32_t
+ 
+	möt_no
+;
+
+8 
+uöt32_t
+ 
+	mîr‹_code
+;
+
+9 
+uöt32_t
+ 
+	meù
+, 
+	mcs
+, 
+	meÊags
+, 
+	mu£ª•
+, 
+	mss
+;
+
+10 } 
+	t∑ge_Áu…_°ack_t
+;
+
+12 
+∑ge_Áu…_h™dÀr
+(
+∑ge_Áu…_°ack_t
+* 
+‰ame
+);
+
+	@/home/devch/Projects/Kernel-V/kernel/include/paging.h
+
+1 #¥agm®
+⁄˚
+
+
+3 
+	~<°döt.h
+>
+
+5 
+	#PAGE_SIZE
+ 4096
+
+	)
+
+6 
+	#PAGE_ENTRIES
+ 1024
+
+	)
+
+8 
+	#PAGE_DIR_START_ADDR
+ 0x80000
+
+	)
+
+9 
+	#PAGE_TABLE_START_ADDR
+ 0x81000
+
+	)
+
+11 
+	#PAGE_PRESENT
+ 0x1
+
+	)
+
+12 
+	#PAGE_WRITE
+ 0x2
+
+	)
+
+13 
+	#PAGE_USER
+ 0x4
+
+	)
+
+15 
+∑gög_öô
+();
+
+17 
+∑gög_m≠_∑ge
+(
+uöt32_t
+ 
+vútuÆ_addr
+, uöt32_à
+physiˇl_addr
+, uöt32_à
+Êags
+);
+
+	@/home/devch/Projects/Kernel-V/kernel/include/panik.h
+
+1 #i‚de‡
+PANIK_H
+
+
+2 
+	#PANIK_H
+
+
+	)
+
+4 
+	~"as£π.h
+"
+
+7 
+	mPANIK_MODE_NORMAL
+,
+
+8 
+	mPANIK_MODE_TEST
+
+
+9 } 
+	t∑nik_mode_t
+;
+
+11 
+£t_∑nik_mode
+(
+∑nik_mode_t
+ 
+mode
+);
+
+12 
+∑nik_mode_t
+ 
+gë_∑nik_mode
+();
+
+15 
+	m∑nik_ˇŒed
+;
+
+16 
+	mœ°_∑nik_msg
+[256];
+
+17 
+	m∑nik_ˇŒ_cou¡
+;
+
+18 } 
+	t∑nik_°©e_t
+;
+
+20 
+ª£t_∑nik_°©e
+();
+
+21 c⁄° 
+∑nik_°©e_t
+* 
+gë_∑nik_°©e
+();
+
+23 
+	$∑nik
+(c⁄° * 
+fmt
+, ...Ë
+	`__©åibuã__
+((
+	`f‹m©
+(
+¥ötf
+,1,2)));
+
+	@/home/devch/Projects/Kernel-V/kernel/include/pmm.h
+
+1 #¥agm®
+⁄˚
+
+
+3 
+	~<°döt.h
+>
+
+4 
+	~"mem‹y_m≠.h
+"
+
+6 
+	#PAGE_SIZE
+ 4096
+
+	)
+
+9 
+	#KERNEL_HEAP_START
+ 0xC1000000
+
+	)
+
+10 
+	#KERNEL_HEAP_END
+ 0xC2000000
+
+	)
+
+15 
+	#KERNEL_STACK_TOP_VIRT
+ 0xC3000000
+
+	)
+
+16 
+	#KERNEL_STACK_BOTTOM_VIRT
+ (
+KERNEL_STACK_TOP_VIRT
+ - 0x10000)
+
+	)
+
+19 
+pmm_öô
+();
+
+20 
+pmm_ª£rve_mem‹y_ªgi⁄
+(
+ª£rved_mem‹y_ty≥_t
+ 
+ª£rved_ty≥
+);
+
+21 
+pmm_£t_‰ame_bôm≠
+(
+uöt32_t
+ 
+°¨t_addªss
+, uöt32_à
+íd_addªss
+);
+
+22 * 
+pmm_Æloc_‰ame
+();
+
+23 
+pmm_‰ì_‰ame
+(* 
+addr
+);
+
+	@/home/devch/Projects/Kernel-V/kernel/include/printk.h
+
+1 #i‚de‡
+KERNEL_PRINTK_H
+
+
+2 
+	#KERNEL_PRINTK_H
+
+
+	)
+
+4 
+	~<°d¨g.h
+>
+
+5 
+	~<°ddef.h
+>
+
+6 
+	~<°döt.h
+>
+
+14 
+	#LOG_BUF_SIZE
+ 1024
+
+	)
+
+17 
+	#KERN_SOH
+ "\001"
+
+18 
+	#KERN_EMERG
+ 
+KERN_SOH
+ "0"
+
+19 
+	#KERN_ALERT
+ 
+KERN_SOH
+ "1"
+
+20 
+	#KERN_CRIT
+ 
+KERN_SOH
+ "2"
+
+21 
+	#KERN_ERR
+ 
+KERN_SOH
+ "3"
+
+22 
+	#KERN_WARNING
+ 
+KERN_SOH
+ "4"
+
+23 
+	#KERN_NOTICE
+ 
+KERN_SOH
+ "5"
+
+24 
+	#KERN_INFO
+ 
+KERN_SOH
+ "6"
+
+25 
+	#KERN_DEBUG
+ 
+KERN_SOH
+ "7"
+
+26 
+
+	)
+
+28 
+	slogÀvñ
+ {
+
+29 
+	mÀvñ_ch¨
+;
+
+30 c⁄° *
+	m«me
+;
+
+31 
+uöt8_t
+ 
+	mcﬁ‹
+;
+
+35 c⁄° 
+logÀvñ
+ 
+logÀvñs
+[];
+
+36 c⁄° 
+num_logÀvñs
+;
+
+39 
+	$¥ötk
+(c⁄° *
+fmt
+, ...Ë
+	`__©åibuã__
+((
+	`f‹m©
+(
+¥ötf
+, 1, 2)));
+
+42 
+	#¥_emîg
+(
+fmt
+, ...Ë
+	`¥ötk
+(
+KERN_EMERG
+ fmt, ##
+__VA_ARGS__
+)
+
+	)
+
+43 
+	#¥_Æît
+(
+fmt
+, ...Ë
+	`¥ötk
+(
+KERN_ALERT
+ fmt, ##
+__VA_ARGS__
+)
+
+	)
+
+44 
+	#¥_¸ô
+(
+fmt
+, ...Ë
+	`¥ötk
+(
+KERN_CRIT
+ fmt, ##
+__VA_ARGS__
+)
+
+	)
+
+45 
+	#¥_îr
+(
+fmt
+, ...Ë
+	`¥ötk
+(
+KERN_ERR
+ fmt, ##
+__VA_ARGS__
+)
+
+	)
+
+46 
+	#¥_w¨nög
+(
+fmt
+, ...Ë
+	`¥ötk
+(
+KERN_WARNING
+ fmt, ##
+__VA_ARGS__
+)
+
+	)
+
+47 
+	#¥_w¨n
+ 
+¥_w¨nög
+
+
+	)
+
+48 
+	#¥_nŸi˚
+(
+fmt
+, ...Ë
+	`¥ötk
+(
+KERN_NOTICE
+ fmt, ##
+__VA_ARGS__
+)
+
+	)
+
+49 
+	#¥_öfo
+(
+fmt
+, ...Ë
+	`¥ötk
+(
+KERN_INFO
+ fmt, ##
+__VA_ARGS__
+)
+
+	)
+
+50 
+	#¥_debug
+(
+fmt
+, ...Ë
+	`¥ötk
+(
+KERN_DEBUG
+ fmt, ##
+__VA_ARGS__
+)
+
+	)
+
+53 
+	`¥ötk_öô
+();
+
+56 
+	`my_v¢¥ötf
+(*
+buf
+, 
+size_t
+ 
+size
+, c⁄° *
+fmt
+, 
+va_li°
+ 
+¨gs
+);
+
+59 
+	`rögbuf_wrôe
+(c⁄° * 
+°r
+, 
+size_t
+ 
+°r_Àn
+);
+
+	@/home/devch/Projects/Kernel-V/kernel/include/tests/test_panik.h
+
+1 #i‚de‡
+KERNEL_TEST_∑nik_H
+
+
+2 
+	#KERNEL_TEST_∑nik_H
+
+
+	)
+
+10 
+run_∑nik_unô_ã°s
+();
+
+13 
+ã°_nuŒ_poöãr_∑nik
+();
+
+14 
+ã°_mem‹y_c‹ru±i⁄_∑nik
+();
+
+15 
+ã°_divisi⁄_by_zîo_∑nik
+();
+
+16 
+ã°_as£π_Áûuªs
+();
+
+17 
+ã°_°ack_ovîÊow_∑nik
+();
+
+18 
+ã°_h¨dw¨e_Áu…_∑nik
+();
+
+19 
+ã°_∑nik_wôh_ªÆ_f‹m©tög
+();
+
+	@/home/devch/Projects/Kernel-V/kernel/include/tests/test_printk.h
+
+1 #¥agm®
+⁄˚
+
+
+3 
+run_¥ötk_ã°s
+();
+
+4 
+run_¥ötk_s¸ﬁlög_ã°
+();
+
+	@/home/devch/Projects/Kernel-V/kernel/lib/panik.c
+
+1 
+	~<°d¨g.h
+>
+
+2 
+	~"../ö˛ude/¥ötk.h
+"
+
+3 
+	~"../ö˛ude/drivîs/vga.h
+"
+
+4 
+	~"../ö˛ude/∑nik.h
+"
+
+7 
+∑nik_mode_t
+ 
+	gcuºít_∑nik_mode
+ = 
+PANIK_MODE_NORMAL
+;
+
+8 
+∑nik_°©e_t
+ 
+	g∑nik_°©e
+ = {0};
+
+13 
+	$£t_∑nik_mode
+(
+∑nik_mode_t
+ 
+mode
+)
+
+15 
+cuºít_∑nik_mode
+ = 
+mode
+;
+
+16 
+	}
+}
+
+21 
+∑nik_mode_t
+ 
+	$gë_∑nik_mode
+()
+
+23  
+cuºít_∑nik_mode
+;
+
+24 
+	}
+}
+
+29 c⁄° 
+∑nik_°©e_t
+* 
+	$gë_∑nik_°©e
+()
+
+31  &
+∑nik_°©e
+;
+
+32 
+	}
+}
+
+37 
+	$ª£t_∑nik_°©e
+()
+
+39 
+∑nik_°©e
+.
+∑nik_ˇŒed
+ = 0;
+
+40 
+∑nik_°©e
+.
+∑nik_ˇŒ_cou¡
+ = 0;
+
+41 
+∑nik_°©e
+.
+œ°_∑nik_msg
+[0] = '\0';
+
+42 
+	}
+}
+
+44 
+	$∑nik
+(c⁄° * 
+fmt
+, ...)
+
+47 
+∑nik_°©e
+.
+∑nik_ˇŒed
+ = 1;
+
+48 
+∑nik_°©e
+.
+∑nik_ˇŒ_cou¡
+++;
+
+51 
+va_li°
+ 
+¨gs
+;
+
+52 
+	`va_°¨t
+(
+¨gs
+, 
+fmt
+);
+
+53 
+Àn
+ = 
+	`my_v¢¥ötf
+(
+∑nik_°©e
+.
+œ°_∑nik_msg
+, ’™ik_°©e.œ°_∑nik_msg), 
+fmt
+, 
+¨gs
+);
+
+54 
+	`va_íd
+(
+¨gs
+);
+
+57 i‡(
+cuºít_∑nik_mode
+ =
+PANIK_MODE_TEST
+)
+
+59 
+	`¥_emîg
+("[TEST PANIK] %s\n", 
+∑nik_°©e
+.
+œ°_∑nik_msg
+);
+
+65 
+__asm__
+ 
+	`__vﬁ©ûe__
+("cli");
+
+68 
+	`rögbuf_wrôe
+("[PANIK] ", 8);
+
+69 
+	`rögbuf_wrôe
+(
+∑nik_°©e
+.
+œ°_∑nik_msg
+, 
+Àn
+);
+
+70 
+	`rögbuf_wrôe
+("\n", 1);
+
+73 
+	`vga_¥öt_°rög
+("[PANIC] ", 
+	`VGA_COLOR
+(
+VGA_RED
+, 
+VGA_WHITE
+));
+
+74 
+	`vga_¥öt_°rög
+(
+∑nik_°©e
+.
+œ°_∑nik_msg
+, 
+	`VGA_COLOR
+(
+VGA_BLACK
+, 
+VGA_LIGHT_RED
+));
+
+75 
+	`vga_¥öt_°rög
+("\n", 
+WHITE_ON_BLACK
+);
+
+78 
+	`vga_¥öt_°rög
+("Sy°em hÆãd. Pªs†ª£àtÿª°¨t.\n", 
+	`VGA_COLOR
+(
+VGA_BLACK
+, 
+VGA_YELLOW
+));
+
+82 
+__asm__
+ 
+	`__vﬁ©ûe__
+("hlt");
+
+84 
+	}
+}
+
+	@/home/devch/Projects/Kernel-V/kernel/lib/printk.c
+
+1 
+	~"¥ötk.h
+"
+
+2 
+	~"drivîs/vga.h
+"
+
+3 
+	~<°d¨g.h
+>
+
+4 
+	~<°döt.h
+>
+
+5 
+	~<°ddef.h
+>
+
+8 
+	glog_buf„r
+[
+LOG_BUF_SIZE
+];
+
+11 
+size_t
+ 
+	grb_hód
+ = 0;
+
+12 
+size_t
+ 
+	grb_èû
+ = 0;
+
+14 c⁄° 
+logÀvñ
+ 
+	glogÀvñs
+[] = {
+
+15 { '0', "EMERG", 
+VGA_COLOR
+(
+VGA_RED
+, 
+VGA_WHITE
+) },
+
+16 { '1', "ALERT", 
+VGA_COLOR
+(
+VGA_BLACK
+, 
+VGA_LIGHT_RED
+) },
+
+17 { '2', "CRIT", 
+VGA_COLOR
+(
+VGA_BLACK
+, 
+VGA_LIGHT_MAGENTA
+) },
+
+18 { '3', "ERR", 
+VGA_COLOR
+(
+VGA_BLACK
+, 
+VGA_RED
+) },
+
+19 { '4', "WARN", 
+VGA_COLOR
+(
+VGA_BLACK
+, 
+VGA_YELLOW
+) },
+
+20 { '5', "NOTICE", 
+VGA_COLOR
+(
+VGA_BLACK
+, 
+VGA_LIGHT_CYAN
+) },
+
+21 { '6', "INFO", 
+VGA_COLOR
+(
+VGA_BLACK
+, 
+VGA_WHITE
+) },
+
+22 { '7', "DEBUG", 
+VGA_COLOR
+(
+VGA_BLACK
+, 
+VGA_DARK_GREY
+) }
+
+25 c⁄° 
+	gnum_logÀvñs
+ = (
+logÀvñs
+) / (loglevels[0]);
+
+30 
+	$rögbuf_putc
+(
+ch
+) {
+
+31 
+log_buf„r
+[
+rb_hód
+] = 
+ch
+;
+
+32 
+rb_hód
+ = (rb_hód + 1Ë% 
+LOG_BUF_SIZE
+;
+
+35 i‡(
+rb_hód
+ =
+rb_èû
+) {
+
+36 
+rb_èû
+ = (rb_èû + 1Ë% 
+LOG_BUF_SIZE
+;
+
+38 
+	}
+}
+
+43 
+	$rögbuf_wrôe
+(c⁄° * 
+°r
+, 
+size_t
+ 
+°r_Àn
+) {
+
+44 
+size_t
+ 
+i
+ = 0; i < 
+°r_Àn
+; i++) {
+
+45 
+	`rögbuf_putc
+(
+°r
+[
+i
+]);
+
+47 
+	}
+}
+
+52 
+	$föd_logÀvñ
+(
+Àvñ_ch¨
+) {
+
+53 
+i
+ = 0; i < 
+num_logÀvñs
+; i++) {
+
+54 i‡(
+logÀvñs
+[
+i
+].
+Àvñ_ch¨
+ ==Üevel_char) {
+
+55  
+i
+;
+
+59 
+	}
+}
+
+64 
+	$¥ötk_öô
+() {
+
+65 
+rb_hód
+ = 0;
+
+66 
+rb_èû
+ = 0;
+
+67 
+	`vga_öô
+();
+
+68 
+	}
+}
+
+77 
+	$my_v¢¥ötf
+(*
+buf
+, 
+size_t
+ 
+size
+, c⁄° *
+fmt
+, 
+va_li°
+ 
+¨gs
+)
+
+79 *
+p
+ = 
+buf
+;
+
+80 *
+íd
+ = 
+buf
+ + 
+size
+ - 1;
+
+82 *
+fmt
+ && 
+p
+ < 
+íd
+)
+
+84 if(*
+fmt
+ == '%') {
+
+85 
+fmt
+++;
+
+88 
+∑d_width
+ = 0;
+
+89 
+∑d_ch¨
+ = ' ';
+
+91 if(*
+fmt
+ == '0')
+
+93 
+∑d_ch¨
+ = '0';
+
+94 
+fmt
+++;
+
+97 *
+fmt
+ >= '0' && *fmt <= '9') {
+
+98 
+∑d_width
+ =Öad_width * 10 + (*
+fmt
+ - '0');
+
+99 
+fmt
+++;
+
+102 *
+fmt
+) {
+
+104 c⁄° *
+°r
+ = 
+	`va_¨g
+(
+¨gs
+, const *);
+
+105 
+°r_Àn
+ = 0;
+
+108 i‡(!
+°r
+) str = "(null)";
+
+111 c⁄° *
+s
+ = 
+°r
+;
+
+112 *
+s
+++Ë
+°r_Àn
+++;
+
+115 
+to_∑d_width
+;
+
+116 if(
+°r_Àn
+ > 
+∑d_width
+)
+
+118 
+to_∑d_width
+ = 0;
+
+121 
+to_∑d_width
+ = 
+∑d_width
+ - 
+°r_Àn
+;
+
+125 
+to_∑d_width
+-- > 0 && 
+p
+ < 
+íd
+) {
+
+126 *
+p
+++ = 
+∑d_ch¨
+;
+
+130 *
+°r
+ && 
+p
+ < 
+íd
+) {
+
+131 *
+p
+++ = *
+°r
+++;
+
+136 
+c
+ = ()
+	`va_¨g
+(
+¨gs
+, );
+
+139 
+to_∑d_width
+ = 
+∑d_width
+ - 1;
+
+140 if(
+to_∑d_width
+ < 0)Åo_pad_width = 0;
+
+143 
+to_∑d_width
+-- > 0 && 
+p
+ < 
+íd
+) {
+
+144 *
+p
+++ = 
+∑d_ch¨
+;
+
+148 if(
+p
+ < 
+íd
+Ë*p++ = 
+c
+;
+
+152 
+num
+ = 
+	`va_¨g
+(
+¨gs
+, );
+
+154 
+is_√g©ive
+ = (
+num
+ < 0);
+
+155 
+vÆ
+ = 
+is_√g©ive
+ ? -
+num
+ :Çum;
+
+156 
+tmp
+[12];
+
+157 
+tm∂í
+ = 0;
+
+160 
+tmp
+[
+tm∂í
+++] = '0' + (
+vÆ
+ % 10);
+
+161 
+vÆ
+ /= 10;
+
+162 } 
+vÆ
+ && 
+tm∂í
+ < ()(
+tmp
+));
+
+164 if(
+is_√g©ive
+ && 
+tm∂í
+ < ()(
+tmp
+))
+
+166 
+tmp
+[
+tm∂í
+++] = '-';
+
+170 
+to_∑d_width
+ = 
+∑d_width
+ - 
+tm∂í
+;
+
+171 if(
+to_∑d_width
+ < 0)Åo_pad_width = 0;
+
+174 
+to_∑d_width
+-- > 0 && 
+p
+ < 
+íd
+) {
+
+175 *
+p
+++ = 
+∑d_ch¨
+;
+
+179 
+pos
+ = 
+tm∂í
+ - 1;Öo†>0 && 
+p
+ < 
+íd
+;Öos--)
+
+181 *
+p
+++ = 
+tmp
+[
+pos
+];
+
+186 
+num
+ = 
+	`va_¨g
+(
+¨gs
+, );
+
+188 
+tmp
+[12];
+
+189 
+tm∂í
+ = 0;
+
+192 
+tmp
+[
+tm∂í
+++] = '0' + (
+num
+ % 10);
+
+193 
+num
+ /= 10;
+
+194 } 
+num
+ && 
+tm∂í
+ < ()(
+tmp
+));
+
+197 
+to_∑d_width
+ = 
+∑d_width
+ - 
+tm∂í
+;
+
+198 if(
+to_∑d_width
+ < 0)Åo_pad_width = 0;
+
+201 
+to_∑d_width
+-- > 0 && 
+p
+ < 
+íd
+) {
+
+202 *
+p
+++ = 
+∑d_ch¨
+;
+
+206 
+pos
+ = 
+tm∂í
+ - 1;Öo†>0 && 
+p
+ < 
+íd
+;Öos--)
+
+208 *
+p
+++ = 
+tmp
+[
+pos
+];
+
+213 
+num
+ = 
+	`va_¨g
+(
+¨gs
+, );
+
+215 
+tmp
+[12];
+
+216 
+tm∂í
+ = 0;
+
+218 i‡(
+num
+ == 0) {
+
+219 
+tmp
+[
+tm∂í
+++] = '0';
+
+222 
+digô
+ = 
+num
+ % 16;
+
+223 
+tmp
+[
+tm∂í
+++] = (
+digô
+ < 10) ? ('0' + digit) : ('a' + digit - 10);
+
+224 
+num
+ /= 16;
+
+225 } 
+num
+ && 
+tm∂í
+ < ()(
+tmp
+));
+
+229 
+to_∑d_width
+ = 
+∑d_width
+ - 
+tm∂í
+;
+
+230 if(
+to_∑d_width
+ < 0)Åo_pad_width = 0;
+
+233 
+to_∑d_width
+-- > 0 && 
+p
+ < 
+íd
+) {
+
+234 *
+p
+++ = 
+∑d_ch¨
+;
+
+238 
+pos
+ = 
+tm∂í
+ - 1;Öo†>0 && 
+p
+ < 
+íd
+;Öos--)
+
+240 *
+p
+++ = 
+tmp
+[
+pos
+];
+
+245 *
+±r
+ = 
+	`va_¨g
+(
+¨gs
+, *);
+
+247 i‡(
+p
+ < 
+íd
+ - 1) {
+
+248 *
+p
+++ = '0';
+
+249 *
+p
+++ = 'x';
+
+253 
+uöçå_t
+ 
+num
+ = (uöçå_t)
+±r
+;
+
+254 
+tmp
+[20];
+
+255 
+tm∂í
+ = 0;
+
+257 i‡(
+num
+ == 0) {
+
+258 
+tmp
+[
+tm∂í
+++] = '0';
+
+261 
+digô
+ = 
+num
+ % 16;
+
+262 
+tmp
+[
+tm∂í
+++] = (
+digô
+ < 10) ? ('0' + digit) : ('a' + digit - 10);
+
+263 
+num
+ /= 16;
+
+264 } 
+num
+ && 
+tm∂í
+ < ()(
+tmp
+));
+
+268 
+pos
+ = 
+tm∂í
+ - 1;Öo†>0 && 
+p
+ < 
+íd
+;Öos--)
+
+270 *
+p
+++ = 
+tmp
+[
+pos
+];
+
+275 if(
+p
+ < 
+íd
+) *p++ = '%';
+
+279 if(
+p
+ < 
+íd
+Ë*p++ = *
+fmt
+;
+
+282 if(
+p
+ < 
+íd
+Ë*p++ = *
+fmt
+;
+
+284 
+fmt
+++;
+
+286 *
+p
+ = '\0';
+
+287  
+p
+ - 
+buf
+;
+
+288 
+	}
+}
+
+290 
+	$v¥ötk
+(c⁄° * 
+fmt
+, 
+va_li°
+ 
+¨gs
+)
+
+292 
+tmp
+[
+LOG_BUF_SIZE
+];
+
+294 
+Àn
+ = 
+	`my_v¢¥ötf
+(
+tmp
+, —mp), 
+fmt
+, 
+¨gs
+);
+
+296 
+	`rögbuf_wrôe
+(
+tmp
+, 
+Àn
+);
+
+298 
+	`vga_¥öt_°rög
+(
+tmp
+, 
+WHITE_ON_BLACK
+);
+
+300  
+Àn
+;
+
+301 
+	}
+}
+
+303 
+	$¥ötk
+(c⁄° *
+fmt
+, ...)
+
+305 
+tmp
+[
+LOG_BUF_SIZE
+];
+
+306 
+Àvñ_¥efix
+[32];
+
+307 c⁄° * 
+a˘uÆ_fmt
+ = 
+fmt
+;
+
+308 
+log_Àvñ_idx
+ = -1;
+
+309 
+tŸÆ_Àn
+ = 0;
+
+311 i‡(
+fmt
+[0] == '\001' && fmt[1] >= '0' && fmt[1] <= '7') {
+
+312 
+idx
+ = 
+	`föd_logÀvñ
+(
+fmt
+[1]);
+
+313 i‡(
+idx
+ >= 0) {
+
+314 
+log_Àvñ_idx
+ = 
+idx
+;
+
+316 
+a˘uÆ_fmt
+ = 
+fmt
+ + 2;
+
+319 i‡(
+log_Àvñ_idx
+ != -1) {
+
+321 *
+p
+ = 
+Àvñ_¥efix
+;
+
+322 *
+p
+++ = '[';
+
+325 c⁄° *
+«me
+ = 
+logÀvñs
+[
+log_Àvñ_idx
+].name;
+
+326 *
+«me
+) {
+
+327 *
+p
+++ = *
+«me
+++;
+
+330 *
+p
+++ = ']';
+
+331 *
+p
+++ = ' ';
+
+332 *
+p
+ = '\0';
+
+334 
+¥efix_Àn
+ = 
+p
+ - 
+Àvñ_¥efix
+;
+
+337 
+	`rögbuf_wrôe
+(
+Àvñ_¥efix
+, 
+¥efix_Àn
+);
+
+338 
+	`vga_¥öt_°rög
+(
+Àvñ_¥efix
+, 
+logÀvñs
+[
+log_Àvñ_idx
+].
+cﬁ‹
+);
+
+339 
+tŸÆ_Àn
+ +
+¥efix_Àn
+;
+
+342 
+va_li°
+ 
+¨gs
+;
+
+343 
+	`va_°¨t
+(
+¨gs
+, 
+fmt
+);
+
+344 
+msg_Àn
+ = 
+	`v¥ötk
+(
+a˘uÆ_fmt
+, 
+¨gs
+);
+
+345 
+	`va_íd
+(
+¨gs
+);
+
+347 
+tŸÆ_Àn
+ +
+msg_Àn
+;
+
+348  
+tŸÆ_Àn
+;
+
+349 
+	}
+}
+
+	@/home/devch/Projects/Kernel-V/kernel/main/kernel.c
+
+1 
+	~"kî√l.h
+"
+
+2 
+	~"pmm.h
+"
+
+3 
+	~"∑gög.h
+"
+
+5 
+swôch_to_high_°ack
+(
+uöt32_t
+ 
+√w_e•
+, (*
+íåy_func
+)());
+
+7 
+__©åibuã__
+((
+n‹ëu∫
+))
+
+8 
+	$high_°ack_íåy
+() {
+
+9 
+	`¥ötk
+("SwitchedÅo high virtual stack!\n");
+
+10 
+uöt32_t
+ 
+cur_e•
+;
+
+11 
+asm
+ vﬁ©ûê("mov %%e•, %0" : "Ù"(
+cur_e•
+));
+
+12 
+	`¥ötk
+("ESPá·î sèck swôch: 0x%08x\n", 
+cur_e•
+);
+
+22 
+	`¥ötk
+("Triggering demand-paged heapáccess...\n");
+
+23 
+	`¥ötk
+("Beforeáccessing heap");
+
+24 vﬁ©ûê*
+hóp_±r
+ = (*)(
+KERNEL_HEAP_START
+ + 0x1234);
+
+25 *
+hóp_±r
+ = 42;
+
+26 
+	`¥ötk
+("HeapÖage mappedánd write succeeded!\n");
+
+28 
+	`¥ötk
+("\nTriggeringÖage fault...\n");
+
+29 vﬁ©ûê*
+±r
+ = (*)0xDEADBEEF;
+
+30 *
+±r
+ = 123;
+
+37 #ifde‡
+KERNEL_TESTS
+
+
+38 
+	`¥ötk
+("\n==================================================\n");
+
+39 
+	`¥ötk
+("Tests Running...\n");
+
+40 
+	`run_¥ötk_ã°s
+();
+
+41 
+	`run_¥ötk_s¸ﬁlög_ã°
+();
+
+42 
+	`run_∑nik_unô_ã°s
+();
+
+43 
+	`¥ötk
+("==================================================\n");
+
+45 
+	}
+}
+
+47 
+	$kî√l_maö
+() {
+
+51 
+	`¥ötk_öô
+();
+
+52 
+	`¥ötk
+("%†v%†- HñlÿDevjô!\n", 
+KERNEL_NAME
+, 
+KERNEL_VERSION
+);
+
+53 
+	`¥ötk
+("Kernel-V isÑunning! WelcomeÅo your custom kernel, Devjit!\n");
+
+58 
+	`idt_öô
+();
+
+64 
+	`¥ötk
+("\n==================================================\n");
+
+65 
+	`¥ötk
+("Parsing BIOS Memory Map (E820)...\n");
+
+66 
+	`∑r£_™d_¥öt_e820_m≠
+();
+
+71 
+	`pmm_öô
+();
+
+72 
+	`pmm_ª£rve_mem‹y_ªgi⁄
+(
+RESERVED_TYPE_INIT
+);
+
+73 
+	`pmm_ª£rve_mem‹y_ªgi⁄
+(
+RESERVED_TYPE_KERNEL
+);
+
+74 
+	`pmm_ª£rve_mem‹y_ªgi⁄
+(
+RESERVED_TYPE_BITMAP
+);
+
+76 * 
+‰ame1
+ = 
+	`pmm_Æloc_‰ame
+();
+
+77 
+	`¥ötk
+(
+‰ame1
+ ? "Allocated frameátáddress: %p\n" : "FailedÅoállocate frame\n", frame1);
+
+79 * 
+‰ame2
+ = 
+	`pmm_Æloc_‰ame
+();
+
+80 
+	`¥ötk
+(
+‰ame2
+ ? "Allocatedánother frameátáddress: %p\n" : "FailedÅoállocateánother frame\n", frame2);
+
+85 
+	`¥ötk
+("\n==================================================\n");
+
+86 
+	`¥ötk
+("Initializing Paging...\n");
+
+87 
+	`∑gög_öô
+();
+
+88 
+	`pmm_ª£rve_mem‹y_ªgi⁄
+(
+RESERVED_TYPE_PAGE_TABLE
+);
+
+91 
+uöt32_t
+ 
+°ack_size
+ = 
+KERNEL_STACK_TOP_VIRT
+ - 
+KERNEL_STACK_BOTTOM_VIRT
+;
+
+92 
+	`¥ötk
+("Mapping stackÖages...\n");
+
+93 
+uöt32_t
+ 
+off
+ = 0; of‡< 
+°ack_size
+; off += 0x1000) {
+
+94 
+uöt32_t
+ 
+vút
+ = 
+KERNEL_STACK_BOTTOM_VIRT
+ + 
+off
+;
+
+95 * 
+phys_‰ame
+ = 
+	`pmm_Æloc_‰ame
+();
+
+96 i‡(!
+phys_‰ame
+) {
+
+97 
+	`¥ötk
+("FaûedÅÿÆloˇã sèck fømêf‹ vút=0x%08x\n", 
+vút
+);
+
+98 
+	`∑nik
+("Stack frameállocation failed");
+
+100 
+	`¥ötk
+("M≠pög sèckÖage: vút=0x%08xÖhys=0x%08x\n", 
+vút
+, (
+uöt32_t
+)
+phys_‰ame
+);
+
+101 
+	`∑gög_m≠_∑ge
+(
+vút
+, (
+uöt32_t
+)
+phys_‰ame
+, 
+PAGE_PRESENT
+ | 
+PAGE_WRITE
+);
+
+102 
+	`pmm_£t_‰ame_bôm≠
+((
+uöt32_t
+)
+phys_‰ame
+, (uöt32_tÌhys_‰amê+ 
+PAGE_SIZE
+);
+
+105 
+	`¥ötk
+("Paging initialized successfully!\n");
+
+108 
+	`¥ötk
+("AboutÅo switchÅo high virtual stack...\n");
+
+110 
+uöt32_t
+* 
+°ack
+ = (uöt32_t*)
+KERNEL_STACK_TOP_VIRT
+;
+
+111 *(--
+°ack
+Ë(
+uöt32_t
+)0;
+
+112 
+	`swôch_to_high_°ack
+(
+°ack
+, 
+high_°ack_íåy
+);
+
+113 
+	`¥ötk
+("SwitchedÅo high virtual stack!\n");
+
+116 
+	}
+}
+
+118 
+	$debug_¥öt_e•_¨gs
+(
+uöt32_t
+ 
+¨g1
+, uöt32_à
+¨g2
+) {
+
+119 
+	`¥ötk
+("swôch_to_high_°ack: [e•+4]=0x%08x [e•+8]=0x%08x\n", 
+¨g1
+, 
+¨g2
+);
+
+120 
+	}
+}
+
+	@/home/devch/Projects/Kernel-V/kernel/memory/memory_map.c
+
+1 
+	~"mem‹y_m≠.h
+"
+
+2 
+	~"¥ötk.h
+"
+
+4 
+uöt16_t
+ 
+	gußbÀ_mem‹y_ªgi⁄_cou¡
+ = 0;
+
+5 
+mem‹y_ªgi⁄_t
+ 
+	gußbÀ_mem‹y_ªgi⁄
+[
+MAX_MEMORY_REGIONS
+];
+
+7 c⁄° * 
+	$ªgi⁄_ty≥_to_°rög
+ (
+uöt32_t
+ 
+ty≥
+)
+
+9 
+ty≥
+)
+
+11 
+E820_TYPE_AVAILABLE
+:  "Available";
+
+12 
+E820_TYPE_RESERVED
+:  "Reserved";
+
+13 
+E820_TYPE_ACPI_RECLAIMABLE
+:  "ACPI Reclaimable";
+
+14 
+E820_TYPE_ACPI_NVS
+:  "ACPI NVS";
+
+15 
+E820_TYPE_UNUSABLE
+:  "Unusable";
+
+18 
+	}
+}
+
+20 
+	$∑r£_™d_¥öt_e820_m≠
+()
+
+23 
+e820_íåy_t
+* 
+m≠
+ = (e820_íåy_t*)
+E820_MAP_ADDRESS
+;
+
+26 
+uöt16_t
+ 
+cou¡
+ = *(uöt16_t*)
+E820_MAP_COUNT_PTR
+;
+
+28 
+	`¥ötk
+("\n[MEMORY MAP] BIOSÖrovided %uÉ¡rõs:\n", 
+cou¡
+);
+
+30 
+uöt16_t
+ 
+i
+ = 0; i < 
+cou¡
+; i++)
+
+32 c⁄° * 
+cuºít_ªgi⁄_ty≥
+ = 
+	`ªgi⁄_ty≥_to_°rög
+(
+m≠
+[
+i
+].
+ty≥
+);
+
+33 
+	`¥ötk
+("[%u] Base: 0x%08x%08x, Length: 0x%08x%08x, Type: %s\n",
+
+34 
+i
+,
+
+35 (
+uöt32_t
+)(
+m≠
+[
+i
+].
+ba£
+ >> 32),
+
+36 (
+uöt32_t
+)(
+m≠
+[
+i
+].
+ba£
+ & 0xFFFFFFFF),
+
+37 (
+uöt32_t
+)(
+m≠
+[
+i
+].
+Àngth
+ >> 32),
+
+38 (
+uöt32_t
+)(
+m≠
+[
+i
+].
+Àngth
+ & 0xFFFFFFFF),
+
+39 
+cuºít_ªgi⁄_ty≥
+
+
+42 i‡(
+m≠
+[
+i
+].
+ty≥
+ =
+E820_TYPE_AVAILABLE
+ && 
+ußbÀ_mem‹y_ªgi⁄_cou¡
+ < 
+MAX_MEMORY_REGIONS
+)
+
+44 
+ußbÀ_mem‹y_ªgi⁄
+[
+ußbÀ_mem‹y_ªgi⁄_cou¡
+] = (
+mem‹y_ªgi⁄_t
+){
+
+45 .
+ba£
+ = 
+m≠
+[
+i
+].base,
+
+46 .
+Àngth
+ = 
+m≠
+[
+i
+].length,
+
+47 .
+ty≥
+ = 
+m≠
+[
+i
+].type
+
+49 
+ußbÀ_mem‹y_ªgi⁄_cou¡
+++;
+
+53 
+	`¥ötk
+("\n[MEMORY MAP] UßbÀ mem‹yÑegi⁄†cou¡: %u\n", 
+ußbÀ_mem‹y_ªgi⁄_cou¡
+);
+
+55 
+	}
+}
+
+	@/home/devch/Projects/Kernel-V/kernel/memory/page_fault.c
+
+1 
+	~"∑ge_Áu….h
+"
+
+2 
+	~"∑gög.h
+"
+
+3 
+	~"pmm.h
+"
+
+4 
+	~"¥ötk.h
+"
+
+5 
+	~"∑nik.h
+"
+
+6 
+	~<°döt.h
+>
+
+8 
+	$∑ge_Áu…_h™dÀr
+ (
+∑ge_Áu…_°ack_t
+* 
+‰ame
+)
+
+11 
+uöt32_t
+ 
+Áu…_addªss
+;
+
+12 
+uöt32_t
+ 
+e•
+, 
+ebp
+;
+
+13 
+asm
+ vﬁ©ûe("mov %%e•, %0" : "Ù"(
+e•
+));
+
+14 
+asm
+ vﬁ©ûe("mov %%ebp, %0" : "Ù"(
+ebp
+));
+
+15 
+__asm__
+ 
+	`__vﬁ©ûe__
+("mov %%¸2, %0" : "Ù"(
+Áu…_addªss
+));
+
+17 
+	`¥ötk
+("[PAGE FAULT]átáddress: 0x%x,Érror code: 0x%x [eip=0x%x,Ésp=0x%x,Ébp=0x%x]\n",
+
+18 
+Áu…_addªss
+,
+
+19 
+‰ame
+->
+îr‹_code
+,
+
+20 
+‰ame
+->
+eù
+,
+
+21 
+e•
+,
+
+22 
+ebp
+);
+
+25 i‡(
+Áu…_addªss
+ >
+KERNEL_HEAP_START
+ && fau…_addªs†< 
+KERNEL_HEAP_END
+)
+
+27 
+	`¥ötk
+("[PAGE FAULT] Address within kernel heapÑegion:állocatingánd mappingÇewÖage.\n");
+
+29 * 
+√w_‰ame
+ = 
+	`pmm_Æloc_‰ame
+();
+
+30 if(!
+√w_‰ame
+)
+
+32 
+	`∑nik
+("Ouào‡mem‹y: U«bÀÅÿÆloˇã fømêf‹ÖagêÁu…áàaddªs†0x%x", 
+Áu…_addªss
+);
+
+34 
+	`∑gög_m≠_∑ge
+(
+Áu…_addªss
+, (
+uöt32_t
+)
+√w_‰ame
+, 
+PAGE_PRESENT
+ | 
+PAGE_WRITE
+);
+
+40 c⁄° 
+uöt32_t
+ 
+STACK_GROWTH_GAP
+ = 32;
+
+41 i‡(
+Áu…_addªss
+ >
+KERNEL_STACK_BOTTOM_VIRT
+ && fau…_addªs†< 
+KERNEL_STACK_TOP_VIRT
+) {
+
+42 i‡(
+Áu…_addªss
+ >
+‰ame
+->
+e•
+ - 
+STACK_GROWTH_GAP
+ && fault_address < frame->esp) {
+
+43 
+	`¥ötk
+("[PF] Sèck growth: m≠pögÇew sèckÖagê© 0x%x (e•=0x%x)\n", 
+Áu…_addªss
+, 
+‰ame
+->
+e•
+);
+
+44 * 
+√w_‰ame
+ = 
+	`pmm_Æloc_‰ame
+();
+
+45 i‡(!
+√w_‰ame
+Ë
+	`∑nik
+("Out of memory in stack PFÑecovery");
+
+46 
+	`∑gög_m≠_∑ge
+(
+Áu…_addªss
+, (
+uöt32_t
+)
+√w_‰ame
+, 
+PAGE_PRESENT
+ | 
+PAGE_WRITE
+);
+
+63 i‡(!(
+‰ame
+->
+îr‹_code
+ & 0x1))
+
+65 
+	`¥ötk
+("[PAGE FAULT] PageÇotÖresent.\n");
+
+67 i‡(
+‰ame
+->
+îr‹_code
+ & 0x2)
+
+69 
+	`¥ötk
+("[PAGE FAULT] Writeáccess.\n");
+
+71 i‡(
+‰ame
+->
+îr‹_code
+ & 0x4)
+
+73 
+	`¥ötk
+("[PAGE FAULT] User modeáccess.\n");
+
+75 i‡(
+‰ame
+->
+îr‹_code
+ & 0x8)
+
+77 
+	`¥ötk
+("[PAGE FAULT] Reserved bit set.\n");
+
+79 i‡(
+‰ame
+->
+îr‹_code
+ & 0x10)
+
+81 
+	`¥ötk
+("[PAGE FAULT] Instruction fetch.\n");
+
+86 
+__asm__
+ 
+	`__vﬁ©ûe__
+("hlt");
+
+88 
+	}
+}
+
+	@/home/devch/Projects/Kernel-V/kernel/memory/paging.c
+
+1 
+	~"∑gög.h
+"
+
+2 
+	~"¥ötk.h
+"
+
+4 
+uöt32_t
+* 
+	g∑ge_dúe˘‹y
+ = (uöt32_t*)
+PAGE_DIR_START_ADDR
+;
+
+5 
+uöt32_t
+* 
+	gfú°_∑ge_èbÀ
+ = (uöt32_t*)
+PAGE_TABLE_START_ADDR
+;
+
+11 
+	$∑gög_öô
+()
+
+13 
+	`¥ötk
+("[PAGING] Initializing Paging structures...\n");
+
+16 
+uöt32_t
+ 
+íåy
+ = 0;É¡ry < 
+PAGE_ENTRIES
+;Éntry++)
+
+19 
+∑ge_dúe˘‹y
+[
+íåy
+] = 0x00000002;
+
+23 
+uöt32_t
+ 
+íåy
+ = 0;É¡ry < 
+PAGE_ENTRIES
+;Éntry++)
+
+27 
+fú°_∑ge_èbÀ
+[
+íåy
+] = (íåy * 
+PAGE_SIZE
+Ë| 
+PAGE_PRESENT
+ | 
+PAGE_WRITE
+ | 
+PAGE_USER
+;
+
+31 
+∑ge_dúe˘‹y
+[0] = (
+uöt32_t
+)
+fú°_∑ge_èbÀ
+ | 
+PAGE_PRESENT
+ | 
+PAGE_WRITE
+;
+
+33 
+	`¥ötk
+ ("[PAGING] Dúe˘‹yáà%p, TabÀ[0]áà%p\n", 
+∑ge_dúe˘‹y
+, 
+fú°_∑ge_èbÀ
+);
+
+36 
+__asm__
+ 
+	`__vﬁ©ûe__
+ (
+
+39 : "r"(
+∑ge_dúe˘‹y
+)
+
+43 
+uöt32_t
+ 
+¸0
+;
+
+44 
+__asm__
+ 
+	`__vﬁ©ûe__
+ (
+
+46 : "Ù"(
+¸0
+)
+
+50 
+¸0
+ |= 0x80000000;
+
+53 
+__asm__
+ 
+	`__vﬁ©ûe__
+ (
+
+56 : "r"(
+¸0
+)
+
+60 
+	`¥ötk
+("[PAGING] PagingÉnabled successfully!\n");
+
+61 
+	}
+}
+
+68 
+	$∑gög_m≠_∑ge
+ (
+uöt32_t
+ 
+vútuÆ_addr
+, uöt32_à
+physiˇl_addr
+, uöt32_à
+Êags
+)
+
+71 
+uöt32_t
+ 
+pdú_ödex
+ = 
+vútuÆ_addr
+ >> 22;
+
+74 
+uöt32_t
+ 
+±abÀ_ödex
+ = (
+vútuÆ_addr
+ >> 12) & 0x03FF;
+
+77 
+uöt32_t
+* 
+∑ge_èbÀ
+;
+
+78 i‡(
+∑ge_dúe˘‹y
+[
+pdú_ödex
+] & 
+PAGE_PRESENT
+)
+
+81 
+∑ge_èbÀ
+ = (
+uöt32_t
+*)(
+∑ge_dúe˘‹y
+[
+pdú_ödex
+] & 0xFFFFF000);
+
+89 
+∑ge_èbÀ
+ = (
+uöt32_t
+*)
+	`pmm_Æloc_‰ame
+();
+
+90 i‡(!
+∑ge_èbÀ
+)
+
+92 
+	`∑nik
+("Out of memory: UnableÅoállocate frame forÇewÖageÅable");
+
+94 
+uöt32_t
+ 
+íåy
+ = 0;É¡ry < 
+PAGE_ENTRIES
+;Éntry++)
+
+96 
+∑ge_èbÀ
+[
+íåy
+] = 0;
+
+100 
+∑ge_dúe˘‹y
+[
+pdú_ödex
+] = ((
+uöt32_t
+)
+∑ge_èbÀ
+Ë| 
+PAGE_PRESENT
+ | 
+PAGE_WRITE
+;
+
+104 
+∑ge_èbÀ
+[
+±abÀ_ödex
+] = (
+physiˇl_addr
+ & 0xFFFFF000Ë| (
+Êags
+ & 0xFFF);
+
+109 
+__asm__
+ 
+	`__vﬁ©ûe__
+ (
+
+112 : "r"(
+vútuÆ_addr
+)
+
+115 
+	}
+}
+
+	@/home/devch/Projects/Kernel-V/kernel/memory/pmm.c
+
+1 
+	~"pmm.h
+"
+
+2 
+	~"mem‹y_m≠.h
+"
+
+3 
+	~"¥ötk.h
+"
+
+4 
+	~"∑gög.h
+"
+
+6 
+uöt8_t
+* 
+	g‰ame_bôm≠
+ = 
+NULL
+;;
+
+7 
+uöt32_t
+ 
+	gtŸÆ_‰ames
+ = 0;
+
+8 
+uöt32_t
+ 
+	gu£d_‰ames
+ = 0;
+
+9 
+uöt32_t
+ 
+	gmax_‰ame_idx
+ = 0;
+
+13 
+	#FRAME_INDEX
+(
+addr
+Ë(◊ddrË/ 
+PAGE_SIZE
+)
+
+	)
+
+14 
+	#BITMAP_SET
+(
+idx
+Ë(
+‰ame_bôm≠
+[(idxË/ 8] |(1 << ((idxË% 8)))
+
+	)
+
+15 
+	#BITMAP_CLEAR
+(
+idx
+Ë(
+‰ame_bôm≠
+[(idxË/ 8] &~(1 << ((idxË% 8)))
+
+	)
+
+16 
+	#BITMAP_GET
+(
+idx
+Ë(
+‰ame_bôm≠
+[(idxË/ 8] & (1 << ((idxË% 8)))
+
+	)
+
+23 
+	$pmm_öô
+()
+
+25 
+tŸÆ_‰ames
+ = 0;
+
+26 
+u£d_‰ames
+ = 0;
+
+29 
+uöt32_t
+ 
+ußbÀ_mem‹y_ªgi⁄_idx
+ = 0; ußbÀ_mem‹y_ªgi⁄_idx < 
+ußbÀ_mem‹y_ªgi⁄_cou¡
+; usable_memory_region_idx++)
+
+32 
+uöt32_t
+ 
+ªgi⁄_ba£
+ = 
+ußbÀ_mem‹y_ªgi⁄
+[
+ußbÀ_mem‹y_ªgi⁄_idx
+].
+ba£
+;
+
+33 
+uöt32_t
+ 
+ªgi⁄_Àngth
+ = 
+ußbÀ_mem‹y_ªgi⁄
+[
+ußbÀ_mem‹y_ªgi⁄_idx
+].
+Àngth
+;
+
+34 
+uöt32_t
+ 
+ªgi⁄_íd
+ = 
+ªgi⁄_ba£
+ + 
+ªgi⁄_Àngth
+;
+
+35 
+uöt32_t
+ 
+cuºít_‰ame_idx
+ = 
+	`FRAME_INDEX
+(
+ªgi⁄_íd
+);
+
+37 i‡(
+cuºít_‰ame_idx
+ > 
+max_‰ame_idx
+)
+
+39 
+max_‰ame_idx
+ = 
+cuºít_‰ame_idx
+;
+
+44 
+‰ame_bôm≠
+ = (
+uöt8_t
+*)0x90000;
+
+45 
+uöt32_t
+ 
+max_‰ame_bôm≠_idx
+ = (
+max_‰ame_idx
+ / 8) + 1;
+
+48 
+uöt32_t
+ 
+‰ame
+ = 0; fømê< 
+max_‰ame_bôm≠_idx
+; frame++)
+
+50 
+‰ame_bôm≠
+[
+‰ame
+] = 0xFF;
+
+54 
+uöt32_t
+ 
+ußbÀ_mem‹y_ªgi⁄_idx
+ = 0; ußbÀ_mem‹y_ªgi⁄_idx < 
+ußbÀ_mem‹y_ªgi⁄_cou¡
+; usable_memory_region_idx++)
+
+56 
+uöt32_t
+ 
+ªgi⁄_ba£
+ = 
+ußbÀ_mem‹y_ªgi⁄
+[
+ußbÀ_mem‹y_ªgi⁄_idx
+].
+ba£
+;
+
+57 
+uöt32_t
+ 
+ªgi⁄_Àngth
+ = 
+ußbÀ_mem‹y_ªgi⁄
+[
+ußbÀ_mem‹y_ªgi⁄_idx
+].
+Àngth
+;
+
+59 
+uöt32_t
+ 
+addr
+ = 
+ªgi⁄_ba£
+;ádd∏<Ñegi⁄_ba£ + 
+ªgi⁄_Àngth
+;ádd∏+
+PAGE_SIZE
+)
+
+61 
+uöt32_t
+ 
+‰ame_ödex
+ = 
+	`FRAME_INDEX
+(
+addr
+);
+
+62 i‡(
+‰ame_ödex
+ < 
+max_‰ame_idx
+)
+
+64 
+	`BITMAP_CLEAR
+(
+‰ame_ödex
+);
+
+65 
+tŸÆ_‰ames
+++;
+
+71 
+u£d_‰ames
+ = 0;
+
+72 
+	`¥ötk
+("[PMM] TŸÆ UßbÀ Fømes: %u\n", 
+tŸÆ_‰ames
+);
+
+73 
+	}
+}
+
+78 
+	$pmm_ª£rve_mem‹y_ªgi⁄
+(
+ª£rved_mem‹y_ty≥_t
+ 
+ª£rved_ty≥
+)
+
+81 i‡(
+ª£rved_ty≥
+ & 
+RESERVED_TYPE_INIT
+ |
+
+82 
+ª£rved_ty≥
+ & 
+RESERVED_TYPE_BIOS
+ |
+
+83 
+ª£rved_ty≥
+ & 
+RESERVED_TYPE_IVT
+ |
+
+84 
+ª£rved_ty≥
+ & 
+RESERVED_TYPE_VGA
+)
+
+86 
+	`pmm_£t_‰ame_bôm≠
+(0x0, 0x100000);
+
+88 
+	`¥ötk
+("[PMM] Reserved kernelÑange: 0x%u - 0x%u\n", 0, 100000);
+
+92 i‡(
+ª£rved_ty≥
+ & 
+RESERVED_TYPE_KERNEL
+)
+
+96 
+kî√l_°¨t
+;
+
+97 
+kî√l_íd
+;
+
+99 
+uöt32_t
+ 
+kî√l_mem‹y_°¨t
+ = (uöt32_t)&
+kî√l_°¨t
+;
+
+100 
+uöt32_t
+ 
+kî√l_mem‹y_íd
+ = (uöt32_t)&
+kî√l_íd
+;
+
+101 
+	`pmm_£t_‰ame_bôm≠
+(
+kî√l_mem‹y_°¨t
+, 
+kî√l_mem‹y_íd
+);
+
+103 
+	`¥ötk
+("[PMM] Re£rved kî√»ønge: 0x%u - 0x%u\n", 
+kî√l_mem‹y_°¨t
+, 
+kî√l_mem‹y_íd
+);
+
+107 i‡(
+ª£rved_ty≥
+ & 
+RESERVED_TYPE_BITMAP
+)
+
+110 
+uöt32_t
+ 
+bôm≠_byãs
+ = (
+max_‰ame_idx
+ / 8) + 1;
+
+111 
+uöt32_t
+ 
+bôm≠_°¨t
+ = (uöt32_t)
+‰ame_bôm≠
+;
+
+112 
+uöt32_t
+ 
+bôm≠_íd
+ = 
+bôm≠_°¨t
+ + 
+bôm≠_byãs
+;
+
+113 
+	`pmm_£t_‰ame_bôm≠
+(
+bôm≠_°¨t
+, 
+bôm≠_íd
+);
+
+115 
+	`¥ötk
+("[PMM] Re£rved bôm≠: 0x%u - 0x%u (%u byãs)\n", 
+bôm≠_°¨t
+, 
+bôm≠_íd
+, 
+bôm≠_byãs
+);
+
+119 i‡(
+ª£rved_ty≥
+ & 
+RESERVED_TYPE_PAGE_TABLE
+)
+
+123 
+uöt32_t
+ 
+∑ge_dú_°¨t
+ = 
+PAGE_DIR_START_ADDR
+;
+
+124 
+uöt32_t
+ 
+∑ge_dú_íd
+ = 
+∑ge_dú_°¨t
+ + 
+PAGE_ENTRIES
+ * (uint32_t);
+
+125 
+	`pmm_£t_‰ame_bôm≠
+(
+∑ge_dú_°¨t
+, 
+∑ge_dú_íd
+);
+
+126 
+	`¥ötk
+("[PMM] PagêDúe˘‹y: 0x%u - 0x%u (%u byãs)\n", 
+∑ge_dú_°¨t
+, 
+∑ge_dú_íd
+,Öage_dir_end -Öage_dir_start);
+
+129 
+uöt32_t
+ 
+∑ge_èbÀ_°¨t
+ = 
+PAGE_TABLE_START_ADDR
+;
+
+130 
+uöt32_t
+ 
+∑ge_èbÀ_íd
+ = 
+∑ge_èbÀ_°¨t
+ + 
+PAGE_ENTRIES
+ * (uint32_t);
+
+131 
+	`pmm_£t_‰ame_bôm≠
+(
+∑ge_èbÀ_°¨t
+, 
+∑ge_èbÀ_íd
+);
+
+132 
+	`¥ötk
+("[PMM] PagêTabÀ: 0x%u - 0x%u (%u byãs)\n", 
+∑ge_èbÀ_°¨t
+, 
+∑ge_èbÀ_íd
+,Öage_table_end -Öage_table_start);
+
+135 
+	`¥ötk
+("[PMM] TŸÆ ußbÀ fømes: %u\n", 
+tŸÆ_‰ames
+);
+
+136 
+	`¥ötk
+("[PMM] TŸÆÑe£rved fømes: %u\n", 
+u£d_‰ames
+);
+
+137 
+	}
+}
+
+142 
+	$pmm_£t_‰ame_bôm≠
+(
+uöt32_t
+ 
+°¨t_addªss
+, uöt32_à
+íd_addªss
+)
+
+146 
+uöt32_t
+ 
+°¨t
+ = 
+°¨t_addªss
+ & ~(
+PAGE_SIZE
+ - 1);
+
+149 
+uöt32_t
+ 
+íd
+ = 
+íd_addªss
+ + 
+PAGE_SIZE
+ - 1;
+
+150 
+íd
+ &~(
+PAGE_SIZE
+ - 1);
+
+152 
+uöt32_t
+ 
+addr
+ = 
+°¨t
+;ádd∏< 
+íd
+;ádd∏+
+PAGE_SIZE
+)
+
+154 
+uöt32_t
+ 
+‰ame_ödex
+ = 
+	`FRAME_INDEX
+ (
+addr
+);
+
+155 i‡(!
+	`BITMAP_GET
+(
+‰ame_ödex
+))
+
+157 
+	`BITMAP_SET
+(
+‰ame_ödex
+);
+
+158 
+u£d_‰ames
+++;
+
+162 
+	}
+}
+
+164 * 
+	$pmm_Æloc_‰ame
+ ()
+
+168 
+uöt32_t
+ 
+‰ame_idx
+ = 1; føme_idx < 
+tŸÆ_‰ames
+; frame_idx++)
+
+170 i‡(!
+	`BITMAP_GET
+(
+‰ame_idx
+))
+
+172 
+	`BITMAP_SET
+(
+‰ame_idx
+);
+
+173 
+u£d_‰ames
+++;
+
+174  (*)(
+‰ame_idx
+ * 
+PAGE_SIZE
+);
+
+177 
+	`¥ötk
+("[PMM] No free framesávailable!\n");
+
+179 
+	}
+}
+
+181 
+	$pmm_‰ì_‰ame
+ (* 
+addr
+)
+
+183 
+uöt32_t
+ 
+‰ame_idx
+ = 
+	`FRAME_INDEX
+((uöt32_t)
+addr
+);
+
+184 i‡(
+‰ame_idx
+ < 
+tŸÆ_‰ames
+)
+
+186 
+	`BITMAP_CLEAR
+(
+‰ame_idx
+);
+
+187 
+u£d_‰ames
+--;
+
+191 
+	`¥ötk
+("[PMM] Aâem±edÅÿ‰ìá¿övÆid fømê©áddªss: %p\n", 
+addr
+);
+
+193 
+	}
+}
+
+	@/home/devch/Projects/Kernel-V/kernel/tests/test_panik.c
+
+1 
+	~"../ö˛ude/¥ötk.h
+"
+
+2 
+	~"../ö˛ude/drivîs/vga.h
+"
+
+3 
+	~"../ö˛ude/∑nik.h
+"
+
+4 
+	~"../ö˛ude/as£π.h
+"
+
+5 
+	~<°ddef.h
+>
+
+16 
+	gã°s_run
+ = 0;
+
+17 
+	gã°s_∑s£d
+ = 0;
+
+18 
+	gã°s_Áûed
+ = 0;
+
+21 
+	#TEST_ASSERT
+(
+c⁄dôi⁄
+, 
+mesßge
+) \
+
+23 
+ã°s_run
+++; \
+
+24 i‡(
+c⁄dôi⁄
+) { \
+
+25 
+ã°s_∑s£d
+++; \
+
+26 
+	`¥_öfo
+("[PASS] %s\n", 
+mesßge
+); \
+
+28 
+ã°s_Áûed
+++; \
+
+29 
+	`¥_îr
+("[FAIL] %s\n", 
+mesßge
+); \
+
+31 } 0)
+
+	)
+
+33 
+	#TEST_START
+(
+ã°_«me
+) \
+
+34 
+	`¥_nŸi˚
+("SèπögÅe°: %s\n", 
+ã°_«me
+)
+
+	)
+
+36 
+	#TEST_END
+() \
+
+37 
+	`¥_öfo
+("Te° com∂ëed\n")
+
+	)
+
+43 
+	$ã°_nuŒ_poöãr_∑nik
+()
+
+45 
+	`¥_nŸi˚
+("Testing: NullÖointer dereference detection\n");
+
+46 
+	`ª£t_∑nik_°©e
+();
+
+49 *
+±r
+ = 
+NULL
+;
+
+50 i‡(
+±r
+ =
+NULL
+) {
+
+51 
+	`∑nik
+("NuŒÖoöã∏dîe„ªn˚áà%p", 
+±r
+);
+
+54 c⁄° 
+∑nik_°©e_t
+* 
+°©e
+ = 
+	`gë_∑nik_°©e
+();
+
+55 
+	`TEST_ASSERT
+(
+°©e
+->
+∑nik_ˇŒed
+ == 1, "NullÖointerÖanikÅriggered");
+
+56 
+	}
+}
+
+58 
+	$ã°_mem‹y_c‹ru±i⁄_∑nik
+()
+
+60 
+	`¥_nŸi˚
+("Testing: Memory corruption detection\n");
+
+61 
+	`ª£t_∑nik_°©e
+();
+
+64 
+magic
+ = 0xDEADBEEF;
+
+65 
+c‹ru±ed
+ = 0x12345678;
+
+67 i‡(
+magic
+ != 0xDEADBEEF) {
+
+68 
+	`∑nik
+("Mem‹y c‹ru±i⁄ dëe˘ed: magic=0x%xÉx≥˘ed=0x%x", 
+c‹ru±ed
+, 
+magic
+);
+
+72 
+	`∑nik
+("Stack canary corruption detectedát 0x%x", 0xDEADBEEF);
+
+74 c⁄° 
+∑nik_°©e_t
+* 
+°©e
+ = 
+	`gë_∑nik_°©e
+();
+
+75 
+	`TEST_ASSERT
+(
+°©e
+->
+∑nik_ˇŒed
+ == 1, "Memory corruptionÖanikÅriggered");
+
+76 
+	}
+}
+
+78 
+	$ã°_divisi⁄_by_zîo_∑nik
+()
+
+80 
+	`¥_nŸi˚
+("Testing: Division by zero detection\n");
+
+81 
+	`ª£t_∑nik_°©e
+();
+
+84 
+divis‹
+ = 0;
+
+85 i‡(
+divis‹
+ == 0) {
+
+86 
+	`∑nik
+("Division by zero in kernel code");
+
+89 c⁄° 
+∑nik_°©e_t
+* 
+°©e
+ = 
+	`gë_∑nik_°©e
+();
+
+90 
+	`TEST_ASSERT
+(
+°©e
+->
+∑nik_ˇŒed
+ == 1, "Division by zeroÖanikÅriggered");
+
+91 
+	}
+}
+
+93 
+	$ã°_as£π_Áûuªs
+()
+
+95 
+	`¥_nŸi˚
+("Testing: Kernelássertions\n");
+
+96 
+	`ª£t_∑nik_°©e
+();
+
+99 
+	`as£π
+(2 + 2 == 5);
+
+101 c⁄° 
+∑nik_°©e_t
+* 
+°©e
+ = 
+	`gë_∑nik_°©e
+();
+
+102 
+	`TEST_ASSERT
+(
+°©e
+->
+∑nik_ˇŒed
+ == 1, "Assert failureÅriggeredÖanik");
+
+105 
+	`ª£t_∑nik_°©e
+();
+
+106 
+	`BUG_ON
+(1);
+
+108 
+°©e
+ = 
+	`gë_∑nik_°©e
+();
+
+109 
+	`TEST_ASSERT
+(
+°©e
+->
+∑nik_ˇŒed
+ == 1, "BUG_ONÅriggeredÖanik");
+
+110 
+	}
+}
+
+112 
+	$ã°_°ack_ovîÊow_∑nik
+()
+
+114 
+	`¥_nŸi˚
+("Testing: Stack overflow detection\n");
+
+115 
+	`ª£t_∑nik_°©e
+();
+
+118 
+	`∑nik
+("Stack overflow detected: SP=0x%xÜimit=0x%x", 0x1000, 0x2000);
+
+120 c⁄° 
+∑nik_°©e_t
+* 
+°©e
+ = 
+	`gë_∑nik_°©e
+();
+
+121 
+	`TEST_ASSERT
+(
+°©e
+->
+∑nik_ˇŒed
+ == 1, "Stack overflowÖanikÅriggered");
+
+122 
+	}
+}
+
+124 
+	$ã°_h¨dw¨e_Áu…_∑nik
+()
+
+126 
+	`¥_nŸi˚
+("Testing: Hardware fault handling\n");
+
+127 
+	`ª£t_∑nik_°©e
+();
+
+130 
+	`∑nik
+("Page fault in kernel mode: CR2=0x%x EIP=0x%x", 0xDEADBEEF, 0x12345678);
+
+132 c⁄° 
+∑nik_°©e_t
+* 
+°©e
+ = 
+	`gë_∑nik_°©e
+();
+
+133 
+	`TEST_ASSERT
+(
+°©e
+->
+∑nik_ˇŒed
+ == 1, "Hardware faultÖanikÅriggered");
+
+134 
+	}
+}
+
+136 
+	$ã°_∑nik_wôh_ªÆ_f‹m©tög
+()
+
+138 
+	`¥_nŸi˚
+("Testing: RealÖanik message formatting\n");
+
+139 
+	`ª£t_∑nik_°©e
+();
+
+142 
+	`∑nik
+("UnableÅo mountÑoot fs on unknown-block(%d,%d)", 8, 1);
+
+144 c⁄° 
+∑nik_°©e_t
+* 
+°©e
+ = 
+	`gë_∑nik_°©e
+();
+
+145 
+	`TEST_ASSERT
+(
+°©e
+->
+∑nik_ˇŒed
+ == 1, "FormattedÖanik message works");
+
+147 
+	`¥_öfo
+("∑nik mesßge: %s\n", 
+°©e
+->
+œ°_∑nik_msg
+);
+
+148 
+	}
+}
+
+153 
+	$run_∑nik_unô_ã°s
+()
+
+155 
+	`¥_nŸi˚
+("=== KERNELÖanik TESTS - Real Scenarios ===\n");
+
+158 
+	`£t_∑nik_mode
+(
+PANIK_MODE_TEST
+);
+
+159 
+	`¥_öfo
+("panik mode: TEST (safe forÅesting)\n");
+
+162 
+ã°s_run
+ = 0;
+
+163 
+ã°s_∑s£d
+ = 0;
+
+166 
+	`ã°_nuŒ_poöãr_∑nik
+();
+
+167 
+	`ã°_mem‹y_c‹ru±i⁄_∑nik
+();
+
+168 
+	`ã°_divisi⁄_by_zîo_∑nik
+();
+
+169 
+	`ã°_as£π_Áûuªs
+();
+
+170 
+	`ã°_°ack_ovîÊow_∑nik
+();
+
+171 
+	`ã°_h¨dw¨e_Áu…_∑nik
+();
+
+172 
+	`ã°_∑nik_wôh_ªÆ_f‹m©tög
+();
+
+175 
+	`¥_nŸi˚
+("\n=== TEST RESULTS ===\n");
+
+176 
+	`¥_öfo
+("Te°†run: %d\n", 
+ã°s_run
+);
+
+177 
+	`¥_öfo
+("Te°†∑s£d: %d\n", 
+ã°s_∑s£d
+);
+
+178 
+	`¥_öfo
+("Te°†Áûed: %d\n", 
+ã°s_run
+ - 
+ã°s_∑s£d
+);
+
+180 i‡(
+ã°s_∑s£d
+ =
+ã°s_run
+) {
+
+181 
+	`¥_öfo
+("‚úì All kernelÖanik scenariosÅested successfully!\n");
+
+183 
+	`¥_îr
+("‚úó SomeÅests failed!\n");
+
+187 c⁄° 
+∑nik_°©e_t
+* 
+°©e
+ = 
+	`gë_∑nik_°©e
+();
+
+188 
+	`¥_öfo
+("TŸÆÖ™ik cÆls: %d\n", 
+°©e
+->
+∑nik_ˇŒ_cou¡
+);
+
+190 
+	`¥_nŸi˚
+("=== END TESTS ===\n");
+
+193 
+	`¥_w¨n
+("\nToÅest REALÖanik (system will halt):\n");
+
+194 
+	`¥_w¨n
+("1. EditÅhis fileánd uncommentÅhe manualÅest\n");
+
+195 
+	`¥_w¨n
+("2. Run: make clean && make kernel && makeÑun\n");
+
+196 
+	`¥_w¨n
+("WARNING: System willÑequireÑeset!\n");
+
+204 
+	}
+}
+
+	@/home/devch/Projects/Kernel-V/kernel/tests/test_printk.c
+
+1 
+	~"¥ötk.h
+"
+
+2 
+	~"drivîs/vga.h
+"
+
+3 
+	~"ã°s/ã°_¥ötk.h
+"
+
+5 
+	$run_¥ötk_ã°s
+() {
+
+8 
+	`¥_öfo
+("Kernel initialized successfully.\n");
+
+9 
+	`¥_emîg
+("EmergencyÅest message\n");
+
+10 
+	`¥_Æît
+("AlertÅest message\n");
+
+11 
+	`¥_¸ô
+("CriticalÅest message\n");
+
+12 
+	`¥_îr
+("ErrorÅest message\n");
+
+13 
+	`¥_w¨nög
+("WarningÅest message\n");
+
+14 
+	`¥_nŸi˚
+("NoticeÅest message\n");
+
+15 
+	`¥_debug
+("DebugÅest message\n");
+
+18 
+	`¥ötk
+("RegularÖrintk message (defaultsÅo INFOÜevel)\n\n");
+
+21 
+	`vga_¥öt_°rög
+("Te°ög dif„ª¡ cﬁ‹s:\n", 
+WHITE_ON_BLACK
+);
+
+22 
+	`vga_¥öt_°rög
+("Whôê⁄ Bœck\n", 
+WHITE_ON_BLACK
+);
+
+23 
+	`vga_¥öt_°rög
+("Red o¿Whôe\n", 
+RED_ON_WHITE
+);
+
+24 
+	`vga_¥öt_°rög
+("Gªí o¿Bœck\n", 
+GREEN_ON_BLACK
+);
+
+25 
+	`vga_¥öt_°rög
+("Yñlow o¿Bœck\n", 
+YELLOW_ON_BLACK
+);
+
+28 
+	`¥ötk
+("\nTestingÖrintk formatting:\n");
+
+29 
+	`¥ötk
+("String: %s\n", "Hello World");
+
+30 
+	`¥ötk
+("Character: %c\n", 'A');
+
+31 
+	`¥ötk
+("Decimal: %d\n", 42);
+
+32 
+	`¥ötk
+("Hexadecimal: 0x%x\n", 255);
+
+33 
+	`¥ötk
+("Pointer: %p\n", (*)0xDEADBEEF);
+
+35 
+	}
+}
+
+37 
+	$run_¥ötk_s¸ﬁlög_ã°
+() {
+
+38 
+	`¥ötk
+("\nScrollingÅest:\n");
+
+39 
+i
+ = 0; i < 30; i++) {
+
+40 
+	`¥ötk
+("Löê%d - Te°ög kî√»s¸ﬁlög fun˘i⁄Æôy\n", 
+i
+);
+
+42 
+	}
+}
+
+	@
+1
+.
+0
+23
+1262
+/home/devch/Projects/Kernel-V/kernel/arch/x86/idt.c
+/home/devch/Projects/Kernel-V/kernel/drivers/vga/vga.c
+/home/devch/Projects/Kernel-V/kernel/include/assert.h
+/home/devch/Projects/Kernel-V/kernel/include/drivers/vga.h
+/home/devch/Projects/Kernel-V/kernel/include/idt.h
+/home/devch/Projects/Kernel-V/kernel/include/kernel.h
+/home/devch/Projects/Kernel-V/kernel/include/memory_map.h
+/home/devch/Projects/Kernel-V/kernel/include/page_fault.h
+/home/devch/Projects/Kernel-V/kernel/include/paging.h
+/home/devch/Projects/Kernel-V/kernel/include/panik.h
+/home/devch/Projects/Kernel-V/kernel/include/pmm.h
+/home/devch/Projects/Kernel-V/kernel/include/printk.h
+/home/devch/Projects/Kernel-V/kernel/include/tests/test_panik.h
+/home/devch/Projects/Kernel-V/kernel/include/tests/test_printk.h
+/home/devch/Projects/Kernel-V/kernel/lib/panik.c
+/home/devch/Projects/Kernel-V/kernel/lib/printk.c
+/home/devch/Projects/Kernel-V/kernel/main/kernel.c
+/home/devch/Projects/Kernel-V/kernel/memory/memory_map.c
+/home/devch/Projects/Kernel-V/kernel/memory/page_fault.c
+/home/devch/Projects/Kernel-V/kernel/memory/paging.c
+/home/devch/Projects/Kernel-V/kernel/memory/pmm.c
+/home/devch/Projects/Kernel-V/kernel/tests/test_panik.c
+/home/devch/Projects/Kernel-V/kernel/tests/test_printk.c

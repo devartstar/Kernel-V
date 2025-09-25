@@ -29,6 +29,8 @@ MEMORY_PAGING_SRC 	= $(KERNDIR)/memory/paging.c
 MEMORY_PAGE_FAULT_SRC = $(KERNDIR)/memory/page_fault.c
 
 IDT_SRC          	= $(KERNDIR)/arch/x86/idt.c
+TSS_SRC             = $(KERNDIR)/arch/x86/tss.c
+DOUBLE_FAULT_SRC    = $(KERNDIR)/arch/x86/double_fault_handler.asm
 
 # --- Header Files ---
 PRINTK_HDR       	= $(KERNDIR)/include/printk.h
@@ -43,6 +45,7 @@ TEST_PANIK_HDR   	= $(KERNDIR)/include/tests/test_panik.h
 TEST_PRINTK_HDR  	= $(KERNDIR)/include/tests/test_printk.h
 
 IDT_HDR		  		= $(KERNDIR)/include/idt.h
+TSS_HDR             = $(KERNDIR)/include/arch/x86/tss.h
 
 # --- Output Files ---
 STAGE1_BIN 			= $(BUILDDIR)/stage1.bin
@@ -69,9 +72,11 @@ MEMORY_PAGE_FAULT_OBJ = $(BUILDDIR)/page_fault.o
 IDT_OBJ				= $(BUILDDIR)/idt.o
 IDT_FLUSH_OBJ      = $(BUILDDIR)/idt_flush.o
 ISR_PAGE_FAULT_OBJ = $(BUILDDIR)/isr_page_fault.o
+TSS_OBJ            = $(BUILDDIR)/tss.o
+DOUBLE_FAULT_OBJ   = $(BUILDDIR)/double_fault_handler.o
 
 # --- Object Groups ---
-KERNEL_OBJS = $(KERNEL_ENTRY_OBJ) $(PRINTK_OBJ) $(VGA_OBJ) $(PANIK_OBJ) $(TEST_PANIK_OBJ) $(MEMORY_MAP_OBJ) $(MEMORY_MNG_OBJ) $(MEMORY_PAGING_OBJ) $(MEMORY_PAGE_FAULT_OBJ) $(IDT_OBJ) $(IDT_FLUSH_OBJ) $(ISR_PAGE_FAULT_OBJ) $(KERNEL_OBJ)
+KERNEL_OBJS = $(KERNEL_ENTRY_OBJ) $(PRINTK_OBJ) $(VGA_OBJ) $(PANIK_OBJ) $(TEST_PANIK_OBJ) $(MEMORY_MAP_OBJ) $(MEMORY_MNG_OBJ) $(MEMORY_PAGING_OBJ) $(MEMORY_PAGE_FAULT_OBJ) $(IDT_OBJ) $(IDT_FLUSH_OBJ) $(ISR_PAGE_FAULT_OBJ) $(TSS_OBJ) $(DOUBLE_FAULT_OBJ) $(KERNEL_OBJ)
 KERNEL_TEST_OBJS = $(KERNEL_OBJS) $(TEST_PRINTK_OBJ)
 
 # --- Kernel ELF/BIN for test and non-test ---

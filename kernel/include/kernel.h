@@ -12,6 +12,7 @@
 #include "pmm.h"
 #include "paging.h"
 #include "idt.h"
+#include "arch/x86/tss.h"
 
 #ifdef KERNEL_TESTS
 #include "tests/test_printk.h"
