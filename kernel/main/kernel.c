@@ -4,6 +4,74 @@
 #include "arch/x86/gdt.h"
 #include "paging.h"
 
+// =================================================================
+// DEBUG Start
+// =================================================================
+void check_double_fault_breadcrumbs() {
+    uint32_t *magic1 = (uint32_t*)0x15000;
+    uint32_t *magic2 = (uint32_t*)0x15004;
+    uint32_t *magic3 = (uint32_t*)0x15008;
+    
+    printk("Checking double fault breadcrumbs:\n");
+    printk("  Magic1 (0x15000): 0x%08x %s\n", *magic1, (*magic1 == 0xDEADBEEF) ? "(FOUND)" : "(not found)");
+    printk("  Magic2 (0x15004): 0x%08x %s\n", *magic2, (*magic2 == 0xCAFEBABE) ? "(FOUND)" : "(not found)");
+    printk("  Magic3 (0x15008): 0x%08x %s\n", *magic3, (*magic3 == 0x12345678) ? "(FOUND)" : "(not found)");
+}
+
+
+void debug_idt_entry(int num) {
+    extern idt_entry_t idt[IDT_ENTRIES];
+    
+    printk("IDT Entry %d:\n", num);
+    printk("  base_low:  0x%04x\n", idt[num].base_low);
+    printk("  base_high: 0x%04x\n", idt[num].base_high);
+    printk("  sel:       0x%04x\n", idt[num].sel);
+    printk("  always0:   0x%02x\n", idt[num].always0);
+    printk("  flags:     0x%02x\n", idt[num].flags);
+    
+    // Decode flags
+    if (idt[num].flags & 0x80) printk("    Present: YES\n");
+    else printk("    Present: NO\n");
+    
+    uint8_t gate_type = idt[num].flags & 0x0F;
+    if (gate_type == 0x5) printk("    Type: Task Gate\n");
+    else if (gate_type == 0xE) printk("    Type: Interrupt Gate\n");
+    else printk("    Type: 0x%x (unknown)\n", gate_type);
+}
+
+void debug_gdt_entry(int num) {
+    extern struct gdt_entry gdt[4];
+    
+    printk("GDT Entry %d:\n", num);
+    printk("  base: 0x%08x\n", 
+           (gdt[num].base_high << 24) | (gdt[num].base_middle << 16) | gdt[num].base_low);
+    printk("  limit: 0x%05x\n", 
+           ((gdt[num].granularity & 0x0F) << 16) | gdt[num].limit_low);
+    printk("  access: 0x%02x\n", gdt[num].access);
+    printk("  granularity: 0x%02x\n", gdt[num].granularity);
+    
+    // Decode access byte
+    if (gdt[num].access & 0x80) printk("    Present: YES\n");
+    else printk("    Present: NO\n");
+    
+    uint8_t desc_type = (gdt[num].access >> 3) & 0x1;
+    if (desc_type == 0) printk("    Type: System\n");
+    else printk("    Type: Code/Data\n");
+}
+
+void debug_tss_contents() {
+    printk("TSS Contents:\n");
+    printk("  esp: 0x%08x\n", tss_df.esp);
+    printk("  ss:  0x%04x\n", tss_df.ss);
+    printk("  cs:  0x%04x\n", tss_df.cs);
+    printk("  eip: 0x%08x\n", tss_df.eip);
+    printk("  cr3: 0x%08x\n", tss_df.cr3);
+    printk("  ds:  0x%04x\n", tss_df.ds);
+}
+// =================================================================
+// DEBUG End
+// =================================================================
+
 extern void switch_to_high_stack(uint32_t new_esp, void (*entry_func)());
 
 void test_stack_overflow(int depth) {
@@ -51,6 +119,22 @@ void high_stack_entry() {
     // *ptr = 123;                             // Will cause interrupt 14 (page fault)
 
     printk("Testing stack overflow...\n");
+    printk("Current page directory CR3: 0x%08x\n", tss_df.cr3);
+
+    // Check if VGA memory is accessible
+    volatile uint16_t* vga_test = (volatile uint16_t*)0xB8000;
+    *vga_test = 0x4F41; // 'A' with white on red
+    printk("VGA memory test: wrote to 0xB8000\n");
+
+    // Test double fault handler manually (DANGEROUS - but for debugging)
+    printk("About to trigger double fault test...\n");
+    // __asm__ volatile("int $8");  // Manual double fault - UNCOMMENT ONLY FOR TESTING
+
+    printk("Testing double fault handler directly...\n");
+    // __asm__ volatile("int $8");  // Trigger double fault directly
+
+    printk("If you see this, double fault handler failed!\n");
+
     test_stack_overflow(0);
 
     // while (1) { __asm__ __volatile__("hlt"); }
@@ -76,6 +160,8 @@ void kernel_main() {
     printk("%s v%s - Hello Devjit!\n", KERNEL_NAME, KERNEL_VERSION);
     printk("Kernel-V is running! Welcome to your custom kernel, Devjit!\n");
 
+    check_double_fault_breadcrumbs();
+
     // -------------------------------------------------------------------------
     // Initializing IDT (Interrupt Descriptor Table)
     // -------------------------------------------------------------------------
@@ -83,6 +169,26 @@ void kernel_main() {
     init_tss();
     gdt_init();
     // Do NOT enable interrupts yet
+
+    // Debug IDT and GDT setup
+    printk("\n==================================================\n");
+    printk("DEBUG: IDT and GDT Setup\n");
+    debug_idt_entry(8);  // Double fault
+    debug_gdt_entry(3);  // TSS entry
+    debug_tss_contents();
+    printk("==================================================\n");
+
+    // Add this after TSS setup
+    printk("Double fault stack: 0x%08x to 0x%08x\n", 
+        (uint32_t)double_fault_stack, 
+        (uint32_t)(double_fault_stack + DOUBLE_FAULT_STACK_SIZE));
+    printk("Double fault stack size: %d bytes\n", DOUBLE_FAULT_STACK_SIZE);
+
+    // Write a pattern to double fault stack to verify it's accessible
+    for (int i = 0; i < 16; i++) {
+        double_fault_stack[i] = 0xAA + i;
+    }
+    printk("Double fault stack test pattern written\n");
 
     // -------------------------------------------------------------------------
     // Display BIOS Memory Map (E820)
@@ -111,6 +217,7 @@ void kernel_main() {
     printk("\n==================================================\n");
     printk("Initializing Paging...\n");
     paging_init();
+    debug_page_tables();
     pmm_reserve_memory_region(RESERVED_TYPE_PAGE_TABLE);
 
     update_tss_cr3();

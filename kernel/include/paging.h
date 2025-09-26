@@ -15,3 +15,4 @@
 void paging_init();
 // void page_fault_handler(); // do we need this ? dupplicate of page_fault.h
 void paging_map_page(uint32_t virtual_addr, uint32_t physical_addr, uint32_t flags);
+void debug_page_tables();

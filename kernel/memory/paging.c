@@ -113,3 +113,22 @@ void paging_map_page (uint32_t virtual_addr, uint32_t physical_addr, uint32_t fl
         : "memory"
     );
 }
+
+void debug_page_tables ()
+{
+    uint32_t* page_dir = (uint32_t*)PAGE_DIR_START_ADDR;
+    uint32_t* page_table = (uint32_t*)PAGE_TABLE_START_ADDR;
+
+    printk("[DEBUG_PAGING] Page directory entry 0: 0x%08x\n", page_dir[0]);
+
+    // Checking for VGA memory mapping (0xB8000 = page 0xB8)
+    uint32_t vga_page = 0xB8000 / PAGE_SIZE;
+    printk("[DEBUG_PAGING] VGA memory mapping (0xB8000): Page Table Entry %d: 0x%08x\n", vga_page, page_table[vga_page]);
+
+    // Check if VGA Page is marked present
+    if (page_table[vga_page] & PAGE_PRESENT) {
+        printk("[DEBUG_PAGING] VGA memory is mapped and present.\n");
+    } else {
+        printk("[DEBUG_PAGING] VGA memory is NOT mapped!\n");
+    }
+}

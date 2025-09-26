@@ -27,11 +27,14 @@ void idt_set_gate(int num, uint32_t base, uint16_t sel, uint8_t flags)
 
 // Set up a task gate for double fault (interrupt 8)
 void set_task_gate(uint8_t num, uint16_t sel) {
-    idt[num].base_low = 0;
-    idt[num].base_high = 0;
-    idt[num].sel = sel;
+    idt[num].base_low = 0;      // Task gates don't use base addresses
+    idt[num].base_high = 0;     // They use TSS selector instead
+    idt[num].sel = sel;         // TSS selector (0x18)
     idt[num].always0 = 0;
-    idt[num].flags = 0x85; // Present, DPL=0, Task Gate (type 5)
+    idt[num].flags = 0x85;      // Present(1) + DPL(00) + Type(0101 = Task Gate)
+    
+    // DEBUG: Verify the setup
+    printk("Set task gate %d: sel=0x%04x, flags=0x%02x\n", num, sel, idt[num].flags);
 }
 
 /*

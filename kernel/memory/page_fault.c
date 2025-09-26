@@ -7,12 +7,40 @@
 
 void page_fault_handler (page_fault_stack_t* frame)
 {
+    // Disable interrupts to prevent nested faults
+    __asm__ __volatile__ ("cli");
+
     // cr2 holds the fault linear address for the most recent page fault
     uint32_t fault_address;
     uint32_t esp, ebp;
     asm volatile("mov %%esp, %0" : "=r"(esp));
     asm volatile("mov %%ebp, %0" : "=r"(ebp));
     __asm__ __volatile__("mov %%cr2, %0" : "=r"(fault_address));
+
+    // Check to see if accessing guard page
+    // Fault accessing Guard Page: Stack Overflow
+    if (fault_address >= KERNEL_STACK_BOTTOM_VIRT && fault_address < KERNEL_STACK_BOTTOM_VIRT + PAGE_SIZE) 
+    {
+        // DON'T use panik() - it will use the corrupted stack!
+        // Instead, write directly to VGA and halt
+        volatile uint16_t* vga = (volatile uint16_t*)0xB8000;
+        char* msg = "STACK OVERFLOW DETECTED!";
+        
+        // Clear screen first
+        for (int i = 0; i < 80*25; i++) {
+            vga[i] = 0x4F20; // White space on red
+        }
+        
+        // Write message
+        for (int i = 0; msg[i] != '\0'; i++) {
+            vga[i] = 0x4F00 | msg[i]; // White text on red
+        }
+        
+        // Force double fault for proper handling
+        volatile int *bad_ptr = (int *)0x00000000;
+        *bad_ptr = 123;
+    }
+
 
     printk("[PAGE FAULT] at address: 0x%x, error code: 0x%x [eip=0x%x, esp=0x%x, ebp=0x%x]\n", 
             fault_address, 
@@ -33,13 +61,6 @@ void page_fault_handler (page_fault_stack_t* frame)
         }
         paging_map_page(fault_address, (uint32_t)new_frame, PAGE_PRESENT | PAGE_WRITE);
         return;
-    }
-
-    // Fault accessing Guard Page: Stack Overflow
-    if (fault_address >= KERNEL_STACK_BOTTOM_VIRT && fault_address < KERNEL_STACK_BOTTOM_VIRT + PAGE_SIZE) 
-    {
-        printk("!!! KERNEL STACK OVERFLOW !!! Accessed guard page at address 0x%x", fault_address);
-        panik("Kernel stack overflow detected!");
     }
 
     // Check if the fault_address is in the kernel stack range and faulting within a small gap below ESP

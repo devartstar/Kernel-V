@@ -5,53 +5,24 @@ SECTION .text
 global double_fault_handler
 
 double_fault_handler:
-    ; Disable interrupts
+    ; Disable interrupts immediately
     cli
     
-    ; Set up segments (in case they're corrupted)
-    mov ax, 0x10        ; Data segment selector
-    mov ds, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
-    mov ss, ax
+    ; Write multiple magic values to different memory locations for debugging
+    mov eax, 0xDEADBEEF
+    mov [0x15000], eax     ; Magic value 1
     
-    ; Clear screen first
-    mov edi, 0xB8000    ; VGA text buffer
-    mov ecx, 80*25      ; 80x25 screen
-    mov ax, 0x4F20      ; White space on red background
-    rep stosw
+    mov eax, 0xCAFEBABE  
+    mov [0x15004], eax     ; Magic value 2
     
-    ; Print debug message to screen (VGA text mode at 0xB8000)
-    mov edi, 0xB8000    ; VGA text buffer start
-    mov esi, df_msg     ; Message string
-    mov ah, 0x4F        ; White text on red background
+    mov eax, 0x12345678
+    mov [0x15008], eax     ; Magic value 3
     
-.print_loop:
-    lodsb               ; Load byte from [esi] into al
-    test al, al         ; Check for null terminator
-    jz .print_done
-    stosw               ; Store ax (al + ah) to [edi]
-    jmp .print_loop
+    ; Try to write to VGA memory as well (since we know it's mapped)
+    mov word [0xB8000], 0x4F44  ; 'D' with white on red
+    mov word [0xB8002], 0x4F46  ; 'F' with white on red
     
-.print_done:
-    ; Print stack overflow specific message
-    mov edi, 0xB8000 + (2*80*2) ; Second line
-    mov esi, stack_msg
-    mov ah, 0x4E        ; Yellow text on red background
-    
-.print_stack_loop:
-    lodsb
-    test al, al
-    jz .halt_loop
-    stosw
-    jmp .print_stack_loop
-
-    ; Infinite loop with halt
-.halt_loop:
+    ; Safe infinite loop
+.safe_halt:
     hlt
-    jmp .halt_loop
-
-SECTION .data
-df_msg: db "DOUBLE FAULT! System halted.", 0
-stack_msg: db "Stack overflow detected! Check guard page mapping.", 0
+    jmp .safe_halt

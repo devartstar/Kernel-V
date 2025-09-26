@@ -21,7 +21,7 @@ void gdt_init(void) {
     set_gdt_entry(0, 0, 0, 0, 0);                    // Null
     set_gdt_entry(1, 0, 0xFFFFF, 0x9A, 0xCF);        // Code seg (0x08)
     set_gdt_entry(2, 0, 0xFFFFF, 0x92, 0xCF);        // Data seg (0x10)
-    set_gdt_entry(3, (uint32_t)&tss_df, sizeof(struct tss_entry)-1, 0x89, 0x00); // TSS (0x18)
+    set_gdt_entry(3, (uint32_t)&tss_df, sizeof(struct tss_entry)-1, 0x89, 0x40); // TSS (0x18)
 
     gdtp.limit = sizeof(gdt) - 1;
     gdtp.base  = (uint32_t)&gdt;
@@ -29,4 +29,9 @@ void gdt_init(void) {
 
     // Load TSS selector (0x18, 3rd entry)
     __asm__ volatile("ltr %%ax" : : "a"(0x18));
+    
+    // VERIFY TSS IS LOADED
+    uint16_t current_tr;
+    __asm__ volatile("str %0" : "=r"(current_tr));
+    printk("Current Task Register: 0x%04x (should be 0x18)\n", current_tr);
 }
