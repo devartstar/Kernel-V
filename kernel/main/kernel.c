@@ -126,18 +126,6 @@ void high_stack_entry() {
     *vga_test = 0x4F41; // 'A' with white on red
     printk("VGA memory test: wrote to 0xB8000\n");
 
-    // Test double fault handler manually (DANGEROUS - but for debugging)
-    printk("About to trigger double fault test...\n");
-    // __asm__ volatile("int $8");  // Manual double fault - UNCOMMENT ONLY FOR TESTING
-
-    printk("Testing double fault handler directly...\n");
-    // __asm__ volatile("int $8");  // Trigger double fault directly
-
-    printk("If you see this, double fault handler failed!\n");
-
-    test_stack_overflow(0);
-
-    // while (1) { __asm__ __volatile__("hlt"); }
 
     // -------------------------------------------------------------------------
     // Optional Unit Tests
@@ -150,6 +138,16 @@ void high_stack_entry() {
     run_panik_unit_tests();
     printk("==================================================\n");
     #endif
+    
+    // -------------------------------------------------------------------------
+    // Kernel main execution complete - halt the system
+    // -------------------------------------------------------------------------
+    printk("\nKernel initialization complete. Halting system.\n");
+    
+    // Infinite halt loop - prevents undefined behavior from function "returning"
+    while (1) {
+        __asm__ __volatile__("cli; hlt");
+    }
 }
 
 void kernel_main() {

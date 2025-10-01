@@ -27,6 +27,9 @@ MEMORY_MAP_SRC   	= $(KERNDIR)/memory/memory_map.c
 MEMORY_MNG_SRC   	= $(KERNDIR)/memory/pmm.c
 MEMORY_PAGING_SRC 	= $(KERNDIR)/memory/paging.c
 MEMORY_PAGE_FAULT_SRC = $(KERNDIR)/memory/page_fault.c
+MEMORY_POOL_SRC  	= $(KERNDIR)/lib/pool_alloc.c
+
+PROC_SRC		  	= $(KERNDIR)/proc/proc.c
 
 IDT_SRC          	= $(KERNDIR)/arch/x86/idt.c
 TSS_SRC             = $(KERNDIR)/arch/x86/tss.c
@@ -42,6 +45,9 @@ PANIK_HDR        	= $(KERNDIR)/include/panik.h
 MEMORY_MAP_HDR   	= $(KERNDIR)/include/memory_map.h
 MEMORY_MNG_HDR	 	= $(KERNDIR)/include/memory/pmm.h
 MEMORY_PAGING_HDR 	= $(KERNDIR)/include/memory/paging.h
+MEMORY_POOL_HDR 	= $(KERNDIR)/include/pool_alloc.h
+
+PROC_HDR		  	= $(KERNDIR)/include/proc.h
 
 TEST_PANIK_HDR   	= $(KERNDIR)/include/tests/test_panik.h
 TEST_PRINTK_HDR  	= $(KERNDIR)/include/tests/test_printk.h
@@ -71,6 +77,9 @@ MEMORY_MAP_OBJ  	= $(BUILDDIR)/memory_map.o
 MEMORY_MNG_OBJ  	= $(BUILDDIR)/pmm.o
 MEMORY_PAGING_OBJ	= $(BUILDDIR)/paging.o
 MEMORY_PAGE_FAULT_OBJ = $(BUILDDIR)/page_fault.o
+MEMORY_POOL_OBJ  	= $(BUILDDIR)/pool_alloc.o
+
+PROC_OBJ			= $(BUILDDIR)/proc.o
 
 IDT_OBJ				= $(BUILDDIR)/idt.o
 IDT_FLUSH_OBJ      = $(BUILDDIR)/idt_flush.o
@@ -81,7 +90,7 @@ GDT_FLUSH_OBJ      = $(BUILDDIR)/gdt_flush.o
 DOUBLE_FAULT_OBJ   = $(BUILDDIR)/double_fault_handler.o
 
 # --- Object Groups ---
-KERNEL_OBJS = $(KERNEL_ENTRY_OBJ) $(PRINTK_OBJ) $(VGA_OBJ) $(PANIK_OBJ) $(TEST_PANIK_OBJ) $(MEMORY_MAP_OBJ) $(MEMORY_MNG_OBJ) $(MEMORY_PAGING_OBJ) $(MEMORY_PAGE_FAULT_OBJ) $(IDT_OBJ) $(IDT_FLUSH_OBJ) $(ISR_PAGE_FAULT_OBJ) $(TSS_OBJ) $(GDT_OBJ) $(GDT_FLUSH_OBJ) $(DOUBLE_FAULT_OBJ) $(KERNEL_OBJ)
+KERNEL_OBJS = $(KERNEL_ENTRY_OBJ) $(PRINTK_OBJ) $(VGA_OBJ) $(PANIK_OBJ) $(TEST_PANIK_OBJ) $(MEMORY_MAP_OBJ) $(MEMORY_MNG_OBJ) $(MEMORY_PAGING_OBJ) $(MEMORY_PAGE_FAULT_OBJ) $(IDT_OBJ) $(IDT_FLUSH_OBJ) $(ISR_PAGE_FAULT_OBJ) $(TSS_OBJ) $(GDT_OBJ) $(GDT_FLUSH_OBJ) $(DOUBLE_FAULT_OBJ) $(MEMORY_POOL_OBJ) $(PROC_OBJ) $(KERNEL_OBJ)
 KERNEL_TEST_OBJS = $(KERNEL_OBJS) $(TEST_PRINTK_OBJ)
 
 # --- Kernel ELF/BIN for test and non-test ---
@@ -125,6 +134,8 @@ $(BUILDDIR)/%.o: $(KERNDIR)/drivers/vga/%.c | $(BUILDDIR)
 $(BUILDDIR)/%.o: $(KERNDIR)/main/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
 $(BUILDDIR)/%.o: $(KERNDIR)/memory/%.c | $(BUILDDIR)
+	$(CC) $(CFLAGS) $< -o $@
+$(BUILDDIR)/%.o: $(KERNDIR)/proc/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
 $(BUILDDIR)/%.o: $(KERNDIR)/tests/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
