@@ -3,7 +3,8 @@
 
 #include <stdint.h>
 
-#define PROC_NAME_MAX 16
+#define PROC_NAME_MAX		16
+#define KERNEL_STACK_SIZE	4096
 
 //
 // Process States
@@ -53,6 +54,15 @@ pcb_t *proc_alloc (const char *name);
 void proc_free (pcb_t *proc);
 
 pcb_t *proc_find (uint32_t pid);
+
+/**
+ * proc_create - Create a new process that runs a function.
+ * @entry pointer of entry function to run on executing the process
+ *		  takes in a pointer of any type and returns void
+ * @args arguments passed to the thread
+ * @name string for debuging
+*/
+pcb_t *proc_create (void (*entry)(void*), void *args, const char* name);
 
 extern pcb_t *proc_list_head;
 

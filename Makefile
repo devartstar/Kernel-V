@@ -30,11 +30,15 @@ MEMORY_PAGE_FAULT_SRC = $(KERNDIR)/memory/page_fault.c
 MEMORY_POOL_SRC  	= $(KERNDIR)/lib/pool_alloc.c
 
 PROC_SRC		  	= $(KERNDIR)/proc/proc.c
+PROC_OFFSET_GEN_SRC = $(KERNDIR)/lib/proc_offset_generator.c
+CONTEXT_SWITCH_SRC	= $(KERNDIR)/arch/x86/context_switch.asm
 
 IDT_SRC          	= $(KERNDIR)/arch/x86/idt.c
-TSS_SRC             = $(KERNDIR)/arch/x86/tss.c
+IDT_FLUSH_SRC       = $(KERNDIR)/arch/x86/idt_flush.asm
 GDT_SRC             = $(KERNDIR)/arch/x86/gdt.c
 GDT_FLUSH_SRC       = $(KERNDIR)/arch/x86/gdt_flush.asm
+TSS_SRC             = $(KERNDIR)/arch/x86/tss.c
+ISR_PAGE_FAULT_SRC  = $(KERNDIR)/arch/x86/isr_page_fault.asm
 DOUBLE_FAULT_SRC    = $(KERNDIR)/arch/x86/double_fault_handler.asm
 
 # --- Header Files ---
@@ -48,6 +52,9 @@ MEMORY_PAGING_HDR 	= $(KERNDIR)/include/memory/paging.h
 MEMORY_POOL_HDR 	= $(KERNDIR)/include/pool_alloc.h
 
 PROC_HDR		  	= $(KERNDIR)/include/proc.h
+PROC_OFFSET_HDR		= $(KERNDIR)/include/proc_offset.h
+PROC_OFFSET_GEN_HDR = $(KERNDIR)/include/proc_offset_asm.h
+CONTEXT_SWITCH_HDR	= $(KERNDIR)/include/context_switch.h
 
 TEST_PANIK_HDR   	= $(KERNDIR)/include/tests/test_panik.h
 TEST_PRINTK_HDR  	= $(KERNDIR)/include/tests/test_printk.h
@@ -80,17 +87,18 @@ MEMORY_PAGE_FAULT_OBJ = $(BUILDDIR)/page_fault.o
 MEMORY_POOL_OBJ  	= $(BUILDDIR)/pool_alloc.o
 
 PROC_OBJ			= $(BUILDDIR)/proc.o
+CONTEXT_SWITCH_OBJ	= $(BUILDDIR)/context_switch.o
 
 IDT_OBJ				= $(BUILDDIR)/idt.o
-IDT_FLUSH_OBJ      = $(BUILDDIR)/idt_flush.o
-ISR_PAGE_FAULT_OBJ = $(BUILDDIR)/isr_page_fault.o
-TSS_OBJ            = $(BUILDDIR)/tss.o
-GDT_OBJ            = $(BUILDDIR)/gdt.o
-GDT_FLUSH_OBJ      = $(BUILDDIR)/gdt_flush.o
-DOUBLE_FAULT_OBJ   = $(BUILDDIR)/double_fault_handler.o
+IDT_FLUSH_OBJ      	= $(BUILDDIR)/idt_flush.o
+GDT_OBJ            	= $(BUILDDIR)/gdt.o
+GDT_FLUSH_OBJ      	= $(BUILDDIR)/gdt_flush.o
+TSS_OBJ            	= $(BUILDDIR)/tss.o
+ISR_PAGE_FAULT_OBJ 	= $(BUILDDIR)/isr_page_fault.o
+DOUBLE_FAULT_OBJ   	= $(BUILDDIR)/double_fault_handler.o
 
 # --- Object Groups ---
-KERNEL_OBJS = $(KERNEL_ENTRY_OBJ) $(PRINTK_OBJ) $(VGA_OBJ) $(PANIK_OBJ) $(TEST_PANIK_OBJ) $(MEMORY_MAP_OBJ) $(MEMORY_MNG_OBJ) $(MEMORY_PAGING_OBJ) $(MEMORY_PAGE_FAULT_OBJ) $(IDT_OBJ) $(IDT_FLUSH_OBJ) $(ISR_PAGE_FAULT_OBJ) $(TSS_OBJ) $(GDT_OBJ) $(GDT_FLUSH_OBJ) $(DOUBLE_FAULT_OBJ) $(MEMORY_POOL_OBJ) $(PROC_OBJ) $(KERNEL_OBJ)
+KERNEL_OBJS = $(KERNEL_ENTRY_OBJ) $(PRINTK_OBJ) $(VGA_OBJ) $(PANIK_OBJ) $(TEST_PANIK_OBJ) $(MEMORY_MAP_OBJ) $(MEMORY_MNG_OBJ) $(MEMORY_PAGING_OBJ) $(MEMORY_PAGE_FAULT_OBJ) $(IDT_OBJ) $(IDT_FLUSH_OBJ) $(ISR_PAGE_FAULT_OBJ) $(TSS_OBJ) $(GDT_OBJ) $(GDT_FLUSH_OBJ) $(DOUBLE_FAULT_OBJ) $(MEMORY_POOL_OBJ) $(PROC_OBJ) $(CONTEXT_SWITCH_OBJ) $(KERNEL_OBJ)
 KERNEL_TEST_OBJS = $(KERNEL_OBJS) $(TEST_PRINTK_OBJ)
 
 # --- Kernel ELF/BIN for test and non-test ---
@@ -126,6 +134,14 @@ $(STAGE2_ELF): $(STAGE2_SRC) | $(BUILDDIR)
 	$(NASM) -g -f elf32 -DELF_BUILD $< -o $(BUILDDIR)/stage2.o
 	ld -m elf_i386 -Ttext=0x7e00 --oformat=elf32-i386 $(BUILDDIR)/stage2.o -o $@
 
+# --- Auto generate struct offset macros for ASM ---
+PROC_OFFSET_GEN = $(KERNDIR)/lib/proc_offset_generator
+$(PROC_OFFSET_GEN_HDR): $(PROC_OFFSET_GEN)
+	$(PROC_OFFSET_GEN) > $(PROC_OFFSET_GEN_HDR)
+
+$(PROC_OFFSET_GEN): $(PROC_OFFSET_GEN_SRC)
+	$(CC) -I $(KERNDIR)/include -o $@ $<
+
 # --- Pattern rules for C objects ---
 $(BUILDDIR)/%.o: $(KERNDIR)/lib/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
@@ -139,8 +155,15 @@ $(BUILDDIR)/%.o: $(KERNDIR)/proc/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
 $(BUILDDIR)/%.o: $(KERNDIR)/tests/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
-$(BUILDDIR)/%.o: $(KERNDIR)/arch/x86/%.asm | $(BUILDDIR)
+
+# Special rule for kernel_entry.asm (doesn't need proc_offset header)
+$(KERNEL_ENTRY_OBJ): $(KERNEL_ENTRY_SRC) | $(BUILDDIR)
 	$(NASM) $(NASMFLAGS) -f elf32 $< -o $@
+
+# Pattern rule for other x86 assembly files that need proc_offset header
+$(BUILDDIR)/%.o: $(KERNDIR)/arch/x86/%.asm $(PROC_OFFSET_GEN_HDR) | $(BUILDDIR)
+	$(NASM) $(NASMFLAGS) -f elf32 $< -o $@
+
 $(BUILDDIR)/%.o: $(KERNDIR)/arch/x86/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
 
@@ -213,6 +236,7 @@ debug: $(KERNEL_ELF) $(DISK_IMG)
 # --- Clean ---
 clean:
 	rm -rf $(BUILDDIR)
+	rm -f  $(PROC_OFFSET_GEN_HDR) $(PROC_OFFSET_GEN)
 
 # --- Help ---
 help:

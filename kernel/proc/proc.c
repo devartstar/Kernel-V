@@ -128,3 +128,35 @@ pcb_t *proc_find (uint32_t pid)
 	}
 	return NULL;
 }
+
+pcb_t *proc_create (void (*entry)(void*), void *args, const char *name)
+{
+	/* create a pcb for the process */
+	pcb_t *proc = proc_alloc (name);
+	if (!proc)
+	{
+		/* could not allocate memory to pcb */
+		return NULL;
+	}
+
+	/* allocate stack to process */
+	void *stack = pmm_alloc_frame();
+	if (!stack)
+	{
+		proc_free (proc);
+		return NULL;
+	}
+	proc->stack_base = stack;
+
+	/* since stack grows downwards, stack pointer should point to top of stack
+	*/
+	uint32_t *stack_top = (uint32_t *)((uint8_t *)stack + KERNEL_STACK_SIZE);
+
+	proc->context.esp = (uint32_t *)stack_top;
+	proc->context.eip = (uint32_t *)entry;
+	proc->context.ebp = 0;
+
+	proc->state = PROC_READY;
+
+	return proc;
+}

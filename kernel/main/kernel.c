@@ -3,6 +3,10 @@
 #include "arch/x86/tss.h"
 #include "arch/x86/gdt.h"
 #include "paging.h"
+#include "proc.h"
+#include "context_switch.h"
+
+extern pcb_t *current_proc;
 
 // =================================================================
 // DEBUG Start
@@ -17,7 +21,6 @@ void check_double_fault_breadcrumbs() {
     printk("  Magic2 (0x15004): 0x%08x %s\n", *magic2, (*magic2 == 0xCAFEBABE) ? "(FOUND)" : "(not found)");
     printk("  Magic3 (0x15008): 0x%08x %s\n", *magic3, (*magic3 == 0x12345678) ? "(FOUND)" : "(not found)");
 }
-
 
 void debug_idt_entry(int num) {
     extern idt_entry_t idt[IDT_ENTRIES];
@@ -67,6 +70,12 @@ void debug_tss_contents() {
     printk("  eip: 0x%08x\n", tss_df.eip);
     printk("  cr3: 0x%08x\n", tss_df.cr3);
     printk("  ds:  0x%04x\n", tss_df.ds);
+}
+
+void my_test_proc (void *arg) 
+{
+    panik("Test process is running!\n");
+    while (1) { __asm__ __volatile__("hlt"); }
 }
 // =================================================================
 // DEBUG End
@@ -228,6 +237,23 @@ void kernel_main() {
     printk("  Handler CR3: 0x%08x\n", tss_df.cr3);
     printk("\n==================================================\n");
     
+
+    // -------------------------------------------------------------------------
+    // Process Control 
+    // -------------------------------------------------------------------------
+    proc_init ();
+    pcb_t *test_proc = proc_create (my_test_proc, NULL, "test_proc");
+    if (test_proc)
+    {
+        printk ("Test process created with PID %d, stack at %p\n", test_proc->pid, test_proc->stack_base);
+        current_proc = NULL;
+        switch_to (current_proc, test_proc);
+    }
+    else
+    {
+        printk ("Failed to create test process!\n");
+    }
+
 
     // Map stack region: high virtual address -> physical address
     uint32_t stack_size = KERNEL_STACK_TOP_VIRT - KERNEL_STACK_BOTTOM_VIRT;
