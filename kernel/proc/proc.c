@@ -24,6 +24,47 @@ char *strncpy(char *dest, const char *src, size_t n) {
     return dest;
 }
 
+int strcmp(const char *s1, const char *s2) {
+    while (*s1 && (*s1 == *s2)) {
+        s1++;
+        s2++;
+    }
+    return *(unsigned char*)s1 - *(unsigned char*)s2;
+}
+
+void cleanup_terminated_processes(void) {
+    pcb_t *p = proc_list_head;
+    
+    while (p) {
+        pcb_t *next = p->next;
+        
+        if (p->state == PROC_TERMINATED && strcmp(p->name, "idle") != 0) {
+            printk("Cleaning up terminated process: %s\n", p->name);
+            proc_free(p);
+        }
+        
+        p = next;
+    }
+}
+
+static void idle_process(void *arg) {
+    static int idle_count = 0;
+    
+    while (1) {
+        printk("IDLE process running (count: %d)\n", idle_count++);
+        
+        // Every 10 idle cycles, clean up terminated processes
+        if (idle_count % 10 == 0) {
+            cleanup_terminated_processes();
+        }
+        
+        // Delay
+        for (volatile int i = 0; i < 1000000; i++);
+        
+        yield();
+    }
+}
+
 // -----------------------------------
 // START: POOL ALLOCATOR for PCB
 // -----------------------------------
@@ -54,6 +95,15 @@ void proc_init (void)
 	proc_list_head = NULL;
 	next_pid = 1;
 	pcb_allocator_init ();
+
+	pcb_t *idle = proc_create(idle_process, NULL, "idle");
+    if (idle) {
+        current_proc = idle;  // Set as current process
+        idle->state = PROC_RUNNING;  // Mark as running
+        printk("Created idle process with PID %d\n", idle->pid);
+    } else {
+        printk("ERROR: Failed to create idle process!\n");
+    }
 }
 
 pcb_t *proc_alloc (const char *name)
@@ -165,77 +215,113 @@ pcb_t *proc_create (void (*entry)(void*), void *args, const char *name)
 // todo: use a circular separate linked list for ready process
 pcb_t *scheduler_pick_next (void)
 {
-	pcb_t *proc_now = current_proc;
+    pcb_t *proc_now = current_proc;
+    pcb_t *proc_next = NULL;
 
-	/*
-	 No process is executing yet, first run
-	 Execute the first entry in the proc list head
-	*/
-	if (!current_proc)
-	{
-		return proc_list_head;
-	}
+    if (!current_proc) {
+        return proc_list_head;
+    }
 
-	/*
-	 Iterate will we have completed a circle back to current proc
-	*/
-	pcb_t *proc_next = proc_now->next;
-	while (proc_next != proc_now)
-	{
-		if (proc_next->state == PROC_READY)
-		{
-			break;
-		}
+    // Round-robin scheduling: iterate through all processes starting from next
+    pcb_t *start_proc = proc_now->next ? proc_now->next : proc_list_head;
+    proc_next = start_proc;
 
-		proc_next = proc_next->next;
-		/* 
-		 If reached end, start from beginning 
-		*/
-		if (proc_next == NULL)
-		{
-			proc_next = proc_list_head;
-		}
-	}
+    // Look for a READY process (skip SLEEPING and TERMINATED processes)
+    do {
+        if (proc_next && proc_next->state == PROC_READY) {
+            return proc_next;
+        }
+        
+        proc_next = proc_next ? proc_next->next : proc_list_head;
+        
+        if (proc_next == start_proc) {
+            break;
+        }
+    } while (proc_next != proc_now);
 
-	return proc_next;
-	
+    // If current process is TERMINATED, definitely switch to idle
+    if (proc_now && proc_now->state == PROC_TERMINATED) {
+        // Find and return idle process
+        for (pcb_t *p = proc_list_head; p; p = p->next) {
+            if (strcmp(p->name, "idle") == 0) {
+                return p;
+            }
+        }
+    }
+
+    // If no READY process found, return the idle process
+    for (pcb_t *p = proc_list_head; p; p = p->next) {
+        if (strcmp(p->name, "idle") == 0) {
+            return p;
+        }
+    }
+    
+    return proc_now;
 }
 
 void yield (void)
 {
-	pcb_t *proc_now = current_proc;
-	pcb_t *proc_next = NULL;
-	
-	printk("\n=== YIELD DEBUG ===\n");
-    printk("Current process: %s\n", proc_now ? proc_now->name : "NULL");
+    pcb_t *proc_now = current_proc;
+    pcb_t *proc_next = NULL;
+    
+    printk("\n=== YIELD DEBUG ===\n");
+    printk("Current process: %s (state: %d)\n", proc_now ? proc_now->name : "NULL", proc_now ? proc_now->state : -1);
 
-	/*
-	 Printing the list of PCB in the process heal list
-	*/
-	for (pcb_t *p = proc_list_head; p; p = p->next) 
-	{
-		printk("PCB[%s]: EIP=0x%x ESP=0x%x state=%d\n", p->name, p->context.eip, p->context.esp, p->state);
-	}
+    // Print the list of PCB in the process list
+    for (pcb_t *p = proc_list_head; p; p = p->next) 
+    {
+        printk("PCB[%s]: EIP=0x%08x ESP=0x%08x state=%d\n", p->name, (uint32_t)p->context.eip, (uint32_t)p->context.esp, p->state);
+    }
 
+    proc_next = scheduler_pick_next ();
 
-	proc_next = scheduler_pick_next ();
+    printk("Selected next process: %s\n", proc_next ? proc_next->name : "NULL");
 
-	printk("Selected next process: %s\n", proc_next ? proc_next->name : "NULL");
+    if (proc_next && proc_next != proc_now)
+    {
+        printk("Switching from %s to %s\n", proc_now->name, proc_next->name);
 
-	if (proc_next && proc_next != proc_now)
-	{
-		printk("Switching from %s to %s\n", proc_now ? proc_now->name : "NULL", proc_next->name);
-		current_proc = proc_next;
-		switch_to (proc_now, proc_next);
-		/*
-		 Execution resumes from here when switch back
-		*/
-		printk("Resumed process: %s\n", current_proc->name);
-	}
-	else
-	{
-		printk("No other process to switch to.\n");
-	}
+        // Don't mark TERMINATED processes as READY
+        if (proc_now->state == PROC_RUNNING) 
+        {
+            proc_now->state = PROC_READY;
+        }
+        // If proc_now is TERMINATED, leave it as TERMINATED
 
+        // Mark next as running
+        proc_next->state = PROC_RUNNING;
+        current_proc = proc_next;
+
+        // Check if this is the first switch from idle (which was never properly started)
+        if (proc_now && strcmp(proc_now->name, "idle") == 0 && 
+            proc_now->context.eip == (uint32_t)idle_process) {
+            
+            printk("First switch from unstarted idle process - jumping directly\n");
+            
+            // Jump directly to the process without saving idle context
+            asm volatile (
+                "mov %0, %%esp\n\t"          // Load process stack
+                "push $0\n\t"                // Push argument (NULL)
+                "jmp *%1"                    // Jump to process entry point
+                :
+                : "r"((uint32_t)proc_next->context.esp),
+                  "r"((uint32_t)proc_next->context.eip)
+                : "memory"
+            );
+            
+            // Should never reach here
+            printk("ERROR: Returned from direct jump!\n");
+        } else {
+            // Normal context switch between processes
+            switch_to (proc_now, proc_next);
+        }
+
+        // Execution resumes from here when switch back
+        printk("Resumed process: %s\n", current_proc->name);
+    }
+    else
+    {
+        printk("No context switch needed - staying in %s\n", proc_now ? proc_now->name : "NULL");
+    }
 }
 

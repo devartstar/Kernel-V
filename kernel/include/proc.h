@@ -15,6 +15,7 @@ typedef enum
 	PROC_READY,
 	PROC_RUNNING,
 	PROC_WAITING,
+	PROC_SLEEPING,
 	PROC_TERMINATED
 } proc_state_t;
 

@@ -74,13 +74,27 @@ void debug_tss_contents() {
 
 void my_test_proc (void *arg) 
 {
-    int i = 0;
-    while (1)
-    {
-        printk("Process %s is running! i = %d, \n", current_proc->name, i++);
+    int max_runs = 3; // Run only 3 times then terminate
+    int run_count = 0;
+    
+    for (int i = 0; i < max_runs; i++) {
+        printk("Process %s is running! iteration %d/%d\n", current_proc->name, i+1, max_runs);
+        
+        // Yield to other processes
         yield();
     }
+    
+    // Terminate this process
+    printk("Process %s finished, terminating\n", current_proc->name);
+    current_proc->state = PROC_TERMINATED;
+    
+    // This yield will switch away from this terminated process
+    yield();
+    
+    // Should never reach here
+    while(1);
 }
+
 // =================================================================
 // DEBUG End
 // =================================================================
@@ -151,14 +165,15 @@ void high_stack_entry() {
     pcb_t *test_proc1 = proc_create (my_test_proc, NULL, "thread1");
     pcb_t *test_proc2 = proc_create (my_test_proc, NULL, "thread2");
     pcb_t *test_proc3 = proc_create (my_test_proc, NULL, "thread3");
-    if (test_proc1)
-    {
-        printk ("Test process created with PID %d, stack at %p\n", test_proc1->pid, test_proc1->stack_base);
+
+    if (test_proc1 && test_proc2 && test_proc3) {
+        printk("Test processes created successfully\n");
+        printk("Starting scheduler with idle process...\n");
+        
+        // The first yield() will switch from idle to one of the test processes
         yield();
-    }
-    else
-    {
-        printk ("Failed to create test process!\n");
+    } else {
+        printk("Failed to create test processes!\n");
     }
 
     // -------------------------------------------------------------------------
