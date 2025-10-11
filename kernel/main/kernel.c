@@ -74,8 +74,12 @@ void debug_tss_contents() {
 
 void my_test_proc (void *arg) 
 {
-    panik("Test process is running!\n");
-    while (1) { __asm__ __volatile__("hlt"); }
+    int i = 0;
+    while (1)
+    {
+        printk("Process %s is running! i = %d, \n", current_proc->name, i++);
+        yield();
+    }
 }
 // =================================================================
 // DEBUG End
@@ -135,6 +139,21 @@ void high_stack_entry() {
     *vga_test = 0x4F41; // 'A' with white on red
     printk("VGA memory test: wrote to 0xB8000\n");
 
+    // -------------------------------------------------------------------------
+    // Optional: Test multiple process creation and context switch
+    // -------------------------------------------------------------------------
+    pcb_t *test_proc1 = proc_create (my_test_proc, NULL, "thread1");
+    pcb_t *test_proc2 = proc_create (my_test_proc, NULL, "thread2");
+    pcb_t *test_proc3 = proc_create (my_test_proc, NULL, "thread3");
+    if (test_proc1)
+    {
+        printk ("Test process created with PID %d, stack at %p\n", test_proc1->pid, test_proc1->stack_base);
+        yield();
+    }
+    else
+    {
+        printk ("Failed to create test process!\n");
+    }
 
     // -------------------------------------------------------------------------
     // Optional Unit Tests
@@ -242,18 +261,6 @@ void kernel_main() {
     // Process Control 
     // -------------------------------------------------------------------------
     proc_init ();
-    pcb_t *test_proc = proc_create (my_test_proc, NULL, "test_proc");
-    if (test_proc)
-    {
-        printk ("Test process created with PID %d, stack at %p\n", test_proc->pid, test_proc->stack_base);
-        current_proc = NULL;
-        switch_to (current_proc, test_proc);
-    }
-    else
-    {
-        printk ("Failed to create test process!\n");
-    }
-
 
     // Map stack region: high virtual address -> physical address
     uint32_t stack_size = KERNEL_STACK_TOP_VIRT - KERNEL_STACK_BOTTOM_VIRT;

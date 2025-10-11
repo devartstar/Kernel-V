@@ -64,6 +64,19 @@ pcb_t *proc_find (uint32_t pid);
 */
 pcb_t *proc_create (void (*entry)(void*), void *args, const char* name);
 
+/**
+ * scheduler_pick_next - Picks a process ready to execute from the process list
+ *
+ * @returns the pointer to the pcb memory block
+ */ 
+pcb_t *scheduler_pick_next (void);
+
+/**
+ * yeild - Find the next process ready to run from scheduler 
+ * Coxtext Switch to the next process
+ */
+void yield (void);
+
 extern pcb_t *proc_list_head;
 
 extern pcb_t *current_proc;

@@ -2,6 +2,7 @@
 #include "proc.h"
 #include <stddef.h>
 #include <string.h>
+#include "context_switch.h"
 
 // PID starts from 1
 static uint32_t next_pid = 1;
@@ -160,3 +161,70 @@ pcb_t *proc_create (void (*entry)(void*), void *args, const char *name)
 
 	return proc;
 }
+
+// todo: use a circular separate linked list for ready process
+pcb_t *scheduler_pick_next (void)
+{
+	pcb_t *proc_now = current_proc;
+
+	/*
+	 No process is executing yet, first run
+	 Execute the first entry in the proc list head
+	*/
+	if (!current_proc)
+	{
+		return proc_list_head;
+	}
+
+	/*
+	 Iterate will we have completed a circle back to current proc
+	*/
+	pcb_t *proc_next = proc_now->next;
+	while (proc_next != proc_now)
+	{
+		if (proc_next->state == PROC_READY)
+		{
+			break;
+		}
+
+		proc_next = proc_next->next;
+		/* 
+		 If reached end, start from beginning 
+		*/
+		if (proc_next == NULL)
+		{
+			proc_next = proc_list_head;
+		}
+	}
+
+	return proc_next;
+	
+}
+
+void yield (void)
+{
+	pcb_t *proc_now = current_proc;
+	pcb_t *proc_next = NULL;
+
+	/*
+	 Printing the list of PCB in the process heal list
+	*/
+	for (pcb_t *p = proc_list_head; p; p = p->next) 
+	{
+		printk("PCB[%s]: EIP=0x%x ESP=0x%x state=%d\n", p->name, p->context.eip, p->context.esp, p->state);
+	}
+
+
+	proc_next = scheduler_pick_next ();
+
+	if (proc_next && proc_next != proc_now)
+	{
+		current_proc = proc_next;
+		switch_to (proc_now, proc_next);
+		/*
+		 Execution resumes from here when switch back
+		*/
+	}
+
+}
+

@@ -8,9 +8,8 @@ switch_to:
 	; Arguments :	[esp]	= Return pointer
 	;				[esp+4] = prev
 	;				[esp+8] = next
-	mov eax, [esp+4]
-	mov edx, [esp+8]
 
+	mov eax, [esp+4]
 	; Save context to prev->context
 	mov [eax + PCBCTX_EBX_OFFSET], ebx
 	mov [eax + PCBCTX_ECX_OFFSET], ecx
