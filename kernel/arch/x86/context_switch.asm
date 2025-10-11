@@ -29,7 +29,7 @@ switch_to:
 	mov [eax + PCBCTX_EIP_OFFSET], ecx
 
 	; store the esp offset after return
-	mov ecx, esp+4
+	lea ecx, [esp+4]
 	mov [eax + PCBCTX_ESP_OFFSET], ecx
 
 	; Load context from next->context
