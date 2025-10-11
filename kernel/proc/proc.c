@@ -205,6 +205,9 @@ void yield (void)
 {
 	pcb_t *proc_now = current_proc;
 	pcb_t *proc_next = NULL;
+	
+	printk("\n=== YIELD DEBUG ===\n");
+    printk("Current process: %s\n", proc_now ? proc_now->name : "NULL");
 
 	/*
 	 Printing the list of PCB in the process heal list
@@ -217,13 +220,21 @@ void yield (void)
 
 	proc_next = scheduler_pick_next ();
 
+	printk("Selected next process: %s\n", proc_next ? proc_next->name : "NULL");
+
 	if (proc_next && proc_next != proc_now)
 	{
+		printk("Switching from %s to %s\n", proc_now ? proc_now->name : "NULL", proc_next->name);
 		current_proc = proc_next;
 		switch_to (proc_now, proc_next);
 		/*
 		 Execution resumes from here when switch back
 		*/
+		printk("Resumed process: %s\n", current_proc->name);
+	}
+	else
+	{
+		printk("No other process to switch to.\n");
 	}
 
 }

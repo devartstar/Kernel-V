@@ -140,6 +140,12 @@ void high_stack_entry() {
     printk("VGA memory test: wrote to 0xB8000\n");
 
     // -------------------------------------------------------------------------
+    // Process Control 
+    // -------------------------------------------------------------------------
+    proc_init ();
+    printk("Initialized Process Management...\n");
+
+    // -------------------------------------------------------------------------
     // Optional: Test multiple process creation and context switch
     // -------------------------------------------------------------------------
     pcb_t *test_proc1 = proc_create (my_test_proc, NULL, "thread1");
@@ -255,12 +261,6 @@ void kernel_main() {
     printk("  Handler ESP: 0x%08x\n", tss_df.esp);
     printk("  Handler CR3: 0x%08x\n", tss_df.cr3);
     printk("\n==================================================\n");
-    
-
-    // -------------------------------------------------------------------------
-    // Process Control 
-    // -------------------------------------------------------------------------
-    proc_init ();
 
     // Map stack region: high virtual address -> physical address
     uint32_t stack_size = KERNEL_STACK_TOP_VIRT - KERNEL_STACK_BOTTOM_VIRT;
