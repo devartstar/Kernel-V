@@ -89,10 +89,7 @@ void my_test_proc (void *arg)
     current_proc->state = PROC_TERMINATED;
     
     // This yield will switch away from this terminated process
-    yield();
-    
-    // Should never reach here
-    while(1);
+    // yield(); // no need as the wrapper takes care of it.
 }
 
 // =================================================================

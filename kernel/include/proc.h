@@ -15,7 +15,6 @@ typedef enum
 	PROC_READY,
 	PROC_RUNNING,
 	PROC_WAITING,
-	PROC_SLEEPING,
 	PROC_TERMINATED
 } proc_state_t;
 
@@ -73,10 +72,29 @@ pcb_t *proc_create (void (*entry)(void*), void *args, const char* name);
 pcb_t *scheduler_pick_next (void);
 
 /**
+ * proc_exit - Exits and cleanup the process
+ *
+ * @return - void
+ */
+void proc_exit (void);
+
+/**
  * yeild - Find the next process ready to run from scheduler 
  * Coxtext Switch to the next process
  */
 void yield (void);
+
+/**
+ * thread_entry_wrapper - Wrapper for process entry and exit.
+ * For every new thread, sets the EIP here.
+ * Push entry and args to the stack of the new process.
+ *
+ * @entry - pointer to the entry method
+ * @args  - pointer to the args list for the entry method
+ *
+ * @return - void
+*/
+void thread_entry_wrapper (void (*entry)(void *), void *arg);
 
 extern pcb_t *proc_list_head;
 

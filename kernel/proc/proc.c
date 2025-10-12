@@ -142,7 +142,10 @@ void proc_free (pcb_t *proc)
 		return;
 	}
 
-	/* Unlink from the list */
+    /* Clean-up the exiting process */
+    proc->state = PROC_TERMINATED;
+
+    /* Update the proc list to point to the correct next proc */
 	if (proc->prev)
 	{
 		proc->prev->next = proc->next;
@@ -152,12 +155,13 @@ void proc_free (pcb_t *proc)
 		proc_list_head = proc->next;
 	}
 
+    /* Update the proc list to point to the correct prev proc */
 	if (proc->next)
 	{
 		proc->next->prev = proc->prev;
 	}
 
-	/* Free Stack */
+    /* Free up the process stack memory */
 	if (proc->stack_base)
 	{
 		pmm_free_frame (proc->stack_base);
@@ -180,7 +184,7 @@ pcb_t *proc_find (uint32_t pid)
 	return NULL;
 }
 
-pcb_t *proc_create (void (*entry)(void*), void *args, const char *name)
+pcb_t *proc_create (void (*entry)(void*), void *arg, const char *name)
 {
 	/* create a pcb for the process */
 	pcb_t *proc = proc_alloc (name);
@@ -203,13 +207,45 @@ pcb_t *proc_create (void (*entry)(void*), void *args, const char *name)
 	*/
 	uint32_t *stack_top = (uint32_t *)((uint8_t *)stack + KERNEL_STACK_SIZE);
 
+    /* 
+     Update the stack to call the thread_entry_wrapper (entry, arg) 
+     When proc create it called instead of executing from the entry function
+     It will start execution from thread_entry_wrapper which 
+     which takes entry func and args as its parameter.
+    */
+
+    /* push a fake return address (will never be used) */
+    *(--stack_top) = 0;
+    /* push the entry function to be used by thread_entry_wrapper */
+    *(--stack_top) = (uint32_t)entry;
+    /* push the argument pointer */
+    *(--stack_top) = (uint32_t)arg;
+
 	proc->context.esp = (uint32_t *)stack_top;
-	proc->context.eip = (uint32_t *)entry;
+	proc->context.eip = (uint32_t *)thread_entry_wrapper;
 	proc->context.ebp = 0;
 
 	proc->state = PROC_READY;
 
 	return proc;
+}
+
+void proc_exit (void)
+{
+    pcb_t *proc_now = current_proc;
+    pcb_t *proc_next = NULL;
+
+    proc_free (proc_now);
+
+    proc_next = scheduler_pick_next ();
+
+    current_proc = proc_next;
+
+    /* Context Switch to the new scheduled process */
+    switch_to (NULL, proc_next);
+
+    /* Ideally should never reach here as procees state is terminated */
+    while (1) { __asm__ __volatile__("hlt"); }
 }
 
 // todo: use a circular separate linked list for ready process
@@ -325,3 +361,8 @@ void yield (void)
     }
 }
 
+void thread_entry_wrapper (void (*entry)(void *), void *arg)
+{
+    entry (arg);
+    proc_exit ();
+}
