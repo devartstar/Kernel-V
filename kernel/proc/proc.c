@@ -96,6 +96,7 @@ void proc_init (void)
 	next_pid = 1;
 	pcb_allocator_init ();
 
+    /* IDLE PROCESS LOGIC
 	pcb_t *idle = proc_create(idle_process, NULL, "idle");
     if (idle) {
         current_proc = idle;  // Set as current process
@@ -104,6 +105,7 @@ void proc_init (void)
     } else {
         printk("ERROR: Failed to create idle process!\n");
     }
+    */
 }
 
 pcb_t *proc_alloc (const char *name)
