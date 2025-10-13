@@ -3,11 +3,11 @@
 #include <stddef.h>
 #include <string.h>
 #include "context_switch.h"
+#include "scheduler.h"
 
 // PID starts from 1
 static uint32_t next_pid = 1;
-pcb_t			*proc_list_head = NULL;
-pcb_t			*current_proc = NULL;
+pcb_t *current_proc = NULL;
 
 void *memset(void *s, int c, size_t n) {
     unsigned char *p = s;
@@ -33,7 +33,7 @@ int strcmp(const char *s1, const char *s2) {
 }
 
 void cleanup_terminated_processes(void) {
-    pcb_t *p = proc_list_head;
+    pcb_t *p = ready_list_head;
     
     while (p) {
         pcb_t *next = p->next;
@@ -92,7 +92,7 @@ void pcb_free (pcb_t* pcb)
 
 void proc_init (void)
 {
-	proc_list_head = NULL;
+	ready_list_head = NULL;
 	next_pid = 1;
 	pcb_allocator_init ();
 
@@ -124,15 +124,9 @@ pcb_t *proc_alloc (const char *name)
 	strncpy (new_proc->name, name, PROC_NAME_MAX);
 	new_proc->name[PROC_NAME_MAX-1] = '\0';
 	new_proc->parent = NULL;
-	new_proc->next = proc_list_head;
-	new_proc->prev = NULL;
 
-	if (proc_list_head)
-	{
-		proc_list_head->prev = new_proc;
-	}
-
-	proc_list_head = new_proc;
+    /* Add the new created proc to the ready queue */
+    enqueue_ready (new_proc);
 
 	return new_proc;
 }
@@ -147,21 +141,8 @@ void proc_free (pcb_t *proc)
     /* Clean-up the exiting process */
     proc->state = PROC_TERMINATED;
 
-    /* Update the proc list to point to the correct next proc */
-	if (proc->prev)
-	{
-		proc->prev->next = proc->next;
-	}
-	else
-	{
-		proc_list_head = proc->next;
-	}
-
-    /* Update the proc list to point to the correct prev proc */
-	if (proc->next)
-	{
-		proc->next->prev = proc->prev;
-	}
+    /* Remove the proc from the ready queue */
+    dequeue_ready (proc);
 
     /* Free up the process stack memory */
 	if (proc->stack_base)
@@ -175,7 +156,7 @@ void proc_free (pcb_t *proc)
 
 pcb_t *proc_find (uint32_t pid)
 {
-	for (pcb_t *p = proc_list_head; p; p = p->next)
+	for (pcb_t *p = ready_list_head; p; p = p->next)
 	{
 		if (p->pid == pid)
 		{
@@ -250,18 +231,17 @@ void proc_exit (void)
     while (1) { __asm__ __volatile__("hlt"); }
 }
 
-// todo: use a circular separate linked list for ready process
 pcb_t *scheduler_pick_next (void)
 {
     pcb_t *proc_now = current_proc;
     pcb_t *proc_next = NULL;
 
     if (!current_proc) {
-        return proc_list_head;
+        return ready_list_head;
     }
 
-    // Round-robin scheduling: iterate through all processes starting from next
-    pcb_t *start_proc = proc_now->next ? proc_now->next : proc_list_head;
+    /* Round-robin scheduling: iterate through all processes starting from next */
+    pcb_t *start_proc = proc_now->next ? proc_now->next : ready_list_head;
     proc_next = start_proc;
 
     // Look for a READY process (skip SLEEPING and TERMINATED processes)
@@ -270,7 +250,7 @@ pcb_t *scheduler_pick_next (void)
             return proc_next;
         }
         
-        proc_next = proc_next ? proc_next->next : proc_list_head;
+        proc_next = proc_next ? proc_next->next : ready_list_head;
         
         if (proc_next == start_proc) {
             break;
@@ -280,7 +260,7 @@ pcb_t *scheduler_pick_next (void)
     // If current process is TERMINATED, definitely switch to idle
     if (proc_now && proc_now->state == PROC_TERMINATED) {
         // Find and return idle process
-        for (pcb_t *p = proc_list_head; p; p = p->next) {
+        for (pcb_t *p = ready_list_head; p; p = p->next) {
             if (strcmp(p->name, "idle") == 0) {
                 return p;
             }
@@ -288,7 +268,7 @@ pcb_t *scheduler_pick_next (void)
     }
 
     // If no READY process found, return the idle process
-    for (pcb_t *p = proc_list_head; p; p = p->next) {
+    for (pcb_t *p = ready_list_head; p; p = p->next) {
         if (strcmp(p->name, "idle") == 0) {
             return p;
         }
@@ -306,7 +286,7 @@ void yield (void)
     printk("Current process: %s (state: %d)\n", proc_now ? proc_now->name : "NULL", proc_now ? proc_now->state : -1);
 
     // Print the list of PCB in the process list
-    for (pcb_t *p = proc_list_head; p; p = p->next) 
+    for (pcb_t *p = ready_list_head; p; p = p->next) 
     {
         printk("PCB[%s]: EIP=0x%08x ESP=0x%08x state=%d\n", p->name, (uint32_t)p->context.eip, (uint32_t)p->context.esp, p->state);
     }

@@ -65,24 +65,11 @@ pcb_t *proc_find (uint32_t pid);
 pcb_t *proc_create (void (*entry)(void*), void *args, const char* name);
 
 /**
- * scheduler_pick_next - Picks a process ready to execute from the process list
- *
- * @returns the pointer to the pcb memory block
- */ 
-pcb_t *scheduler_pick_next (void);
-
-/**
  * proc_exit - Exits and cleanup the process
  *
  * @return - void
  */
 void proc_exit (void);
-
-/**
- * yeild - Find the next process ready to run from scheduler 
- * Coxtext Switch to the next process
- */
-void yield (void);
 
 /**
  * thread_entry_wrapper - Wrapper for process entry and exit.
@@ -96,7 +83,18 @@ void yield (void);
 */
 void thread_entry_wrapper (void (*entry)(void *), void *arg);
 
-extern pcb_t *proc_list_head;
+/**
+ * scheduler_pick_next - Picks a process ready to execute from the process list
+ *
+ * @returns the pointer to the pcb memory block
+ */ 
+pcb_t *scheduler_pick_next (void);
+
+/**
+ * yeild - Find the next process ready to run from scheduler 
+ * Coxtext Switch to the next process
+ */
+void yield (void);
 
 extern pcb_t *current_proc;
 
