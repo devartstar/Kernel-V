@@ -39,6 +39,7 @@ typedef struct pcb
 	regs_context_t	context;	// registers value
 	uint8_t			*stack_base;// allocated stack base for cleanup
 	uint8_t			*stack_ptr;	// current stack pointer
+	uint32_t		sleep_ticks;// cycles for the procss to sleep
 	char			name[PROC_NAME_MAX];
 
 	// for linked list
@@ -63,6 +64,22 @@ pcb_t *proc_find (uint32_t pid);
  * @name string for debuging
 */
 pcb_t *proc_create (void (*entry)(void*), void *args, const char* name);
+
+/**
+ * proc_sleep - Puts the current running process to sleep till next tick.
+ * @ticks - count of cpu intervals for process to sleep.
+ *
+ * @return - void
+ */
+void proc_sleep (uint32_t ticks);
+
+/**
+ * proc_wakeup - Wakes up a sleeping process and adds to ready queue.
+ * @proc - process to wake up.
+ *
+ * @return - void
+ */
+void proc_wakeup (pcb_t *proc);
 
 /**
  * proc_exit - Exits and cleanup the process
@@ -95,6 +112,14 @@ pcb_t *scheduler_pick_next (void);
  * Coxtext Switch to the next process
  */
 void yield (void);
+
+/*
+ * timer_interrupt_handler - Handels an interrupt then process sleep time
+ * becomes 0.
+ *
+ * @return - void
+ */
+void timer_interrupt_handler (void);
 
 extern pcb_t *current_proc;
 

@@ -213,6 +213,28 @@ pcb_t *proc_create (void (*entry)(void*), void *arg, const char *name)
 	return proc;
 }
 
+void proc_sleep (uint32_t ticks)
+{
+    current_proc->state = PROC_WAITING;
+    current_proc->sleep_ticks = ticks;
+
+    dequeue_ready (current_proc);
+    enqueue_wait  (current_proc);
+
+    /* Current process is put to sleep, schedule a new process to run */
+    yield();
+}
+
+void proc_wakeup (pcb_t *proc)
+{
+    dequeue_wait (proc);
+
+    proc->state = PROC_READY;
+    proc->sleep_tick = 0;
+
+    enqueue_ready (proc);
+}
+
 void proc_exit (void)
 {
     pcb_t *proc_now = current_proc;
@@ -341,6 +363,34 @@ void yield (void)
     {
         printk("No context switch needed - staying in %s\n", proc_now ? proc_now->name : "NULL");
     }
+}
+
+void timer_interrupt_handler (void)
+{
+    pcb_t *p = wait_list_head;
+
+    /* For each process update the timer */
+    while (p)
+    {
+        pcb_t *next_p = p->next;
+        if (p->sleep_ticks > 0)
+        {
+            p->sleep_ticks--;
+        }
+
+        /* Sleep timer has expired then enqueue to ready lit */
+        if (p->sleep_tick == 0)
+        {
+            proc_wakeup (p);
+        }
+
+        p = next_p;
+    }
+
+    /* 
+     Process premption scheduling
+     yeild();
+    */
 }
 
 void thread_entry_wrapper (void (*entry)(void *), void *arg)

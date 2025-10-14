@@ -28,4 +28,20 @@ void enqueue_ready (pcb_t *proc);
 */
 void dequeue_ready (pcb_t *proc);
 
+/**
+ * enqueue_wait - Add a process to a wait queue.
+ * @proc - pointer to the process to be enqueued.
+ *
+ * @return - void
+ */
+void enqueue_wait (pcb_t *proc);
+
+/**
+ * dequeue_wait - Removes a process from the wait queue.
+ * @proc - pointer to the process to be dequeued.
+ *
+ * @return - void
+*/
+void dequeue_wait (pct_t *proc);
+
 #endif
