@@ -86,7 +86,7 @@ void dequeue_wait (pcb_t *proc)
 	else
 	{
 		/* Process to be removed is the first entry */
-		proc_list_head = proc->next;
+		wait_list_head = proc->next;
 	}
 
 	if (proc->next)
@@ -97,6 +97,6 @@ void dequeue_wait (pcb_t *proc)
 	else
 	{
 		/* Process to be removed is the last entry */
-		proc_list_tail = proc->prev;
+		wait_list_tail = proc->prev;
 	}
 }

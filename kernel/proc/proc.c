@@ -230,7 +230,7 @@ void proc_wakeup (pcb_t *proc)
     dequeue_wait (proc);
 
     proc->state = PROC_READY;
-    proc->sleep_tick = 0;
+    proc->sleep_ticks = 0;
 
     enqueue_ready (proc);
 }
@@ -365,7 +365,7 @@ void yield (void)
     }
 }
 
-void timer_interrupt_handler (void)
+void timer_interrupt_proc_handler (void)
 {
     pcb_t *p = wait_list_head;
 
@@ -379,7 +379,7 @@ void timer_interrupt_handler (void)
         }
 
         /* Sleep timer has expired then enqueue to ready lit */
-        if (p->sleep_tick == 0)
+        if (p->sleep_ticks == 0)
         {
             proc_wakeup (p);
         }

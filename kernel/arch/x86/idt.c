@@ -61,5 +61,12 @@ void idt_init ()
     // P=1(Present), DPL=0(Kernel only access), Type=0xE(Interrupt Gate)
     idt_set_gate(14, (uint32_t)isr_page_fault, 0x08, 0x8E); 
 
+    /* Set up IDT entry for hardware Timer Interrupts 
+       IRQ 0 -> entry 32 in IDT
+     */
+    extern void isr_timer();
+    idt_set_gate (32, (uint32_t)isr_timer, 0x08, 0x8E);
+
+
     idt_flush((uint32_t)&idt_ptr);
 }

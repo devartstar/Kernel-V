@@ -42,6 +42,6 @@ void enqueue_wait (pcb_t *proc);
  *
  * @return - void
 */
-void dequeue_wait (pct_t *proc);
+void dequeue_wait (pcb_t *proc);
 
 #endif

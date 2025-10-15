@@ -114,12 +114,12 @@ pcb_t *scheduler_pick_next (void);
 void yield (void);
 
 /*
- * timer_interrupt_handler - Handels an interrupt then process sleep time
+ * timer_interrupt_proc_handler - Handels an interrupt then process sleep time
  * becomes 0.
  *
  * @return - void
  */
-void timer_interrupt_handler (void);
+void timer_interrupt_proc_handler (void);
 
 extern pcb_t *current_proc;
 

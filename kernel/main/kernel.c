@@ -5,6 +5,7 @@
 #include "paging.h"
 #include "proc.h"
 #include "context_switch.h"
+#include "timer.h"
 
 extern pcb_t *current_proc;
 
@@ -92,6 +93,16 @@ void my_test_proc (void *arg)
     // yield(); // no need as the wrapper takes care of it.
 }
 
+void my_sleep_proc (void *arg)
+{
+    int i = 0;
+    while (1)
+    {
+        printk ("Thread %s sleeping, i=%d\n", current_proc->name, i++);
+        proc_sleep (50);
+        printk ("Thread %s woke up!\n", current_proc->name);
+    }
+}
 // =================================================================
 // DEBUG End
 // =================================================================
@@ -126,7 +137,7 @@ void high_stack_entry() {
 
     // IMP: Enabling Interrupts is causing the kernel to reboot infinitely. WHY ???
     // Now enable interrupts 
-    // __asm__ __volatile__("sti");
+    __asm__ __volatile__("sti");
 
     
     // -------------------------------------------------------------------------
@@ -162,8 +173,9 @@ void high_stack_entry() {
     pcb_t *test_proc1 = proc_create (my_test_proc, NULL, "thread1");
     pcb_t *test_proc2 = proc_create (my_test_proc, NULL, "thread2");
     pcb_t *test_proc3 = proc_create (my_test_proc, NULL, "thread3");
+    pcb_t *test_proc4 = proc_create (my_sleep_proc, NULL, "thread4");
 
-    if (test_proc1 && test_proc2 && test_proc3) {
+    if (test_proc1 && test_proc2 && test_proc3 && test_proc4) {
         printk("Test processes created successfully\n");
         printk("Starting scheduler with idle process...\n");
         
@@ -233,6 +245,11 @@ void kernel_main() {
         double_fault_stack[i] = 0xAA + i;
     }
     printk("Double fault stack test pattern written\n");
+
+    // -------------------------------------------------------------------------
+    // Initialize Timer Interrupt
+    // -------------------------------------------------------------------------
+    pit_init (PIT_DEFAULT_HZ);
 
     // -------------------------------------------------------------------------
     // Display BIOS Memory Map (E820)

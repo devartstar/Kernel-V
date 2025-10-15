@@ -33,6 +33,7 @@ PROC_SRC		  	= $(KERNDIR)/proc/proc.c
 PROC_OFFSET_GEN_SRC = $(KERNDIR)/lib/proc_offset_generator.c
 CONTEXT_SWITCH_SRC	= $(KERNDIR)/arch/x86/context_switch.asm
 SCHEDULER_SRC		= $(KERNDIR)/proc/scheduler.c
+TIMER_SRC			= $(KERNDIR)/timekeeping/timer.c
 
 IDT_SRC          	= $(KERNDIR)/arch/x86/idt.c
 IDT_FLUSH_SRC       = $(KERNDIR)/arch/x86/idt_flush.asm
@@ -41,6 +42,7 @@ GDT_FLUSH_SRC       = $(KERNDIR)/arch/x86/gdt_flush.asm
 TSS_SRC             = $(KERNDIR)/arch/x86/tss.c
 ISR_PAGE_FAULT_SRC  = $(KERNDIR)/arch/x86/isr_page_fault.asm
 DOUBLE_FAULT_SRC    = $(KERNDIR)/arch/x86/double_fault_handler.asm
+ISR_TIMER_SRC		= $(KERNDIR)/arch/x86/isr_timer.asm
 
 # --- Header Files ---
 PRINTK_HDR       	= $(KERNDIR)/include/printk.h
@@ -57,6 +59,7 @@ PROC_OFFSET_HDR		= $(KERNDIR)/include/proc_offset.h
 PROC_OFFSET_GEN_HDR = $(KERNDIR)/include/proc_offset_asm.h
 CONTEXT_SWITCH_HDR	= $(KERNDIR)/include/context_switch.h
 SCHEDULER_HDR		= $(KERNDIR)/include/scheduler.h
+TIMER_HDR			= $(KERNDIR)/include/timer.h
 
 TEST_PANIK_HDR   	= $(KERNDIR)/include/tests/test_panik.h
 TEST_PRINTK_HDR  	= $(KERNDIR)/include/tests/test_printk.h
@@ -91,6 +94,7 @@ MEMORY_POOL_OBJ  	= $(BUILDDIR)/pool_alloc.o
 PROC_OBJ			= $(BUILDDIR)/proc.o
 CONTEXT_SWITCH_OBJ	= $(BUILDDIR)/context_switch.o
 SCHEDULER_OBJ		= $(BUILDDIR)/scheduler.o
+TIMER_OBJ			= $(BUILDDIR)/timer.o
 
 IDT_OBJ				= $(BUILDDIR)/idt.o
 IDT_FLUSH_OBJ      	= $(BUILDDIR)/idt_flush.o
@@ -99,9 +103,10 @@ GDT_FLUSH_OBJ      	= $(BUILDDIR)/gdt_flush.o
 TSS_OBJ            	= $(BUILDDIR)/tss.o
 ISR_PAGE_FAULT_OBJ 	= $(BUILDDIR)/isr_page_fault.o
 DOUBLE_FAULT_OBJ   	= $(BUILDDIR)/double_fault_handler.o
+ISR_TIMER_OBJ		= $(BUILDDIR)/isr_timer.o
 
 # --- Object Groups ---
-KERNEL_OBJS = $(KERNEL_ENTRY_OBJ) $(PRINTK_OBJ) $(VGA_OBJ) $(PANIK_OBJ) $(TEST_PANIK_OBJ) $(MEMORY_MAP_OBJ) $(MEMORY_MNG_OBJ) $(MEMORY_PAGING_OBJ) $(MEMORY_PAGE_FAULT_OBJ) $(IDT_OBJ) $(IDT_FLUSH_OBJ) $(ISR_PAGE_FAULT_OBJ) $(TSS_OBJ) $(GDT_OBJ) $(GDT_FLUSH_OBJ) $(DOUBLE_FAULT_OBJ) $(MEMORY_POOL_OBJ) $(PROC_OBJ) $(CONTEXT_SWITCH_OBJ) $(SCHEDULER_OBJ) $(KERNEL_OBJ)
+KERNEL_OBJS = $(KERNEL_ENTRY_OBJ) $(PRINTK_OBJ) $(VGA_OBJ) $(PANIK_OBJ) $(TEST_PANIK_OBJ) $(MEMORY_MAP_OBJ) $(MEMORY_MNG_OBJ) $(MEMORY_PAGING_OBJ) $(MEMORY_PAGE_FAULT_OBJ) $(IDT_OBJ) $(IDT_FLUSH_OBJ) $(ISR_PAGE_FAULT_OBJ) $(TSS_OBJ) $(GDT_OBJ) $(GDT_FLUSH_OBJ) $(DOUBLE_FAULT_OBJ) $(MEMORY_POOL_OBJ) $(PROC_OBJ) $(CONTEXT_SWITCH_OBJ) $(SCHEDULER_OBJ) $(TIMER_OBJ) $(ISR_TIMER_OBJ) $(KERNEL_OBJ)
 KERNEL_TEST_OBJS = $(KERNEL_OBJS) $(TEST_PRINTK_OBJ)
 
 # --- Kernel ELF/BIN for test and non-test ---
@@ -147,6 +152,8 @@ $(PROC_OFFSET_GEN): $(PROC_OFFSET_GEN_SRC)
 
 # --- Pattern rules for C objects ---
 $(BUILDDIR)/%.o: $(KERNDIR)/lib/%.c | $(BUILDDIR)
+	$(CC) $(CFLAGS) $< -o $@
+$(BUILDDIR)/%.o: $(KERNDIR)/timekeeping/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
 $(BUILDDIR)/%.o: $(KERNDIR)/drivers/vga/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
