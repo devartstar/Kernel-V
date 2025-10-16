@@ -137,7 +137,7 @@ void high_stack_entry() {
 
     // IMP: Enabling Interrupts is causing the kernel to reboot infinitely. WHY ???
     // Now enable interrupts 
-    __asm__ __volatile__("sti");
+    // __asm__ __volatile__("sti");
 
     
     // -------------------------------------------------------------------------
