@@ -46,11 +46,8 @@ void high_stack_entry() {
     #ifdef KERNEL_TESTS
         // Run kernel tests first
         run_kernel_tests();
-        
-        // Then create background test processes if needed
-        create_test_processes();
     #else
-        printk("Production build - no test processes created\n");
+        printk("Production build - testing disabled\n");
     #endif
     
     // Main kernel loop
