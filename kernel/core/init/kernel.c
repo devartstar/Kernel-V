@@ -44,9 +44,11 @@ void high_stack_entry() {
 
     // Create test processes only if tests are enabled
     #ifdef KERNEL_TESTS
-        create_test_processes();
-        // Run kernel tests
+        // Run kernel tests first
         run_kernel_tests();
+        
+        // Then create background test processes if needed
+        create_test_processes();
     #else
         printk("Production build - no test processes created\n");
     #endif

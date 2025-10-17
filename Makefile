@@ -283,6 +283,27 @@ $(KERNEL_TEST_ELF): $(KERNEL_TEST_OBJS) $(KERNEL_LD) | $(BUILDDIR)
 $(KERNEL_TEST_BIN): $(KERNEL_TEST_ELF) | $(BUILDDIR)
 	objcopy -O binary $< $@
 
+# Unit tests only (existing tests)
+$(KERNEL_UNIT_TEST_ELF): $(KERNEL_CORE_OBJS) $(UNIT_TEST_OBJS) $(TEST_RUNNER_OBJ) $(KERNEL_LD) | $(BUILDDIR)
+	ld -m elf_i386 -T $(KERNEL_LD) -o $@ $(KERNEL_CORE_OBJS) $(UNIT_TEST_OBJS) $(TEST_RUNNER_OBJ) -nostdlib
+
+$(KERNEL_UNIT_TEST_BIN): $(KERNEL_UNIT_TEST_ELF) | $(BUILDDIR)
+	objcopy -O binary $< $@
+
+# Integration tests only (existing tests)
+$(KERNEL_INTEGRATION_ELF): $(KERNEL_CORE_OBJS) $(INTEGRATION_TEST_OBJS) $(TEST_RUNNER_OBJ) $(KERNEL_LD) | $(BUILDDIR)
+	ld -m elf_i386 -T $(KERNEL_LD) -o $@ $(KERNEL_CORE_OBJS) $(INTEGRATION_TEST_OBJS) $(TEST_RUNNER_OBJ) -nostdlib
+
+$(KERNEL_INTEGRATION_BIN): $(KERNEL_INTEGRATION_ELF) | $(BUILDDIR)
+	objcopy -O binary $< $@
+
+# Full test suite (all existing tests)
+$(KERNEL_FULL_TEST_ELF): $(KERNEL_FULL_TEST_OBJS) $(KERNEL_LD) | $(BUILDDIR)
+	ld -m elf_i386 -T $(KERNEL_LD) -o $@ $(KERNEL_FULL_TEST_OBJS) -nostdlib
+
+$(KERNEL_FULL_TEST_BIN): $(KERNEL_FULL_TEST_ELF) | $(BUILDDIR)
+	objcopy -O binary $< $@
+
 # --- Disk images ---
 $(DISK_IMG): $(STAGE1_BIN) $(STAGE2_BIN) $(KERNEL_BIN) | $(BUILDDIR)
 	dd if=/dev/zero of=$@ bs=1K count=1440
