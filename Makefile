@@ -33,6 +33,7 @@ KERNEL_LD        	= $(KERNDIR)/linker/kernel.ld
 VGA_SRC          	= $(KERNDIR)/drivers/video/vga.c
 
 PRINTK_SRC       	= $(KERNDIR)/lib/printf/printk.c
+STRING_SRC       	= $(KERNDIR)/lib/string/string.c
 PANIK_SRC        	= $(KERNDIR)/core/panik/panik.c
 TEST_PANIK_SRC   	= $(KERNDIR)/tests/unit/test_panik.c
 TEST_PRINTK_SRC  	= $(KERNDIR)/tests/unit/test_printk.c
@@ -92,6 +93,7 @@ STAGE2_ELF 			= $(BUILDDIR)/stage2.elf
 
 # --- Object Files ---
 PRINTK_OBJ      	= $(BUILDDIR)/printk.o
+STRING_OBJ      	= $(BUILDDIR)/string.o
 KERNEL_OBJ      	= $(BUILDDIR)/kernel.o
 VGA_OBJ         	= $(BUILDDIR)/vga.o
 PANIK_OBJ       	= $(BUILDDIR)/panik.o
@@ -120,7 +122,7 @@ DOUBLE_FAULT_OBJ   	= $(BUILDDIR)/double_fault_handler.o
 ISR_TIMER_OBJ		= $(BUILDDIR)/isr_timer.o
 
 # --- Object Groups ---
-KERNEL_OBJS = $(KERNEL_ENTRY_OBJ) $(PRINTK_OBJ) $(VGA_OBJ) $(PANIK_OBJ) $(TEST_PANIK_OBJ) $(MEMORY_MAP_OBJ) $(MEMORY_MNG_OBJ) $(MEMORY_PAGING_OBJ) $(MEMORY_PAGE_FAULT_OBJ) $(IDT_OBJ) $(IDT_FLUSH_OBJ) $(ISR_PAGE_FAULT_OBJ) $(TSS_OBJ) $(GDT_OBJ) $(GDT_FLUSH_OBJ) $(DOUBLE_FAULT_OBJ) $(MEMORY_POOL_OBJ) $(PROC_OBJ) $(CONTEXT_SWITCH_OBJ) $(SCHEDULER_OBJ) $(TIMER_OBJ) $(ISR_TIMER_OBJ) $(KERNEL_OBJ)
+KERNEL_OBJS = $(KERNEL_ENTRY_OBJ) $(PRINTK_OBJ) $(STRING_OBJ) $(VGA_OBJ) $(PANIK_OBJ) $(TEST_PANIK_OBJ) $(MEMORY_MAP_OBJ) $(MEMORY_MNG_OBJ) $(MEMORY_PAGING_OBJ) $(MEMORY_PAGE_FAULT_OBJ) $(IDT_OBJ) $(IDT_FLUSH_OBJ) $(ISR_PAGE_FAULT_OBJ) $(TSS_OBJ) $(GDT_OBJ) $(GDT_FLUSH_OBJ) $(DOUBLE_FAULT_OBJ) $(MEMORY_POOL_OBJ) $(PROC_OBJ) $(CONTEXT_SWITCH_OBJ) $(SCHEDULER_OBJ) $(TIMER_OBJ) $(ISR_TIMER_OBJ) $(KERNEL_OBJ)
 KERNEL_TEST_OBJS = $(KERNEL_OBJS) $(TEST_PRINTK_OBJ)
 
 # --- Kernel ELF/BIN for test and non-test ---
