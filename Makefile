@@ -1,6 +1,6 @@
 # --- Toolchain ---
 CC      := gcc
-CFLAGS  := -m32 -ffreestanding -c -g -fno-pie -I kernel/include
+CFLAGS  := -m32 -ffreestanding -c -g -fno-pie -Iinclude -Iinclude/arch/x86 -Iinclude/core -Iinclude/drivers -Iinclude/mm -Iinclude/proc -Iinclude/lib
 NASM    := nasm
 NASMFLAGS := -g -F stabs
 
@@ -8,65 +8,79 @@ NASMFLAGS := -g -F stabs
 BOOTDIR   = bootloader
 KERNDIR   = kernel
 BUILDDIR  = build
+INCDIR    = include
+
+# --- Include Paths ---
+INCLUDE_FLAGS = -I$(KERNDIR)/$(INCDIR) \
+                -I$(KERNDIR)/$(INCDIR)/arch \
+                -I$(KERNDIR)/$(INCDIR)/arch/x86 \
+                -I$(KERNDIR)/$(INCDIR)/core \
+                -I$(KERNDIR)/$(INCDIR)/drivers \
+                -I$(KERNDIR)/$(INCDIR)/mm \
+                -I$(KERNDIR)/$(INCDIR)/proc \
+                -I$(KERNDIR)/$(INCDIR)/lib
+
+# Update CFLAGS to use organized includes
+CFLAGS  := -m32 -ffreestanding -c -g -fno-pie $(INCLUDE_FLAGS)
 
 # --- Source Files ---
 STAGE1_SRC 			= $(BOOTDIR)/stage1.asm
 STAGE2_SRC 			= $(BOOTDIR)/stage2.asm
-KERNEL_ENTRY_SRC 	= $(KERNDIR)/arch/x86/kernel_entry.asm
-KERNEL_MAIN_SRC  	= $(KERNDIR)/main/kernel.c
+KERNEL_ENTRY_SRC 	= $(KERNDIR)/arch/x86/boot/kernel_entry.asm
+KERNEL_MAIN_SRC  	= $(KERNDIR)/core/init/kernel.c
 KERNEL_LD        	= $(KERNDIR)/linker/kernel.ld
 
-VGA_SRC          	= $(KERNDIR)/drivers/vga/vga.c
+VGA_SRC          	= $(KERNDIR)/drivers/video/vga.c
 
-PRINTK_SRC       	= $(KERNDIR)/lib/printk.c
-PANIK_SRC        	= $(KERNDIR)/lib/panik.c
-TEST_PANIK_SRC   	= $(KERNDIR)/tests/test_panik.c
-TEST_PRINTK_SRC  	= $(KERNDIR)/tests/test_printk.c
+PRINTK_SRC       	= $(KERNDIR)/lib/printf/printk.c
+PANIK_SRC        	= $(KERNDIR)/core/panik/panik.c
+TEST_PANIK_SRC   	= $(KERNDIR)/tests/unit/test_panik.c
+TEST_PRINTK_SRC  	= $(KERNDIR)/tests/unit/test_printk.c
 
-MEMORY_MAP_SRC   	= $(KERNDIR)/memory/memory_map.c
-MEMORY_MNG_SRC   	= $(KERNDIR)/memory/pmm.c
-MEMORY_PAGING_SRC 	= $(KERNDIR)/memory/paging.c
-MEMORY_PAGE_FAULT_SRC = $(KERNDIR)/memory/page_fault.c
-MEMORY_POOL_SRC  	= $(KERNDIR)/lib/pool_alloc.c
+MEMORY_MAP_SRC   	= $(KERNDIR)/mm/physical/memory_map.c
+MEMORY_MNG_SRC   	= $(KERNDIR)/mm/physical/pmm.c
+MEMORY_PAGING_SRC 	= $(KERNDIR)/mm/virtual/paging.c
+MEMORY_PAGE_FAULT_SRC = $(KERNDIR)/mm/virtual/page_fault.c
+MEMORY_POOL_SRC  	= $(KERNDIR)/mm/allocators/pool_alloc.c
 
-PROC_SRC		  	= $(KERNDIR)/proc/proc.c
-PROC_OFFSET_GEN_SRC = $(KERNDIR)/lib/proc_offset_generator.c
-CONTEXT_SWITCH_SRC	= $(KERNDIR)/arch/x86/context_switch.asm
-SCHEDULER_SRC		= $(KERNDIR)/proc/scheduler.c
-TIMER_SRC			= $(KERNDIR)/timekeeping/timer.c
+PROC_SRC		  	= $(KERNDIR)/proc/scheduler/proc.c
+PROC_OFFSET_GEN_SRC = $(KERNDIR)/lib/data_structures/proc_offset_generator.c
+CONTEXT_SWITCH_SRC	= $(KERNDIR)/proc/context/context_switch.asm
+SCHEDULER_SRC		= $(KERNDIR)/proc/scheduler/scheduler.c
+TIMER_SRC			= $(KERNDIR)/time/timer.c
 
-IDT_SRC          	= $(KERNDIR)/arch/x86/idt.c
-IDT_FLUSH_SRC       = $(KERNDIR)/arch/x86/idt_flush.asm
-GDT_SRC             = $(KERNDIR)/arch/x86/gdt.c
-GDT_FLUSH_SRC       = $(KERNDIR)/arch/x86/gdt_flush.asm
-TSS_SRC             = $(KERNDIR)/arch/x86/tss.c
-ISR_PAGE_FAULT_SRC  = $(KERNDIR)/arch/x86/isr_page_fault.asm
-DOUBLE_FAULT_SRC    = $(KERNDIR)/arch/x86/double_fault_handler.asm
-ISR_TIMER_SRC		= $(KERNDIR)/arch/x86/isr_timer.asm
+IDT_SRC          	= $(KERNDIR)/arch/x86/cpu/idt.c
+IDT_FLUSH_SRC       = $(KERNDIR)/arch/x86/cpu/idt_flush.asm
+GDT_SRC             = $(KERNDIR)/arch/x86/cpu/gdt.c
+GDT_FLUSH_SRC       = $(KERNDIR)/arch/x86/cpu/gdt_flush.asm
+TSS_SRC             = $(KERNDIR)/arch/x86/cpu/tss.c
+ISR_PAGE_FAULT_SRC  = $(KERNDIR)/arch/x86/interrupt/isr_page_fault.asm
+DOUBLE_FAULT_SRC    = $(KERNDIR)/arch/x86/interrupt/double_fault_handler.asm
+ISR_TIMER_SRC		= $(KERNDIR)/arch/x86/interrupt/isr_timer.asm
 
-# --- Header Files ---
-PRINTK_HDR       	= $(KERNDIR)/include/printk.h
-VGA_HDR          	= $(KERNDIR)/include/drivers/vga.h
-PANIK_HDR        	= $(KERNDIR)/include/panik.h
+# --- Header Files (Updated paths) ---
+PRINTK_HDR       	= $(KERNDIR)/$(INCDIR)/lib/printk.h
+VGA_HDR          	= $(KERNDIR)/$(INCDIR)/drivers/vga.h
+PANIK_HDR        	= $(KERNDIR)/$(INCDIR)/core/panik.h
 
-MEMORY_MAP_HDR   	= $(KERNDIR)/include/memory_map.h
-MEMORY_MNG_HDR	 	= $(KERNDIR)/include/memory/pmm.h
-MEMORY_PAGING_HDR 	= $(KERNDIR)/include/memory/paging.h
-MEMORY_POOL_HDR 	= $(KERNDIR)/include/pool_alloc.h
+MEMORY_MAP_HDR   	= $(KERNDIR)/$(INCDIR)/mm/memory_map.h
+MEMORY_MNG_HDR	 	= $(KERNDIR)/$(INCDIR)/mm/pmm.h
+MEMORY_PAGING_HDR 	= $(KERNDIR)/$(INCDIR)/mm/paging.h
+MEMORY_POOL_HDR 	= $(KERNDIR)/$(INCDIR)/mm/pool_alloc.h
 
-PROC_HDR		  	= $(KERNDIR)/include/proc.h
-PROC_OFFSET_HDR		= $(KERNDIR)/include/proc_offset.h
-PROC_OFFSET_GEN_HDR = $(KERNDIR)/include/proc_offset_asm.h
-CONTEXT_SWITCH_HDR	= $(KERNDIR)/include/context_switch.h
-SCHEDULER_HDR		= $(KERNDIR)/include/scheduler.h
-TIMER_HDR			= $(KERNDIR)/include/timer.h
+PROC_HDR		  	= $(KERNDIR)/$(INCDIR)/proc/proc.h
+PROC_OFFSET_HDR		= $(KERNDIR)/$(INCDIR)/proc/proc_offset.h
+PROC_OFFSET_GEN_HDR = $(KERNDIR)/$(INCDIR)/proc/proc_offset_asm.h
+CONTEXT_SWITCH_HDR	= $(KERNDIR)/$(INCDIR)/arch/context_switch.h
+SCHEDULER_HDR		= $(KERNDIR)/$(INCDIR)/proc/scheduler.h
+TIMER_HDR			= $(KERNDIR)/$(INCDIR)/time/timer.h
 
-TEST_PANIK_HDR   	= $(KERNDIR)/include/tests/test_panik.h
-TEST_PRINTK_HDR  	= $(KERNDIR)/include/tests/test_printk.h
+TEST_PANIK_HDR   	= $(KERNDIR)/$(INCDIR)/tests/test_panik.h
+TEST_PRINTK_HDR  	= $(KERNDIR)/$(INCDIR)/tests/test_printk.h
 
-IDT_HDR		  		= $(KERNDIR)/include/idt.h
-TSS_HDR             = $(KERNDIR)/include/arch/x86/tss.h
-GDT_HDR             = $(KERNDIR)/include/arch/x86/gdt.h
+IDT_HDR		  		= $(KERNDIR)/$(INCDIR)/arch/x86/idt.h
+TSS_HDR             = $(KERNDIR)/$(INCDIR)/arch/x86/tss.h
+GDT_HDR             = $(KERNDIR)/$(INCDIR)/arch/x86/gdt.h
 
 # --- Output Files ---
 STAGE1_BIN 			= $(BUILDDIR)/stage1.bin
@@ -150,31 +164,43 @@ $(PROC_OFFSET_GEN_HDR): $(PROC_OFFSET_GEN)
 $(PROC_OFFSET_GEN): $(PROC_OFFSET_GEN_SRC)
 	$(CC) -I $(KERNDIR)/include -o $@ $<
 
-# --- Pattern rules for C objects ---
-$(BUILDDIR)/%.o: $(KERNDIR)/lib/%.c | $(BUILDDIR)
+# --- Pattern rules for C objects (Updated paths) ---
+$(BUILDDIR)/%.o: $(KERNDIR)/lib/printf/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
-$(BUILDDIR)/%.o: $(KERNDIR)/timekeeping/%.c | $(BUILDDIR)
+$(BUILDDIR)/%.o: $(KERNDIR)/lib/data_structures/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
-$(BUILDDIR)/%.o: $(KERNDIR)/drivers/vga/%.c | $(BUILDDIR)
+$(BUILDDIR)/%.o: $(KERNDIR)/time/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
-$(BUILDDIR)/%.o: $(KERNDIR)/main/%.c | $(BUILDDIR)
+$(BUILDDIR)/%.o: $(KERNDIR)/drivers/video/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
-$(BUILDDIR)/%.o: $(KERNDIR)/memory/%.c | $(BUILDDIR)
+$(BUILDDIR)/%.o: $(KERNDIR)/core/init/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
-$(BUILDDIR)/%.o: $(KERNDIR)/proc/%.c | $(BUILDDIR)
+$(BUILDDIR)/%.o: $(KERNDIR)/core/panic/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
-$(BUILDDIR)/%.o: $(KERNDIR)/tests/%.c | $(BUILDDIR)
+$(BUILDDIR)/%.o: $(KERNDIR)/mm/physical/%.c | $(BUILDDIR)
+	$(CC) $(CFLAGS) $< -o $@
+$(BUILDDIR)/%.o: $(KERNDIR)/mm/virtual/%.c | $(BUILDDIR)
+	$(CC) $(CFLAGS) $< -o $@
+$(BUILDDIR)/%.o: $(KERNDIR)/mm/allocators/%.c | $(BUILDDIR)
+	$(CC) $(CFLAGS) $< -o $@
+$(BUILDDIR)/%.o: $(KERNDIR)/proc/scheduler/%.c | $(BUILDDIR)
+	$(CC) $(CFLAGS) $< -o $@
+$(BUILDDIR)/%.o: $(KERNDIR)/tests/unit/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
 
-# Special rule for kernel_entry.asm (doesn't need proc_offset header)
+# Special rule for kernel_entry.asm
 $(KERNEL_ENTRY_OBJ): $(KERNEL_ENTRY_SRC) | $(BUILDDIR)
 	$(NASM) $(NASMFLAGS) -f elf32 $< -o $@
 
-# Pattern rule for other x86 assembly files that need proc_offset header
-$(BUILDDIR)/%.o: $(KERNDIR)/arch/x86/%.asm $(PROC_OFFSET_GEN_HDR) | $(BUILDDIR)
+# Pattern rule for x86 assembly files
+$(BUILDDIR)/%.o: $(KERNDIR)/arch/x86/boot/%.asm $(PROC_OFFSET_GEN_HDR) | $(BUILDDIR)
+	$(NASM) $(NASMFLAGS) -f elf32 $< -o $@
+$(BUILDDIR)/%.o: $(KERNDIR)/arch/x86/cpu/%.asm $(PROC_OFFSET_GEN_HDR) | $(BUILDDIR)
+	$(NASM) $(NASMFLAGS) -f elf32 $< -o $@
+$(BUILDDIR)/%.o: $(KERNDIR)/arch/x86/interrupt/%.asm $(PROC_OFFSET_GEN_HDR) | $(BUILDDIR)
 	$(NASM) $(NASMFLAGS) -f elf32 $< -o $@
 
-$(BUILDDIR)/%.o: $(KERNDIR)/arch/x86/%.c | $(BUILDDIR)
+$(BUILDDIR)/%.o: $(KERNDIR)/arch/x86/cpu/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
 
 # --- Kernel ELF/BIN (non-test) ---

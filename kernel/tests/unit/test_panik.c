@@ -1,8 +1,8 @@
-#include "../include/printk.h"
-#include "../include/drivers/vga.h"
-#include "../include/panik.h"
-#include "../include/assert.h"
 #include <stddef.h>
+#include "lib/printk.h"
+#include "drivers/vga.h"
+#include "core/panik.h"
+#include "core/assert.h"
 
 /**
  * Unit Test Framework for Kernel panik Functionality

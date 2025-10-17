@@ -1,6 +1,6 @@
-#include "idt.h"
 #include <string.h>
 #include <stdint.h>
+#include "arch/x86/idt.h"
 #include "arch/x86/tss.h"
 
 extern void idt_flush(uint32_t);

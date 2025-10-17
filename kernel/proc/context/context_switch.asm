@@ -1,4 +1,4 @@
-%include "kernel/include/proc_offset_asm.h"
+%include "kernel/include/proc/proc_offset_asm.h"
 
 global switch_to
 section .text

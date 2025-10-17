@@ -1,7 +1,7 @@
 #include <stdarg.h>
-#include "../include/printk.h"
-#include "../include/drivers/vga.h"
-#include "../include/panik.h"
+#include "lib/printk.h"
+#include "drivers/vga.h"
+#include "core/panik.h"
 
 // Panic mode and state tracking
 static panik_mode_t current_panik_mode = PANIK_MODE_NORMAL;

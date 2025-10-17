@@ -1,5 +1,5 @@
-#include "pool_alloc.h"
-#include "pmm.h"
+#include "mm/pool_alloc.h"
+#include "mm/pmm.h"
 
 #include <stdint.h>
 #include <stddef.h>

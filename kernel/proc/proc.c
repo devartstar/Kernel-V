@@ -1,9 +1,9 @@
-#include "pool_alloc.h"
-#include "proc.h"
 #include <stddef.h>
 #include <string.h>
-#include "context_switch.h"
-#include "scheduler.h"
+#include "mm/pool_alloc.h"
+#include "proc/proc.h"
+#include "proc/context_switch.h"
+#include "proc/scheduler.h"
 
 // PID starts from 1
 static uint32_t next_pid = 1;

@@ -5,13 +5,13 @@
 #include <stddef.h>
 
 // Core kernel includes
-#include "printk.h"
+#include "lib/printk.h"
 #include "drivers/vga.h"
-#include "panik.h"
-#include "memory_map.h"
-#include "pmm.h"
-#include "paging.h"
-#include "idt.h"
+#include "core/panik.h"
+#include "mm/memory_map.h"
+#include "mm/pmm.h"
+#include "mm/paging.h"
+#include "arch/x86/idt.h"
 #include "arch/x86/tss.h"
 
 #ifdef KERNEL_TESTS

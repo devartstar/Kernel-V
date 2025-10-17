@@ -1,6 +1,6 @@
+#include <stdint.h>
 #include "arch/x86/gdt.h"
 #include "arch/x86/tss.h" // for your tss_entry and extern tss_df
-#include <stdint.h>
 
 #define GDT_ENTRIES 4
 struct gdt_entry gdt[GDT_ENTRIES];

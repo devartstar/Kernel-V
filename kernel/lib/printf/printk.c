@@ -1,4 +1,4 @@
-#include "printk.h"
+#include "lib/printk.h"
 #include "drivers/vga.h"
 #include <stdarg.h>
 #include <stdint.h>

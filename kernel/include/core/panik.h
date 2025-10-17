@@ -1,7 +1,7 @@
 #ifndef PANIK_H
 #define PANIK_H
 
-#include "assert.h"
+#include "core/assert.h"
 
 typedef enum {
 	PANIK_MODE_NORMAL,

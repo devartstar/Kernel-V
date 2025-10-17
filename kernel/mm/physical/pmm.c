@@ -1,7 +1,7 @@
-#include "pmm.h"
-#include "memory_map.h"
-#include "printk.h"
-#include "paging.h"
+#include "mm/pmm.h"
+#include "mm/memory_map.h"
+#include "lib/printk.h"
+#include "mm/paging.h"
 
 static uint8_t* frame_bitmap = NULL;;
 static uint32_t total_frames = 0;

@@ -1,5 +1,5 @@
-#include "paging.h"
-#include "printk.h"
+#include "mm/paging.h"
+#include "lib/printk.h"
 
 static uint32_t* page_directory         = (uint32_t*)PAGE_DIR_START_ADDR;
 static uint32_t* first_page_table       = (uint32_t*)PAGE_TABLE_START_ADDR;

@@ -1,8 +1,8 @@
-#include "page_fault.h"
-#include "paging.h"
-#include "pmm.h"
-#include "printk.h"
-#include "panik.h"
+#include "mm/page_fault.h"
+#include "mm/paging.h"
+#include "mm/pmm.h"
+#include "lib/printk.h"
+#include "core/panik.h"
 #include <stdint.h>
 
 void page_fault_handler (page_fault_stack_t* frame)
@@ -86,6 +86,7 @@ void page_fault_handler (page_fault_stack_t* frame)
     Bit 1 (W/R) : (0 = Fault on Read)       (1 = Fault on Write) 
     Bit 2 (U/s) : (0 = Fault in Kernel Mode)(1 = Fault in User Mode)
     Bit 3 (R)   : (0 = Reserved bit not set)(1 = Reserved bit set)
+    Bit 4 (I)   : (0 = Normal fault)        (1 = Instruction fetch fault)
     */
 
     if (!(frame->error_code & 0x1))

@@ -1,11 +1,11 @@
-#include "kernel.h"
-#include "pmm.h"
+#include "core/kernel.h"
+#include "mm/pmm.h"
 #include "arch/x86/tss.h"
 #include "arch/x86/gdt.h"
-#include "paging.h"
-#include "proc.h"
-#include "context_switch.h"
-#include "timer.h"
+#include "mm/paging.h"
+#include "proc/proc.h"
+#include "proc/context_switch.h"
+#include "time/timer.h"
 
 extern pcb_t *current_proc;
 

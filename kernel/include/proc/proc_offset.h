@@ -2,7 +2,7 @@
 #define PROC_OFFSETS_H
 
 #include <stddef.h>
-#include "proc.h"
+#include "proc/proc.h"
 
 #define PCB_CONTEXT_OFFSET		offsetof(pcb_t, context)
 

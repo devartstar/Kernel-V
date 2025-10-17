@@ -1,4 +1,4 @@
-#include "scheduler.h"
+#include "proc/scheduler.h"
 
 pcb_t *ready_list_head = NULL;
 pcb_t *ready_list_tail = NULL;

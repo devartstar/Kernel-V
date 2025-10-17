@@ -2,7 +2,7 @@
 #define SCHEDULER_H
 
 #include <stddef.h>
-#include "proc.h"
+#include "proc/proc.h"
 
 /* For process ready to be executed */
 extern pcb_t *ready_list_head;

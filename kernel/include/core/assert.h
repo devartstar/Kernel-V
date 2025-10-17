@@ -1,7 +1,7 @@
 #ifndef KERN_ASSERT_H
 #define KERN_ASSERT_H
 
-#include "panik.h"
+#include "core/panik.h"
 
 #define KASSERT(expr) \
 	do { \

@@ -1,5 +1,5 @@
-#include "memory_map.h"
-#include "printk.h"
+#include "mm/memory_map.h"
+#include "lib/printk.h"
 
 uint16_t usable_memory_region_count = 0;
 memory_region_t usable_memory_region[MAX_MEMORY_REGIONS];

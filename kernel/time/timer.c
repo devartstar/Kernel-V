@@ -1,8 +1,8 @@
 #include <stdint.h>
-#include "timer.h"
-#include "io.h"
-#include "printk.h"
-#include "proc.h"
+#include "time/timer.h"
+#include "core/io.h"
+#include "lib/printk.h"
+#include "proc/proc.h"
 
 volatile uint32_t tick_count = 0;
 
