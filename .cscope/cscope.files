@@ -7,7 +7,7 @@
 /home/devch/Projects/Kernel-V/kernel/include/mm/pmm.h
 /home/devch/Projects/Kernel-V/kernel/include/mm/paging.h
 /home/devch/Projects/Kernel-V/kernel/include/drivers/vga.h
-/home/devch/Projects/Kernel-V/kernel/include/mm/page_fault.h
+/home/devch/Projects/Kernel-V/kernel/include/arch/x86/page_fault.h
 /home/devch/Projects/Kernel-V/kernel/include/mm/memory_map.h
 /home/devch/Projects/Kernel-V/kernel/include/lib/printk.h
 /home/devch/Projects/Kernel-V/kernel/arch/x86/cpu/idt.c
@@ -19,5 +19,5 @@
 /home/devch/Projects/Kernel-V/kernel/mm/physical/memory_map.c
 /home/devch/Projects/Kernel-V/kernel/mm/physical/pmm.c
 /home/devch/Projects/Kernel-V/kernel/mm/virtual/paging.c
-/home/devch/Projects/Kernel-V/kernel/mm/virtual/page_fault.c
+/home/devch/Projects/Kernel-V/kernel/mm/arch/x86/memory/page_fault.c
 /home/devch/Projects/Kernel-V/kernel/core/init/kernel.c

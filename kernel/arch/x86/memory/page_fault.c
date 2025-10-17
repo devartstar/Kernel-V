@@ -1,4 +1,4 @@
-#include "mm/page_fault.h"
+#include "arch/x86/page_fault.h"
 #include "mm/paging.h"
 #include "mm/pmm.h"
 #include "lib/printk.h"

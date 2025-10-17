@@ -41,11 +41,11 @@ TEST_PRINTK_SRC  	= $(KERNDIR)/tests/unit/test_printk.c
 MEMORY_MAP_SRC   	= $(KERNDIR)/mm/physical/memory_map.c
 MEMORY_MNG_SRC   	= $(KERNDIR)/mm/physical/pmm.c
 MEMORY_PAGING_SRC 	= $(KERNDIR)/mm/virtual/paging.c
-MEMORY_PAGE_FAULT_SRC = $(KERNDIR)/mm/virtual/page_fault.c
-MEMORY_POOL_SRC  	= $(KERNDIR)/mm/allocators/pool_alloc.c
+MEMORY_PAGE_FAULT_SRC = $(KERNDIR)/arch/x86/memory/page_fault.c
+MEMORY_POOL_SRC  	= $(KERNDIR)/mm/allocator/pool_alloc.c
 
 PROC_SRC		  	= $(KERNDIR)/proc/scheduler/proc.c
-PROC_OFFSET_GEN_SRC = $(KERNDIR)/lib/data_structures/proc_offset_generator.c
+PROC_OFFSET_GEN_SRC = $(KERNDIR)/lib/data_structure/proc_offset_generator.c
 CONTEXT_SWITCH_SRC	= $(KERNDIR)/proc/context/context_switch.asm
 SCHEDULER_SRC		= $(KERNDIR)/proc/scheduler/scheduler.c
 TIMER_SRC			= $(KERNDIR)/time/timer.c
@@ -167,9 +167,13 @@ $(PROC_OFFSET_GEN): $(PROC_OFFSET_GEN_SRC)
 	$(CC) -I $(KERNDIR)/include -o $@ $<
 
 # --- Pattern rules for C objects (Updated paths) ---
+$(BUILDDIR)/%.o: $(KERNDIR)/arch/x86/memory/%.c | $(BUILDDIR)
+	$(CC) $(CFLAGS) $< -o $@
 $(BUILDDIR)/%.o: $(KERNDIR)/lib/printf/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
-$(BUILDDIR)/%.o: $(KERNDIR)/lib/data_structures/%.c | $(BUILDDIR)
+$(BUILDDIR)/%.o: $(KERNDIR)/lib/string/%.c | $(BUILDDIR)
+	$(CC) $(CFLAGS) $< -o $@
+$(BUILDDIR)/%.o: $(KERNDIR)/lib/data_structure/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
 $(BUILDDIR)/%.o: $(KERNDIR)/time/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
@@ -177,13 +181,15 @@ $(BUILDDIR)/%.o: $(KERNDIR)/drivers/video/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
 $(BUILDDIR)/%.o: $(KERNDIR)/core/init/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
-$(BUILDDIR)/%.o: $(KERNDIR)/core/panic/%.c | $(BUILDDIR)
+$(BUILDDIR)/%.o: $(KERNDIR)/core/panik/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
 $(BUILDDIR)/%.o: $(KERNDIR)/mm/physical/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
 $(BUILDDIR)/%.o: $(KERNDIR)/mm/virtual/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
-$(BUILDDIR)/%.o: $(KERNDIR)/mm/allocators/%.c | $(BUILDDIR)
+$(BUILDDIR)/%.o: $(KERNDIR)/mm/allocator/%.c | $(BUILDDIR)
+	$(CC) $(CFLAGS) $< -o $@
+$(BUILDDIR)/%.o: $(KERNDIR)/proc/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
 $(BUILDDIR)/%.o: $(KERNDIR)/proc/scheduler/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
@@ -200,6 +206,8 @@ $(BUILDDIR)/%.o: $(KERNDIR)/arch/x86/boot/%.asm $(PROC_OFFSET_GEN_HDR) | $(BUILD
 $(BUILDDIR)/%.o: $(KERNDIR)/arch/x86/cpu/%.asm $(PROC_OFFSET_GEN_HDR) | $(BUILDDIR)
 	$(NASM) $(NASMFLAGS) -f elf32 $< -o $@
 $(BUILDDIR)/%.o: $(KERNDIR)/arch/x86/interrupt/%.asm $(PROC_OFFSET_GEN_HDR) | $(BUILDDIR)
+	$(NASM) $(NASMFLAGS) -f elf32 $< -o $@
+$(BUILDDIR)/%.o: $(KERNDIR)/proc/context/%.asm $(PROC_OFFSET_GEN_HDR) | $(BUILDDIR)
 	$(NASM) $(NASMFLAGS) -f elf32 $< -o $@
 
 $(BUILDDIR)/%.o: $(KERNDIR)/arch/x86/cpu/%.c | $(BUILDDIR)
