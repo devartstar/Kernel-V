@@ -18,7 +18,8 @@ INCLUDE_FLAGS = -I$(KERNDIR)/$(INCDIR) \
                 -I$(KERNDIR)/$(INCDIR)/drivers \
                 -I$(KERNDIR)/$(INCDIR)/mm \
                 -I$(KERNDIR)/$(INCDIR)/proc \
-                -I$(KERNDIR)/$(INCDIR)/lib
+                -I$(KERNDIR)/$(INCDIR)/lib \
+                -I$(KERNDIR)/$(INCDIR)/tests
 
 # Update CFLAGS to use organized includes
 CFLAGS  := -m32 -ffreestanding -c -g -fno-pie $(INCLUDE_FLAGS)
@@ -30,13 +31,18 @@ KERNEL_ENTRY_SRC 	= $(KERNDIR)/arch/x86/boot/kernel_entry.asm
 KERNEL_MAIN_SRC  	= $(KERNDIR)/core/init/kernel.c
 KERNEL_LD        	= $(KERNDIR)/linker/kernel.ld
 
+DEBUG_SRC        	= $(KERNDIR)/core/debug/debug.c
 VGA_SRC          	= $(KERNDIR)/drivers/video/vga.c
 
 PRINTK_SRC       	= $(KERNDIR)/lib/printf/printk.c
 STRING_SRC       	= $(KERNDIR)/lib/string/string.c
 PANIK_SRC        	= $(KERNDIR)/core/panik/panik.c
+
+# Test source files (existing only)
 TEST_PANIK_SRC   	= $(KERNDIR)/tests/unit/test_panik.c
 TEST_PRINTK_SRC  	= $(KERNDIR)/tests/unit/test_printk.c
+TEST_RUNNER_SRC  	= $(KERNDIR)/tests/test_runner.c
+PROC_TESTS_SRC   	= $(KERNDIR)/tests/proc/proc_tests.c
 
 MEMORY_MAP_SRC   	= $(KERNDIR)/mm/physical/memory_map.c
 MEMORY_MNG_SRC   	= $(KERNDIR)/mm/physical/pmm.c
@@ -60,6 +66,7 @@ DOUBLE_FAULT_SRC    = $(KERNDIR)/arch/x86/interrupt/double_fault_handler.asm
 ISR_TIMER_SRC		= $(KERNDIR)/arch/x86/interrupt/isr_timer.asm
 
 # --- Header Files (Updated paths) ---
+DEBUG_HDR       	= $(KERNDIR)/$(INCDIR)/core/debug.h
 PRINTK_HDR       	= $(KERNDIR)/$(INCDIR)/lib/printk.h
 VGA_HDR          	= $(KERNDIR)/$(INCDIR)/drivers/vga.h
 PANIK_HDR        	= $(KERNDIR)/$(INCDIR)/core/panik.h
@@ -76,8 +83,11 @@ CONTEXT_SWITCH_HDR	= $(KERNDIR)/$(INCDIR)/arch/context_switch.h
 SCHEDULER_HDR		= $(KERNDIR)/$(INCDIR)/proc/scheduler.h
 TIMER_HDR			= $(KERNDIR)/$(INCDIR)/time/timer.h
 
+# Test header files (existing only)
 TEST_PANIK_HDR   	= $(KERNDIR)/$(INCDIR)/tests/test_panik.h
 TEST_PRINTK_HDR  	= $(KERNDIR)/$(INCDIR)/tests/test_printk.h
+TEST_RUNNER_HDR  	= $(KERNDIR)/$(INCDIR)/tests/test_runner.h
+PROC_TESTS_HDR   	= $(KERNDIR)/$(INCDIR)/tests/proc_tests.h
 
 IDT_HDR		  		= $(KERNDIR)/$(INCDIR)/arch/x86/idt.h
 TSS_HDR             = $(KERNDIR)/$(INCDIR)/arch/x86/tss.h
@@ -92,14 +102,20 @@ STAGE1_ELF 			= $(BUILDDIR)/stage1.elf
 STAGE2_ELF 			= $(BUILDDIR)/stage2.elf
 
 # --- Object Files ---
+# Core kernel objects
 PRINTK_OBJ      	= $(BUILDDIR)/printk.o
 STRING_OBJ      	= $(BUILDDIR)/string.o
 KERNEL_OBJ      	= $(BUILDDIR)/kernel.o
 VGA_OBJ         	= $(BUILDDIR)/vga.o
 PANIK_OBJ       	= $(BUILDDIR)/panik.o
-TEST_PANIK_OBJ  	= $(BUILDDIR)/test_panik.o
 KERNEL_ENTRY_OBJ	= $(BUILDDIR)/kernel_entry.o
+DEBUG_OBJ        	= $(BUILDDIR)/debug.o
+
+# Test objects (existing only)
+TEST_PANIK_OBJ  	= $(BUILDDIR)/test_panik.o
 TEST_PRINTK_OBJ 	= $(BUILDDIR)/test_printk.o
+TEST_RUNNER_OBJ 	= $(BUILDDIR)/test_runner.o
+PROC_TESTS_OBJ  	= $(BUILDDIR)/proc_tests.o
 
 MEMORY_MAP_OBJ  	= $(BUILDDIR)/memory_map.o
 MEMORY_MNG_OBJ  	= $(BUILDDIR)/pmm.o
@@ -122,18 +138,49 @@ DOUBLE_FAULT_OBJ   	= $(BUILDDIR)/double_fault_handler.o
 ISR_TIMER_OBJ		= $(BUILDDIR)/isr_timer.o
 
 # --- Object Groups ---
-KERNEL_OBJS = $(KERNEL_ENTRY_OBJ) $(PRINTK_OBJ) $(STRING_OBJ) $(VGA_OBJ) $(PANIK_OBJ) $(TEST_PANIK_OBJ) $(MEMORY_MAP_OBJ) $(MEMORY_MNG_OBJ) $(MEMORY_PAGING_OBJ) $(MEMORY_PAGE_FAULT_OBJ) $(IDT_OBJ) $(IDT_FLUSH_OBJ) $(ISR_PAGE_FAULT_OBJ) $(TSS_OBJ) $(GDT_OBJ) $(GDT_FLUSH_OBJ) $(DOUBLE_FAULT_OBJ) $(MEMORY_POOL_OBJ) $(PROC_OBJ) $(CONTEXT_SWITCH_OBJ) $(SCHEDULER_OBJ) $(TIMER_OBJ) $(ISR_TIMER_OBJ) $(KERNEL_OBJ)
-KERNEL_TEST_OBJS = $(KERNEL_OBJS) $(TEST_PRINTK_OBJ)
+# Core kernel objects (no tests)
+KERNEL_CORE_OBJS = $(KERNEL_ENTRY_OBJ) $(PRINTK_OBJ) $(STRING_OBJ) $(VGA_OBJ) $(PANIK_OBJ) $(MEMORY_MAP_OBJ) $(MEMORY_MNG_OBJ) $(MEMORY_PAGING_OBJ) $(MEMORY_PAGE_FAULT_OBJ) $(IDT_OBJ) $(IDT_FLUSH_OBJ) $(ISR_PAGE_FAULT_OBJ) $(TSS_OBJ) $(GDT_OBJ) $(GDT_FLUSH_OBJ) $(DOUBLE_FAULT_OBJ) $(MEMORY_POOL_OBJ) $(PROC_OBJ) $(CONTEXT_SWITCH_OBJ) $(SCHEDULER_OBJ) $(TIMER_OBJ) $(ISR_TIMER_OBJ) $(DEBUG_OBJ) $(KERNEL_OBJ)
 
-# --- Kernel ELF/BIN for test and non-test ---
+# Legacy compatibility - CLARIFIED PURPOSES:
+
+# Unit test objects (existing)
+UNIT_TEST_OBJS = $(TEST_PANIK_OBJ) $(TEST_PRINTK_OBJ)
+
+# Integration test objects (existing)
+INTEGRATION_TEST_OBJS = $(PROC_TESTS_OBJ)
+
+# All test objects
+ALL_TEST_OBJS = $(UNIT_TEST_OBJS) $(INTEGRATION_TEST_OBJS) $(TEST_RUNNER_OBJ)
+
+# Complete kernel with all tests
+KERNEL_FULL_TEST_OBJS = $(KERNEL_CORE_OBJS) $(ALL_TEST_OBJS)
+
+# KERNEL_OBJS = Production kernel (no tests, minimal footprint)
+KERNEL_OBJS = $(KERNEL_CORE_OBJS)
+
+# KERNEL_TEST_OBJS = Full test suite kernel (all tests enabled)  
+KERNEL_TEST_OBJS = $(KERNEL_FULL_TEST_OBJS)
+
+# --- Kernel ELF/BIN variants ---
 KERNEL_ELF        = $(BUILDDIR)/kernel.elf
 KERNEL_BIN        = $(BUILDDIR)/kernel.bin
 KERNEL_TEST_ELF   = $(BUILDDIR)/kernel_test.elf
 KERNEL_TEST_BIN   = $(BUILDDIR)/kernel_test.bin
 
+# New test builds (existing tests only)
+KERNEL_UNIT_TEST_ELF     = $(BUILDDIR)/kernel_unit_test.elf
+KERNEL_UNIT_TEST_BIN     = $(BUILDDIR)/kernel_unit_test.bin
+KERNEL_INTEGRATION_ELF   = $(BUILDDIR)/kernel_integration.elf
+KERNEL_INTEGRATION_BIN   = $(BUILDDIR)/kernel_integration.bin
+KERNEL_FULL_TEST_ELF     = $(BUILDDIR)/kernel_full_test.elf
+KERNEL_FULL_TEST_BIN     = $(BUILDDIR)/kernel_full_test.bin
+
 # --- Disk images ---
-DISK_IMG      = $(BUILDDIR)/disk.img
-DISK_TEST_IMG = $(BUILDDIR)/disk_test.img
+DISK_IMG              = $(BUILDDIR)/disk.img
+DISK_TEST_IMG         = $(BUILDDIR)/disk_test.img
+DISK_UNIT_TEST_IMG    = $(BUILDDIR)/disk_unit_test.img
+DISK_INTEGRATION_IMG  = $(BUILDDIR)/disk_integration.img
+DISK_FULL_TEST_IMG    = $(BUILDDIR)/disk_full_test.img
 
 # --- Default target ---
 all: $(DISK_IMG)
@@ -181,6 +228,8 @@ $(BUILDDIR)/%.o: $(KERNDIR)/drivers/video/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
 $(BUILDDIR)/%.o: $(KERNDIR)/core/init/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
+$(BUILDDIR)/%.o: $(KERNDIR)/core/debug/%.c | $(BUILDDIR)
+	$(CC) $(CFLAGS) $< -o $@
 $(BUILDDIR)/%.o: $(KERNDIR)/core/panik/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
 $(BUILDDIR)/%.o: $(KERNDIR)/mm/physical/%.c | $(BUILDDIR)
@@ -193,8 +242,14 @@ $(BUILDDIR)/%.o: $(KERNDIR)/proc/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
 $(BUILDDIR)/%.o: $(KERNDIR)/proc/scheduler/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
+
+# Test-specific pattern rules
+$(BUILDDIR)/%.o: $(KERNDIR)/tests/%.c | $(BUILDDIR)
+	$(CC) $(CFLAGS) -DKERNEL_TESTS $< -o $@
 $(BUILDDIR)/%.o: $(KERNDIR)/tests/unit/%.c | $(BUILDDIR)
-	$(CC) $(CFLAGS) $< -o $@
+	$(CC) $(CFLAGS) -DKERNEL_TESTS -DUNIT_TESTS $< -o $@
+$(BUILDDIR)/%.o: $(KERNDIR)/tests/proc/%.c | $(BUILDDIR)
+	$(CC) $(CFLAGS) -DKERNEL_TESTS -DPROC_TESTS $< -o $@
 
 # Special rule for kernel_entry.asm
 $(KERNEL_ENTRY_OBJ): $(KERNEL_ENTRY_SRC) | $(BUILDDIR)
@@ -213,14 +268,15 @@ $(BUILDDIR)/%.o: $(KERNDIR)/proc/context/%.asm $(PROC_OFFSET_GEN_HDR) | $(BUILDD
 $(BUILDDIR)/%.o: $(KERNDIR)/arch/x86/cpu/%.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $< -o $@
 
-# --- Kernel ELF/BIN (non-test) ---
+# --- Kernel ELF/BIN builds ---
+# Core kernel (production - no tests)
 $(KERNEL_ELF): $(KERNEL_OBJS) $(KERNEL_LD) | $(BUILDDIR)
 	ld -m elf_i386 -T $(KERNEL_LD) -o $@ $(KERNEL_OBJS) -nostdlib
 
 $(KERNEL_BIN): $(KERNEL_ELF) | $(BUILDDIR)
 	objcopy -O binary $< $@
 
-# --- Kernel ELF/BIN (test build) ---
+# Legacy test build (full test suite)
 $(KERNEL_TEST_ELF): $(KERNEL_TEST_OBJS) $(KERNEL_LD) | $(BUILDDIR)
 	ld -m elf_i386 -T $(KERNEL_LD) -o $@ $(KERNEL_TEST_OBJS) -nostdlib
 
@@ -240,13 +296,43 @@ $(DISK_TEST_IMG): $(STAGE1_BIN) $(STAGE2_BIN) $(KERNEL_TEST_BIN) | $(BUILDDIR)
 	dd if=$(STAGE2_BIN) of=$@ bs=512 seek=1 conv=notrunc
 	dd if=$(KERNEL_TEST_BIN) of=$@ bs=512 seek=9 conv=notrunc
 
+$(DISK_UNIT_TEST_IMG): $(STAGE1_BIN) $(STAGE2_BIN) $(KERNEL_UNIT_TEST_BIN) | $(BUILDDIR)
+	dd if=/dev/zero of=$@ bs=1K count=1440
+	dd if=$(STAGE1_BIN) of=$@ bs=512 seek=0 conv=notrunc
+	dd if=$(STAGE2_BIN) of=$@ bs=512 seek=1 conv=notrunc
+	dd if=$(KERNEL_UNIT_TEST_BIN) of=$@ bs=512 seek=9 conv=notrunc
+
+$(DISK_INTEGRATION_IMG): $(STAGE1_BIN) $(STAGE2_BIN) $(KERNEL_INTEGRATION_BIN) | $(BUILDDIR)
+	dd if=/dev/zero of=$@ bs=1K count=1440
+	dd if=$(STAGE1_BIN) of=$@ bs=512 seek=0 conv=notrunc
+	dd if=$(STAGE2_BIN) of=$@ bs=512 seek=1 conv=notrunc
+	dd if=$(KERNEL_INTEGRATION_BIN) of=$@ bs=512 seek=9 conv=notrunc
+
+$(DISK_FULL_TEST_IMG): $(STAGE1_BIN) $(STAGE2_BIN) $(KERNEL_FULL_TEST_BIN) | $(BUILDDIR)
+	dd if=/dev/zero of=$@ bs=1K count=1440
+	dd if=$(STAGE1_BIN) of=$@ bs=512 seek=0 conv=notrunc
+	dd if=$(STAGE2_BIN) of=$@ bs=512 seek=1 conv=notrunc
+	dd if=$(KERNEL_FULL_TEST_BIN) of=$@ bs=512 seek=9 conv=notrunc
+
 # --- Run targets ---
 run: $(DISK_IMG)
 	qemu-system-i386 -drive format=raw,file=$(DISK_IMG) -display curses
 
-test: CFLAGS += -DKERNEL_TESTS
 test: $(DISK_TEST_IMG)
 	qemu-system-i386 -drive format=raw,file=$(DISK_TEST_IMG) -display curses
+
+# New test targets (existing tests only)
+test-unit: $(DISK_UNIT_TEST_IMG)
+	@echo "Running unit tests (panik, printk)..."
+	qemu-system-i386 -drive format=raw,file=$(DISK_UNIT_TEST_IMG) -display curses
+
+test-integration: $(DISK_INTEGRATION_IMG)
+	@echo "Running integration tests (process tests)..."
+	qemu-system-i386 -drive format=raw,file=$(DISK_INTEGRATION_IMG) -display curses
+
+test-all: $(DISK_FULL_TEST_IMG)
+	@echo "Running full test suite (all existing tests)..."
+	qemu-system-i386 -drive format=raw,file=$(DISK_FULL_TEST_IMG) -display curses
 
 # --- Debug targets ---
 debug-symbols: $(STAGE1_ELF) $(STAGE2_ELF) $(KERNEL_ELF)
@@ -286,59 +372,30 @@ clean:
 
 # --- Help ---
 help:
-	@echo "Kernel-V Build and Debug Targets:"
+	@echo "Kernel-V Build and Test Targets:"
 	@echo ""
 	@echo "Build targets:"
-	@echo "  make           - Build complete OS image"
+	@echo "  make           - Build PRODUCTION kernel (no tests, minimal size)"
 	@echo "  make clean     - Clean build directory"
-	@echo "  make run       - Build and run in QEMU"
-	@echo "  make test      - Build and run kernel with tests enabled"
+	@echo "  make run       - Build and run PRODUCTION kernel in QEMU"
 	@echo ""
-	@echo "Debug targets:"
-	@echo "  make debug-stage1    - Debug bootloader stage 1"
-	@echo "  make debug-stage2    - Debug bootloader stage 2"
-	@echo "  make debug-bootloader - Debug both bootloader stages"
-	@echo "  make debug-kernel    - Debug kernel"
-	@echo "  make debug-symbols   - Build all debug symbols"
-	@echo "  make verify-symbols  - Check if debug symbols are built correctly"
+	@echo "Test targets:"
+	@echo "  make test              - Build and run kernel with FULL test suite"
+	@echo "  make test-unit         - Build and run unit tests (panik, printk)"
+	@echo "  make test-integration  - Build and run integration tests (process tests)"
+	@echo "  make test-all          - Build and run complete test suite"
 	@echo ""
-	@echo "GDB Helper targets:"
-	@echo "  make gdb-bootloader       - Create GDB script for bootloader (with TUI)"
-	@echo "  make gdb-kernel           - Create GDB script for kernel (with TUI)"
-	@echo "  make gdb-bootloader-regs  - Bootloader debug with registers layout"
-	@echo "  make gdb-kernel-split     - Kernel debug with split layout"
-	@echo "  make gdb-full-debug       - Complete bootloader-to-kernel debugging"
+	@echo "Build variants explained:"
+	@echo "  KERNEL_OBJS      = Production kernel (core functionality only)"
+	@echo "  KERNEL_TEST_OBJS = Full test kernel (includes all test files)"
+	@echo "  UNIT_TEST_OBJS   = Unit tests only (panik, printk tests)"
+	@echo "  INTEGRATION_TEST_OBJS = Integration tests (process tests)"
 	@echo ""
-	@echo "Manual debugging steps:"
-	@echo "  1. Terminal 1: make debug-stage1"
-	@echo "  2. Terminal 2: gdb"
-	@echo "  3. In GDB: target remote :1234"
-	@echo "  4. In GDB: set architecture i8086"
-	@echo "  5. In GDB: add-symbol-file build/stage1.elf 0x7c00"
-	@echo "  6. In GDB: tui enable"
-	@echo "  7. In GDB: layout asm"
-	@echo "  8. In GDB: hbreak *0x7c00"
-	@echo "  9. In GDB: continue"
-	@echo ""
-	@echo "Correct sequence for automated debugging:"
-	@echo "  1. make clean && make"
-	@echo "  2. Terminal 1: make debug-bootloader"
-	@echo "  3. Terminal 2: make gdb-bootloader"
-	@echo "  4. Terminal 2: gdb -x build/gdb_bootloader.txt"
-	@echo ""
-	@echo "Alternative - debug individual stages:"
-	@echo "  For Stage1 only: make debug-stage1"
-	@echo "  For Stage2 only: make debug-stage2"
-	@echo ""
-	@echo "GDB TUI Layouts available:"
-	@echo "  layout src    - Source + command"
-	@echo "  layout asm    - Assembly + command"
-	@echo "  layout split  - Source + assembly + command"
-	@echo "  layout regs   - Registers + source/asm + command"
-	@echo "  tui disable   - Exit TUI mode"
-	@echo "  Ctrl+X+A      - Toggle TUI mode"
-	@echo "  Ctrl+X+1      - Single window"
-	@echo "  Ctrl+X+2      - Two windows"
+	@echo "Key differences:"
+	@echo "  'make run'       = No test processes, smaller binary, production code"
+	@echo "  'make test'      = Includes test processes, larger binary, debug features"
+	@echo "  'make test-unit' = Only unit tests enabled"
+	@echo "  'make test-all'  = All tests enabled"
 
 # --- GDB Helper Scripts ---
 # Create GDB script for bootloader debugging (both stages)
@@ -498,4 +555,4 @@ gdb-full-debug: debug-symbols
 	@echo "GDB comprehensive debug script created: $(BUILDDIR)/gdb_full_debug.txt"
 	@echo "Usage: gdb -x $(BUILDDIR)/gdb_full_debug.txt"
 
-.PHONY: all clean run test debug debug-symbols verify-symbols debug-stage1 debug-stage2 debug-bootloader debug-kernel help
+.PHONY: all clean run test test-unit test-integration test-all debug debug-symbols verify-symbols debug-stage1 debug-stage2 debug-bootloader debug-kernel help

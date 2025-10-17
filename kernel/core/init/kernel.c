@@ -42,11 +42,14 @@ void high_stack_entry() {
     proc_init();
     printk("Initialized Process Management...\n");
 
-    // Create test processes
-    create_test_processes();
-
-    // Run kernel tests
-    run_kernel_tests();
+    // Create test processes only if tests are enabled
+    #ifdef KERNEL_TESTS
+        create_test_processes();
+        // Run kernel tests
+        run_kernel_tests();
+    #else
+        printk("Production build - no test processes created\n");
+    #endif
     
     // Main kernel loop
     printk("\nKernel initialization complete. Entering main loop.\n");
@@ -101,10 +104,18 @@ void kernel_main() {
     pmm_reserve_memory_region(RESERVED_TYPE_BITMAP);
 
     void* frame1 = pmm_alloc_frame();
-    debug_verbose(frame1 ? "Allocated frame at address: %p\n" : "Failed to allocate frame\n", frame1);
+    if (frame1) {
+        debug_verbose("Allocated frame at address: %p\n", frame1);
+    } else {
+        debug_verbose("Failed to allocate frame\n");
+    }
 
     void* frame2 = pmm_alloc_frame();
-    debug_verbose(frame2 ? "Allocated another frame at address: %p\n" : "Failed to allocate another frame\n", frame2);
+    if (frame2) {
+        debug_verbose("Allocated another frame at address: %p\n", frame2);
+    } else {
+        debug_verbose("Failed to allocate another frame\n");
+    }
 
     // Virtual Memory & Paging
     printk("\n==================================================\n");

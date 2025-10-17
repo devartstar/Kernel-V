@@ -12,6 +12,7 @@
         "paging.h": "c",
         "tss.h": "c",
         "gdt.h": "c",
-        "proc_offset.h": "c"
+        "proc_offset.h": "c",
+        "debug.h": "c"
     }
 }
