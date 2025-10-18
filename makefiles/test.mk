@@ -1,0 +1,153 @@
+# ==============================================================================
+# Test Build Configuration
+# ==============================================================================
+
+# Override settings for test builds
+ENABLE_TESTS := 1
+ENABLE_DEBUG := 1
+
+# Test-specific sources
+UNIT_TEST_SOURCES := $(wildcard $(TESTDIR)/unit/*.c)
+INTEGRATION_TEST_SOURCES := $(wildcard $(TESTDIR)/proc/*.c)
+TEST_RUNNER_SOURCE := $(TESTDIR)/test_runner.c
+
+# Test objects
+UNIT_TEST_OBJECTS := $(patsubst $(KERNDIR)/%.c,$(BUILD_TEST)/%.o,$(UNIT_TEST_SOURCES))
+INTEGRATION_TEST_OBJECTS := $(patsubst $(KERNDIR)/%.c,$(BUILD_TEST)/%.o,$(INTEGRATION_TEST_SOURCES))
+TEST_RUNNER_OBJECT := $(BUILD_TEST)/test_runner.o
+
+# Legacy compatibility - match original Makefile1 object groups
+UNIT_TEST_OBJS := $(UNIT_TEST_OBJECTS)
+INTEGRATION_TEST_OBJS := $(INTEGRATION_TEST_OBJECTS)
+ALL_TEST_OBJS := $(UNIT_TEST_OBJS) $(INTEGRATION_TEST_OBJS) $(TEST_RUNNER_OBJECT)
+
+# Test kernels
+KERNEL_TEST_ELF := $(BUILD_TEST)/kernel_test.elf
+KERNEL_TEST_BIN := $(BUILD_TEST)/kernel_test.bin
+KERNEL_UNIT_TEST_ELF := $(BUILD_TEST)/kernel_unit_test.elf
+KERNEL_UNIT_TEST_BIN := $(BUILD_TEST)/kernel_unit_test.bin
+KERNEL_INTEGRATION_ELF := $(BUILD_TEST)/kernel_integration.elf  
+KERNEL_INTEGRATION_BIN := $(BUILD_TEST)/kernel_integration.bin
+KERNEL_FULL_TEST_ELF := $(BUILD_TEST)/kernel_full_test.elf
+KERNEL_FULL_TEST_BIN := $(BUILD_TEST)/kernel_full_test.bin
+
+# Test disk images
+DISK_TEST_IMG := $(BUILD_TEST)/disk_test.img
+DISK_UNIT_TEST_IMG := $(BUILD_TEST)/disk_unit_test.img
+DISK_INTEGRATION_IMG := $(BUILD_TEST)/disk_integration.img
+DISK_FULL_TEST_IMG := $(BUILD_TEST)/disk_full_test.img
+
+.PHONY: tests test test-unit test-integration test-all clean-tests
+
+tests: test-all ## Build all tests
+test: $(DISK_TEST_IMG) ## Legacy test build (full test suite)
+	@echo "Running legacy test suite..."
+	$(Q)$(QEMU) -drive format=raw,file=$< -display curses
+
+# Pattern rule for test objects with proper flags
+$(BUILD_TEST)/%.o: $(KERNDIR)/%.c | $(BUILD_TEST)
+	$(ECHO) "  CC-TEST $@"
+	$(Q)mkdir -p $(dir $@)
+	$(Q)$(CC) $(CFLAGS) -DKERNEL_TESTS -c $< -o $@
+
+$(BUILD_TEST)/%.o: $(KERNDIR)/tests/%.c | $(BUILD_TEST)
+	$(ECHO) "  CC-TEST $@"
+	$(Q)mkdir -p $(dir $@)
+	$(Q)$(CC) $(CFLAGS) -DKERNEL_TESTS -c $< -o $@
+
+$(BUILD_TEST)/%.o: $(KERNDIR)/tests/unit/%.c | $(BUILD_TEST)
+	$(ECHO) "  CC-TEST $@"
+	$(Q)mkdir -p $(dir $@)
+	$(Q)$(CC) $(CFLAGS) -DKERNEL_TESTS -DUNIT_TESTS -c $< -o $@
+
+$(BUILD_TEST)/%.o: $(KERNDIR)/tests/proc/%.c | $(BUILD_TEST)
+	$(ECHO) "  CC-TEST $@"
+	$(Q)mkdir -p $(dir $@)
+	$(Q)$(CC) $(CFLAGS) -DKERNEL_TESTS -DPROC_TESTS -c $< -o $@
+
+# Legacy test build (full test suite) - matches original Makefile1
+$(KERNEL_TEST_ELF): $(KERNEL_CORE_TEST_OBJS) $(ALL_TEST_OBJS) $(KERNEL_LD) | $(BUILD_TEST)
+	$(ECHO) "  LD-TEST $@"
+	$(Q)$(LD) $(LDFLAGS) -T $(KERNEL_LD) -o $@ $(KERNEL_CORE_TEST_OBJS) $(ALL_TEST_OBJS) -nostdlib
+
+$(KERNEL_TEST_BIN): $(KERNEL_TEST_ELF) | $(BUILD_TEST)
+	$(ECHO) "  OBJCOPY $@"
+	$(Q)$(OBJCOPY) -O binary $< $@
+
+$(DISK_TEST_IMG): $(STAGE1_BIN) $(STAGE2_BIN) $(KERNEL_TEST_BIN) | $(BUILD_TEST)
+	$(ECHO) "  DISK    $@"
+	$(Q)$(DD) if=/dev/zero of=$@ bs=1K count=1440 2>/dev/null
+	$(Q)$(DD) if=$(STAGE1_BIN) of=$@ bs=512 seek=0 conv=notrunc 2>/dev/null
+	$(Q)$(DD) if=$(STAGE2_BIN) of=$@ bs=512 seek=1 conv=notrunc 2>/dev/null
+	$(Q)$(DD) if=$(KERNEL_TEST_BIN) of=$@ bs=512 seek=9 conv=notrunc 2>/dev/null
+
+# Unit tests only
+$(KERNEL_UNIT_TEST_ELF): $(KERNEL_CORE_TEST_OBJS) $(UNIT_TEST_OBJS) $(TEST_RUNNER_OBJECT) $(KERNEL_LD) | $(BUILD_TEST)
+	$(ECHO) "  LD-TEST $@"
+	$(Q)$(LD) $(LDFLAGS) -T $(KERNEL_LD) -o $@ $(KERNEL_CORE_TEST_OBJS) $(UNIT_TEST_OBJS) $(TEST_RUNNER_OBJECT) -nostdlib
+
+$(KERNEL_UNIT_TEST_BIN): $(KERNEL_UNIT_TEST_ELF) | $(BUILD_TEST)
+	$(ECHO) "  OBJCOPY $@"
+	$(Q)$(OBJCOPY) -O binary $< $@
+
+$(DISK_UNIT_TEST_IMG): $(STAGE1_BIN) $(STAGE2_BIN) $(KERNEL_UNIT_TEST_BIN) | $(BUILD_TEST)
+	$(ECHO) "  DISK    $@"
+	$(Q)$(DD) if=/dev/zero of=$@ bs=1K count=1440 2>/dev/null
+	$(Q)$(DD) if=$(STAGE1_BIN) of=$@ bs=512 seek=0 conv=notrunc 2>/dev/null
+	$(Q)$(DD) if=$(STAGE2_BIN) of=$@ bs=512 seek=1 conv=notrunc 2>/dev/null
+	$(Q)$(DD) if=$(KERNEL_UNIT_TEST_BIN) of=$@ bs=512 seek=9 conv=notrunc 2>/dev/null
+
+test-unit: $(DISK_UNIT_TEST_IMG) ## Run unit tests (panik, printk)
+	@echo "Running unit tests (panik, printk)..."
+	$(Q)$(QEMU) -drive format=raw,file=$< -display curses
+
+# Integration tests
+$(KERNEL_INTEGRATION_ELF): $(KERNEL_CORE_TEST_OBJS) $(INTEGRATION_TEST_OBJS) $(TEST_RUNNER_OBJECT) $(KERNEL_LD) | $(BUILD_TEST)
+	$(ECHO) "  LD-TEST $@"
+	$(Q)$(LD) $(LDFLAGS) -T $(KERNEL_LD) -o $@ $(KERNEL_CORE_TEST_OBJS) $(INTEGRATION_TEST_OBJS) $(TEST_RUNNER_OBJECT) -nostdlib
+
+$(KERNEL_INTEGRATION_BIN): $(KERNEL_INTEGRATION_ELF) | $(BUILD_TEST)
+	$(ECHO) "  OBJCOPY $@"
+	$(Q)$(OBJCOPY) -O binary $< $@
+
+$(DISK_INTEGRATION_IMG): $(STAGE1_BIN) $(STAGE2_BIN) $(KERNEL_INTEGRATION_BIN) | $(BUILD_TEST)
+	$(ECHO) "  DISK    $@"
+	$(Q)$(DD) if=/dev/zero of=$@ bs=1K count=1440 2>/dev/null
+	$(Q)$(DD) if=$(STAGE1_BIN) of=$@ bs=512 seek=0 conv=notrunc 2>/dev/null
+	$(Q)$(DD) if=$(STAGE2_BIN) of=$@ bs=512 seek=1 conv=notrunc 2>/dev/null
+	$(Q)$(DD) if=$(KERNEL_INTEGRATION_BIN) of=$@ bs=512 seek=9 conv=notrunc 2>/dev/null
+
+test-integration: $(DISK_INTEGRATION_IMG) ## Run integration tests (process tests)
+	@echo "Running integration tests (process tests)..."
+	$(Q)$(QEMU) -drive format=raw,file=$< -display curses
+
+# Full test suite
+$(KERNEL_FULL_TEST_ELF): $(KERNEL_CORE_TEST_OBJS) $(ALL_TEST_OBJS) $(KERNEL_LD) | $(BUILD_TEST)
+	$(ECHO) "  LD-TEST $@"
+	$(Q)$(LD) $(LDFLAGS) -T $(KERNEL_LD) -o $@ $(KERNEL_CORE_TEST_OBJS) $(ALL_TEST_OBJS) -nostdlib
+
+$(KERNEL_FULL_TEST_BIN): $(KERNEL_FULL_TEST_ELF) | $(BUILD_TEST)
+	$(ECHO) "  OBJCOPY $@"
+	$(Q)$(OBJCOPY) -O binary $< $@
+
+$(DISK_FULL_TEST_IMG): $(STAGE1_BIN) $(STAGE2_BIN) $(KERNEL_FULL_TEST_BIN) | $(BUILD_TEST)
+	$(ECHO) "  DISK    $@"
+	$(Q)$(DD) if=/dev/zero of=$@ bs=1K count=1440 2>/dev/null
+	$(Q)$(DD) if=$(STAGE1_BIN) of=$@ bs=512 seek=0 conv=notrunc 2>/dev/null
+	$(Q)$(DD) if=$(STAGE2_BIN) of=$@ bs=512 seek=1 conv=notrunc 2>/dev/null
+	$(Q)$(DD) if=$(KERNEL_FULL_TEST_BIN) of=$@ bs=512 seek=9 conv=notrunc 2>/dev/null
+
+test-all: $(DISK_FULL_TEST_IMG) ## Run complete test suite (all existing tests)
+	@echo "Running full test suite (all existing tests)..."
+	$(Q)$(QEMU) -drive format=raw,file=$< -display curses
+
+# Directory creation
+$(BUILD_TEST):
+	$(Q)mkdir -p $@
+	$(Q)mkdir -p $(BUILD_TEST)/unit
+	$(Q)mkdir -p $(BUILD_TEST)/proc
+	$(Q)mkdir -p $(BUILD_TEST)/tests/unit
+	$(Q)mkdir -p $(BUILD_TEST)/tests/proc
+
+clean-tests: ## Clean test artifacts
+	$(Q)rm -rf $(BUILD_TEST)
