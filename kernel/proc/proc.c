@@ -316,7 +316,7 @@ void yield (void)
             printk("First switch from unstarted idle process - jumping directly\n");
             
             // Jump directly to the process without saving idle context
-            asm volatile (
+            __asm__ __volatile__ (
                 "mov %0, %%esp\n\t"          // Load process stack
                 "push $0\n\t"                // Push argument (NULL)
                 "jmp *%1"                    // Jump to process entry point

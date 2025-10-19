@@ -13,8 +13,8 @@ void page_fault_handler (page_fault_stack_t* frame)
     // cr2 holds the fault linear address for the most recent page fault
     uint32_t fault_address;
     uint32_t esp, ebp;
-    asm volatile("mov %%esp, %0" : "=r"(esp));
-    asm volatile("mov %%ebp, %0" : "=r"(ebp));
+    __asm__ __volatile__("mov %%esp, %0" : "=r"(esp));
+    __asm__ __volatile__("mov %%ebp, %0" : "=r"(ebp));
     __asm__ __volatile__("mov %%cr2, %0" : "=r"(fault_address));
 
     // Check to see if accessing guard page

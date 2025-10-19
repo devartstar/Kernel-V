@@ -7,6 +7,7 @@ TARGET 			:= i686-elf
 CROSS_PREFIX 	?= $(TARGET)-
 
 # --- Compilers ---
+HOSTCC 			:= gcc
 CC 				:= $(CROSS_PREFIX)gcc
 CXX 			:= $(CROSS_PREFIX)g++
 LD 				:= $(CROSS_PREFIX)ld

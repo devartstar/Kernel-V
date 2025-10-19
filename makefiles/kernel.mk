@@ -14,8 +14,8 @@ PROC_OFFSET_GEN := $(KERNDIR)/lib/proc_offset_generator
 PROC_OFFSET_HDR := $(INCDIR)/proc/proc_offset_asm.h
 
 # --- Source File Discovery ---
-KERNEL_C_SOURCES := $(shell find $(KERNDIR) -name "*.c" -not -path "$(TESTDIR)/*")
-KERNEL_ASM_SOURCES := $(shell find $(KERNDIR) -name "*.asm" -not -path "$(BOOTDIR)/*")
+KERNEL_C_SOURCES := $(shell find $(KERNDIR) -name "*.c" -not -path "$(TESTDIR)/*" -not -name "*_generator.c")
+KERNEL_ASM_SOURCES := $(shell find $(KERNDIR) -name "*.asm" -not -path "$(BOOTDIR)/*" -not -name "kernel_entry.asm")
 
 # --- Object File Generation ---
 KERNEL_C_OBJECTS := $(patsubst $(KERNDIR)/%.c,$(BUILD_KERN)/%.o,$(KERNEL_C_SOURCES))
@@ -23,11 +23,11 @@ KERNEL_ASM_OBJECTS := $(patsubst $(KERNDIR)/%.asm,$(BUILD_KERN)/%.o,$(KERNEL_ASM
 
 # --- Test Sources (conditional) ---
 ifeq ($(ENABLE_TESTS),1)
-	TEST_C_SOURCES := $(shell find $(TESTDIR) -name "*.c")
-	TEST_C_OBJECTS := $(patsubst $(KERNDIR)/%.c,$(BUILD_KERN)/%.o,$(TEST_C_SOURCES))
-	KERNEL_OBJECTS := $(KERNEL_C_OBJECTS) $(KERNEL_ASM_OBJECTS) $(TEST_C_OBJECTS)
+    TEST_C_SOURCES := $(shell find $(TESTDIR) -name "*.c")
+    TEST_C_OBJECTS := $(patsubst $(KERNDIR)/%.c,$(BUILD_KERN)/%.o,$(TEST_C_SOURCES))
+    KERNEL_OBJECTS := $(KERNEL_ENTRY_OBJ) $(KERNEL_C_OBJECTS) $(KERNEL_ASM_OBJECTS) $(TEST_C_OBJECTS)
 else
-	KERNEL_OBJECTS := $(KERNEL_C_OBJECTS) $(KERNEL_ASM_OBJECTS)
+    KERNEL_OBJECTS := $(KERNEL_ENTRY_OBJ) $(KERNEL_C_OBJECTS) $(KERNEL_ASM_OBJECTS)
 endif
 
 # --- Output Files ---
@@ -46,8 +46,8 @@ $(PROC_OFFSET_HDR): $(PROC_OFFSET_GEN)
 	$(Q)$< > $@
 
 $(PROC_OFFSET_GEN): $(KERNDIR)/lib/data_structure/proc_offset_generator.c
-	$(ECHO) "  CC      $@"
-	$(Q)$(CC) -I$(INCDIR) -o $@ $<
+	$(ECHO) "  HOSTCC  $@"
+	$(Q)gcc -I$(INCDIR) -o $@ $<
 
 # --- Kernel Entry Point ---
 $(KERNEL_ENTRY_OBJ): $(KERNEL_ENTRY_SRC) $(PROC_OFFSET_HDR) | $(BUILD_KERN)

@@ -82,7 +82,7 @@ void test_stack_overflow(int depth) {
     dummy[0] = (uint8_t)depth;
     
     uint32_t current_esp;
-    asm volatile ("mov %%esp, %0" : "=r"(current_esp));
+    __asm__ __volatile__ ("mov %%esp, %0" : "=r"(current_esp));
     
     debug_info(STACK, "Stack depth: %d, ESP=0x%08x\n", depth, current_esp);
     

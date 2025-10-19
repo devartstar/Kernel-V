@@ -18,7 +18,7 @@ void high_stack_entry() {
     printk("Switched to high virtual stack!\n");
     
     uint32_t cur_esp;
-    asm volatile ("mov %%esp, %0" : "=r"(cur_esp));
+    __asm__ __volatile__ ("mov %%esp, %0" : "=r"(cur_esp));
     debug_verbose("ESP after stack switch: 0x%08x\n", cur_esp);
 
     // Test demand-paged heap access

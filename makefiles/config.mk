@@ -39,8 +39,8 @@ INCLUDE_PATHS := \
 
 # --- Disk Layout ---
 STAGE1_SECTOR := 0
-STAGE2_SECTOR := 5
-KERNEL_SECTOR := 48
+STAGE2_SECTOR := 1
+KERNEL_SECTOR := 9
 
 # --- Memory Layout ---
 KERNEL_LOAD_ADDR := 0x100000

@@ -30,6 +30,10 @@ run: $(DISK_IMG) ## Build and run in QEMU
 	$(ECHO) "Starting QEMU..."
 	$(Q)$(QEMU) -drive format=raw,file=$< -display curses
 
+run-debug: $(DISK_IMG) ## Build and run in QEMU with debug output
+	$(ECHO) "Starting QEMU with debug output..."
+	$(Q)$(QEMU) -drive format=raw,file=$< -display curses -d int,cpu_reset -D qemu.log
+
 debug: $(DISK_IMG) $(STAGE1_ELF) $(STAGE2_ELF) $(KERNEL_ELF) ## Run with GDB support
 	$(ECHO) "Starting QEMU with GDB support..."
 	$(ECHO) "Connect with: $(GDB) -x tools/gdb/kernel.gdb"
