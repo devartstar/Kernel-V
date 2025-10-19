@@ -38,7 +38,7 @@ KERNEL_SYM := $(BUILD_KERN)/kernel.sym
 
 .PHONY: kernel clean-kernel kernel-info
 
-kernel: $(KERNEL_BIN) ## Build kernel
+kernel: $(KERNEL_BIN) $(KERNEL_ELF) $(KERNEL_SYM)
 
 # --- Auto-generate struct offsets ---
 $(PROC_OFFSET_HDR): $(PROC_OFFSET_GEN)

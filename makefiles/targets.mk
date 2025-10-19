@@ -9,7 +9,7 @@ DISK_IMG := $(BUILDDIR)/disk.img
 .PHONY: debug-symbols verify-symbols debug-stage1 debug-stage2 debug-bootloader debug-kernel
 .PHONY: gdb-bootloader gdb-kernel gdb-bootloader-regs gdb-kernel-split gdb-full-debug
 
-all: $(DISK_IMG) ## Build complete system
+all: $(DISK_IMG) debug-symbols ## Build complete system with debug symbols
 
 build: all ## Alias for all
 
@@ -42,6 +42,7 @@ debug: $(DISK_IMG) $(STAGE1_ELF) $(STAGE2_ELF) $(KERNEL_ELF) ## Run with GDB sup
 # --- Maintenance Targets ---
 clean: clean-bootloader clean-kernel clean-tests ## Clean all build artifacts
 	$(Q)rm -f $(DISK_IMG)
+	$(Q)rm -f $(BUILDDIR)/*.o $(BUILDDIR)/*.bin $(BUILDDIR)/*.elf
 
 distclean: clean ## Complete clean including generated files
 	$(Q)rm -rf $(BUILDDIR)

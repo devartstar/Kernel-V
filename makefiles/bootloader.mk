@@ -18,7 +18,7 @@ STAGE2_OBJ := $(BUILD_BOOT)/stage2.o
 
 .PHONY: bootloader clean-bootloader
 
-bootloader: $(STAGE1_BIN) $(STAGE2_BIN)
+bootloader: $(STAGE1_BIN) $(STAGE2_BIN) $(STAGE1_ELF) $(STAGE2_ELF)
 
 # --- Stage 1 ---
 $(STAGE1_BIN): $(STAGE1_SRC) | $(BUILD_BOOT)
@@ -27,7 +27,7 @@ $(STAGE1_BIN): $(STAGE1_SRC) | $(BUILD_BOOT)
 
 $(STAGE1_OBJ): $(STAGE1_SRC) | $(BUILD_BOOT)
 	$(ECHO) "  ASM     $@"
-	$(Q)$(NASM) -f elf32 -g $< -o $@
+	$(Q)$(NASM) -f elf32 -g -DELF_BUILD $< -o $@
 
 $(STAGE1_ELF): $(STAGE1_OBJ) | $(BUILD_BOOT)
 	$(ECHO) "  LD      $@"
@@ -40,7 +40,7 @@ $(STAGE2_BIN): $(STAGE2_SRC) | $(BUILD_BOOT)
 
 $(STAGE2_OBJ): $(STAGE2_SRC) | $(BUILD_BOOT)
 	$(ECHO) "  ASM     $@"
-	$(Q)$(NASM) -f elf32 -g $< -o $@
+	$(Q)$(NASM) -f elf32 -g -DELF_BUILD $< -o $@
 
 $(STAGE2_ELF): $(STAGE2_OBJ) | $(BUILD_BOOT)
 	$(ECHO) "  LD      $@"

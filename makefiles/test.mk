@@ -21,6 +21,11 @@ UNIT_TEST_OBJS := $(UNIT_TEST_OBJECTS)
 INTEGRATION_TEST_OBJS := $(INTEGRATION_TEST_OBJECTS)
 ALL_TEST_OBJS := $(UNIT_TEST_OBJS) $(INTEGRATION_TEST_OBJS) $(TEST_RUNNER_OBJECT)
 
+# Core kernel objects for tests (excluding tests themselves)
+KERNEL_CORE_TEST_OBJS := $(BUILD_TEST)/kernel_entry.o \
+                         $(patsubst $(KERNDIR)/%.c,$(BUILD_TEST)/%.o,$(shell find $(KERNDIR) -name "*.c" -not -path "$(TESTDIR)/*" -not -name "*_generator.c")) \
+                         $(patsubst $(KERNDIR)/%.asm,$(BUILD_TEST)/%.o,$(shell find $(KERNDIR) -name "*.asm" -not -path "$(BOOTDIR)/*" -not -name "kernel_entry.asm"))
+
 # Test kernels
 KERNEL_TEST_ELF := $(BUILD_TEST)/kernel_test.elf
 KERNEL_TEST_BIN := $(BUILD_TEST)/kernel_test.bin
@@ -44,11 +49,22 @@ test: $(DISK_TEST_IMG) ## Legacy test build (full test suite)
 	@echo "Running legacy test suite..."
 	$(Q)$(QEMU) -drive format=raw,file=$< -display curses
 
+
+# Special rule for test kernel entry point
+$(BUILD_TEST)/kernel_entry.o: $(KERN_ARCH_DIR)/boot/kernel_entry.asm $(PROC_OFFSET_HDR) | $(BUILD_TEST)
+	$(ECHO) "  ASM-TEST $@"
+	$(Q)$(NASM) $(NASMFLAGS) $< -o $@
+
 # Pattern rule for test objects with proper flags
 $(BUILD_TEST)/%.o: $(KERNDIR)/%.c | $(BUILD_TEST)
 	$(ECHO) "  CC-TEST $@"
 	$(Q)mkdir -p $(dir $@)
 	$(Q)$(CC) $(CFLAGS) -DKERNEL_TESTS -c $< -o $@
+
+$(BUILD_TEST)/%.o: $(KERNDIR)/%.asm $(PROC_OFFSET_HDR) | $(BUILD_TEST)
+	$(ECHO) "  ASM-TEST $@"
+	$(Q)mkdir -p $(dir $@)
+	$(Q)$(NASM) $(NASMFLAGS) $< -o $@
 
 $(BUILD_TEST)/%.o: $(KERNDIR)/tests/%.c | $(BUILD_TEST)
 	$(ECHO) "  CC-TEST $@"

@@ -10,9 +10,10 @@ DISK_DEBUG_IMG := $(BUILDDIR)/disk_debug.img
 
 .PHONY: debug-symbols verify-symbols debug-stage1 debug-stage2 debug-bootloader debug-kernel
 .PHONY: gdb-bootloader gdb-kernel gdb-bootloader-regs gdb-kernel-split gdb-full-debug
+.PHONY: connect-gdb debug-kernel-auto gdb-kernel-auto
 
 # --- Debug Symbols ---
-debug-symbols: $(STAGE1_ELF) $(STAGE2_ELF) $(KERNEL_ELF) ## Build all debug symbols
+debug-symbols: bootloader kernel ## Build all debug symbols
 
 verify-symbols: debug-symbols ## Verify debug symbols are present
 	@echo "Verifying debug symbols..."
@@ -28,27 +29,75 @@ verify-symbols: debug-symbols ## Verify debug symbols are present
 	@objdump -h $(KERNEL_ELF) 2>/dev/null | grep debug || echo "No debug symbols in Kernel"
 
 # --- Individual Debug Targets ---
-debug-stage1: $(STAGE1_ELF) $(DISK_IMG) ## Debug Stage 1 bootloader
+debug-stage1: debug-symbols $(DISK_IMG) ## Debug Stage 1 bootloader
 	$(ECHO) "Starting QEMU for Stage1 debugging..."
 	$(ECHO) "Connect with: $(GDB) -x tools/gdb/stage1.gdb"
 	$(Q)$(QEMU) -drive format=raw,file=$(DISK_IMG) -s -S -display curses
 
-debug-stage2: $(STAGE2_ELF) $(DISK_IMG) ## Debug Stage 2 bootloader  
+debug-stage2: debug-symbols $(DISK_IMG) ## Debug Stage 2 bootloader  
 	$(ECHO) "Starting QEMU for Stage2 debugging..."
 	$(ECHO) "Connect with: $(GDB) -x tools/gdb/stage2.gdb"
 	$(Q)$(QEMU) -drive format=raw,file=$(DISK_IMG) -s -S -display curses
 
-debug-bootloader: $(STAGE1_ELF) $(STAGE2_ELF) $(DISK_IMG) ## Debug both bootloader stages
+debug-bootloader: debug-symbols $(DISK_IMG) ## Debug both bootloader stages
 	$(ECHO) "Starting QEMU for bootloader debugging..."
 	$(ECHO) "Connect with: $(GDB) -x tools/gdb/bootloader.gdb"
 	$(Q)$(QEMU) -drive format=raw,file=$(DISK_IMG) -s -S -display curses
 
-debug-kernel: $(KERNEL_ELF) $(DISK_IMG) ## Debug kernel only
+debug-kernel: debug-symbols $(DISK_IMG) ## Debug kernel only
 	$(ECHO) "Starting QEMU for kernel debugging..."  
 	$(ECHO) "Connect with: $(GDB) -x tools/gdb/kernel.gdb"
 	$(Q)$(QEMU) -drive format=raw,file=$(DISK_IMG) -s -S -display curses
 
 # --- Advanced GDB Script Generation ---
+connect-gdb: ## Connect GDB to running QEMU (use existing kernel.gdb)
+	@echo "Connecting GDB to running QEMU session..."
+	@echo "Make sure QEMU is running in another terminal!"
+	$(GDB) -x tools/gdb/kernel.gdb
+
+debug-kernel-auto: debug-symbols $(DISK_IMG) gdb-kernel-auto ## Start QEMU and auto-connect GDB
+	@echo "Starting QEMU in background..."
+	@$(QEMU) -drive format=raw,file=$(DISK_IMG) -s -S -display curses &
+	@echo "Waiting for QEMU to start..."
+	@sleep 2
+	@echo "Connecting GDB..."
+	@$(GDB) -x tools/gdb/kernel_auto.gdb
+
+# --- Advanced GDB Script Generation ---
+gdb-kernel-auto: debug-symbols ## Generate auto-navigating kernel GDB script
+	@echo "Creating auto-navigating GDB script for kernel debugging..."
+	@mkdir -p tools/gdb
+	@echo "set architecture i386" > tools/gdb/kernel_auto.gdb
+	@echo "target remote :1234" >> tools/gdb/kernel_auto.gdb
+	@echo "symbol-file $(KERNEL_ELF)" >> tools/gdb/kernel_auto.gdb
+	@echo "add-symbol-file $(STAGE1_ELF) 0x7c00" >> tools/gdb/kernel_auto.gdb
+	@echo "add-symbol-file $(STAGE2_ELF) 0x7e00" >> tools/gdb/kernel_auto.gdb
+	@echo "# Set source directories" >> tools/gdb/kernel_auto.gdb
+	@echo "directory ." >> tools/gdb/kernel_auto.gdb
+	@echo "directory kernel/" >> tools/gdb/kernel_auto.gdb
+	@echo "directory kernel/core/init/" >> tools/gdb/kernel_auto.gdb
+	@echo "directory kernel/core/debug/" >> tools/gdb/kernel_auto.gdb
+	@echo "directory kernel/drivers/video/" >> tools/gdb/kernel_auto.gdb
+	@echo "# Start with assembly view" >> tools/gdb/kernel_auto.gdb
+	@echo "tui enable" >> tools/gdb/kernel_auto.gdb
+	@echo "layout asm" >> tools/gdb/kernel_auto.gdb
+	@echo "focus cmd" >> tools/gdb/kernel_auto.gdb
+	@echo "# Set breakpoint and auto-continue to C code" >> tools/gdb/kernel_auto.gdb
+	@echo "break kernel_main" >> tools/gdb/kernel_auto.gdb
+	@echo "echo === Auto-continuing to C source code ===" >> tools/gdb/kernel_auto.gdb
+	@echo "continue" >> tools/gdb/kernel_auto.gdb
+	@echo "# Switch to source view when we reach C code" >> tools/gdb/kernel_auto.gdb
+	@echo "layout split" >> tools/gdb/kernel_auto.gdb
+	@echo "refresh" >> tools/gdb/kernel_auto.gdb
+	@echo "list" >> tools/gdb/kernel_auto.gdb
+	@echo "echo" >> tools/gdb/kernel_auto.gdb
+	@echo "echo === Now at C source code! ===" >> tools/gdb/kernel_auto.gdb
+	@echo "echo Commands: step, next, continue, bt, list" >> tools/gdb/kernel_auto.gdb
+	@echo "echo Use Ctrl+X+A to toggle TUI mode" >> tools/gdb/kernel_auto.gdb
+	@echo ""
+	@echo "Auto-navigating GDB script created: tools/gdb/kernel_auto.gdb"
+	@echo "Usage: gdb -x tools/gdb/kernel_auto.gdb"
+
 gdb-bootloader: debug-symbols ## Generate GDB script for bootloader debugging
 	@echo "Creating GDB script for bootloader debugging (Stage1 + Stage2)..."
 	@mkdir -p tools/gdb
