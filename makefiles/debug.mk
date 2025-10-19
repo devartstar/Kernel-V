@@ -29,22 +29,22 @@ verify-symbols: debug-symbols ## Verify debug symbols are present
 	@objdump -h $(KERNEL_ELF) 2>/dev/null | grep debug || echo "No debug symbols in Kernel"
 
 # --- Individual Debug Targets ---
-debug-stage1: debug-symbols $(DISK_IMG) ## Debug Stage 1 bootloader
+debug-stage1: debug-symbols all ## Debug Stage 1 bootloader
 	$(ECHO) "Starting QEMU for Stage1 debugging..."
 	$(ECHO) "Connect with: $(GDB) -x tools/gdb/stage1.gdb"
 	$(Q)$(QEMU) -drive format=raw,file=$(DISK_IMG) -s -S -display curses
 
-debug-stage2: debug-symbols $(DISK_IMG) ## Debug Stage 2 bootloader  
+debug-stage2: debug-symbols all ## Debug Stage 2 bootloader
 	$(ECHO) "Starting QEMU for Stage2 debugging..."
 	$(ECHO) "Connect with: $(GDB) -x tools/gdb/stage2.gdb"
 	$(Q)$(QEMU) -drive format=raw,file=$(DISK_IMG) -s -S -display curses
 
-debug-bootloader: debug-symbols $(DISK_IMG) ## Debug both bootloader stages
+debug-bootloader: debug-symbols all ## Debug both bootloader stages
 	$(ECHO) "Starting QEMU for bootloader debugging..."
 	$(ECHO) "Connect with: $(GDB) -x tools/gdb/bootloader.gdb"
 	$(Q)$(QEMU) -drive format=raw,file=$(DISK_IMG) -s -S -display curses
 
-debug-kernel: debug-symbols $(DISK_IMG) ## Debug kernel only
+debug-kernel: debug-symbols all ## Debug kernel only
 	$(ECHO) "Starting QEMU for kernel debugging..."  
 	$(ECHO) "Connect with: $(GDB) -x tools/gdb/kernel.gdb"
 	$(Q)$(QEMU) -drive format=raw,file=$(DISK_IMG) -s -S -display curses
@@ -55,7 +55,7 @@ connect-gdb: ## Connect GDB to running QEMU (use existing kernel.gdb)
 	@echo "Make sure QEMU is running in another terminal!"
 	$(GDB) -x tools/gdb/kernel.gdb
 
-debug-kernel-auto: debug-symbols $(DISK_IMG) gdb-kernel-auto ## Start QEMU and auto-connect GDB
+debug-kernel-auto: debug-symbols all gdb-kernel-auto ## Start QEMU and auto-connect GDB
 	@echo "Starting QEMU in background..."
 	@$(QEMU) -drive format=raw,file=$(DISK_IMG) -s -S -display curses &
 	@echo "Waiting for QEMU to start..."
