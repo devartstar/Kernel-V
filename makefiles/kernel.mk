@@ -2,9 +2,6 @@
 # Kernel Build  
 # ==============================================================================
 
-# --- Kernel Tracing Level ---
-TRACE_LEVEL ?= 2  # 0: None, 1: Error, 2: Warning, 3: Info, 4: Debug
-
 # --- Kernel Linker Script ---
 KERNEL_LD := $(KERNDIR)/linker/kernel.ld
 

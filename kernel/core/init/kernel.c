@@ -48,7 +48,7 @@ void high_stack_entry() {
         // Run kernel tests first
         run_kernel_tests();
     #else
-        printk("Production build - testing disabled\n");
+        pr_info ("Production build - testing disabled\n");
     #endif
     
     // Main kernel loop
