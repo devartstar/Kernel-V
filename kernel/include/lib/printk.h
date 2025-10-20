@@ -10,6 +10,10 @@
  * Supports basic format specifiers: %s, %c, %d, %x, %p
  */
 
+#ifndef TRACE_LEVEL
+#define TRACE_LEVEL 4
+#endif
+
 // Maximum buffer size for each printk call output
 #define LOG_BUF_SIZE 1024
 

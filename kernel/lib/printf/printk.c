@@ -312,7 +312,12 @@ int printk(const char *fmt, ...)
         actual_fmt = fmt + 2;
     }
 
-    if (log_level_idx != -1 && log_level_idx <= TRACE_LEVEL) {
+    if(log_level_idx != -1 && log_level_idx > TRACE_LEVEL)
+    {
+        return 0;
+    }
+
+    if (log_level_idx != -1) {
         // Build the level prefix: [LEVEL] 
         char *p = level_prefix;
         *p++ = '[';
