@@ -4,42 +4,39 @@
 #include <stdint.h>
 #include <stddef.h>
 
-// Circular log buffer for storing kernel messages
+/* Circular log buffer for storing kernel messages */
 static char log_buffer[LOG_BUF_SIZE];
 
-// Ring buffer pointers
+/* Ring buffer pointers */
 static size_t rb_head = 0;  // Position of next byte to be written
 static size_t rb_tail = 0;  // Position of oldest byte in buffer
 
+/* Log levels for kernel messages */
 const struct loglevel loglevels[] = {
-    { '0', "EMERG",  VGA_COLOR(VGA_RED, VGA_WHITE) },
-    { '1', "ALERT",  VGA_COLOR(VGA_BLACK, VGA_LIGHT_RED) },
-    { '2', "CRIT",   VGA_COLOR(VGA_BLACK, VGA_LIGHT_MAGENTA) },
-    { '3', "ERR",    VGA_COLOR(VGA_BLACK, VGA_RED) },
-    { '4', "WARN",   VGA_COLOR(VGA_BLACK, VGA_YELLOW) },
-    { '5', "NOTICE", VGA_COLOR(VGA_BLACK, VGA_LIGHT_CYAN) },
-    { '6', "INFO",   VGA_COLOR(VGA_BLACK, VGA_WHITE) },
-    { '7', "DEBUG",  VGA_COLOR(VGA_BLACK, VGA_DARK_GREY) } 
+    { '0', "ERROR",  VGA_COLOR(VGA_BLACK, VGA_RED) },
+    { '1', "WARN",   VGA_COLOR(VGA_BLACK, VGA_YELLOW) },
+    { '2', "INFO",   VGA_COLOR(VGA_BLACK, VGA_WHITE) },
+    { '3', "DEBUG",  VGA_COLOR(VGA_BLACK, VGA_DARK_GREY) },
+    { '4', "TRACE",  VGA_COLOR(VGA_BLACK, VGA_LIGHT_CYAN) }
 };
 
 const int num_loglevels = sizeof(loglevels) / sizeof(loglevels[0]);
 
 /**
- * Append one character to the circular ring buffer
+ * ringbuf_putc - Append one character to the circular ring buffer
+ * @ch - character to append
+ * @returns void
  */
 static void ringbuf_putc(char ch) {
     log_buffer[rb_head] = ch;
     rb_head = (rb_head + 1) % LOG_BUF_SIZE;
     
-    // If buffer is full, advance tail to drop oldest byte
+    /* If buffer is full, advance tail to drop oldest byte */
     if (rb_head == rb_tail) {
         rb_tail = (rb_tail + 1) % LOG_BUF_SIZE;
     }
 }
 
-/**
- * Write a string to the ring buffer
- */
 void ringbuf_write(const char* str, size_t str_len) {
     for (size_t i = 0; i < str_len; i++) {
         ringbuf_putc(str[i]);
@@ -47,7 +44,9 @@ void ringbuf_write(const char* str, size_t str_len) {
 }
 
 /**
- * Find log level by character, returns index or -1 if not found
+ * find_loglevel - Find log level by character.
+ * @level_char - character representing log level.
+ * @returns index of log level in loglevels array or -1 if not found.
  */
 static int find_loglevel(char level_char) {
     for (int i = 0; i < num_loglevels; i++) {
@@ -58,22 +57,13 @@ static int find_loglevel(char level_char) {
     return -1;
 }
 
-/**
- * Initialize printk subsystem
- */
 void printk_init(void) {
     rb_head = 0;
     rb_tail = 0;
     vga_init();
 }
 
-/**
- * My Implementation of vsnprintf 
- * snprintf (buf, size to write, template, value) writes to a buffer 
- * Supported format specifiers: %s (string), %c (char), %d (int), %u (unsigned int), %x (hex), %p (pointer)
- * Return number of characters written
- * TODO: Modify this buffer generation as desired
- */
+/* TODO: Modify this buffer generation as desired */
 int my_vsnprintf(char *buf, size_t size, const char *fmt, va_list args)
 {
     char *p = buf;
@@ -287,6 +277,12 @@ int my_vsnprintf(char *buf, size_t size, const char *fmt, va_list args)
     return p - buf;  
 }
 
+/**
+ * vprintk - Internal printk function handling arguments va_list.
+ * @fmt - format string to be printed.
+ * @args - variable argument list.
+ * @returns number of characters printed.
+ */
 int vprintk(const char* fmt, va_list args)
 {
     char tmp[LOG_BUF_SIZE];
@@ -316,7 +312,7 @@ int printk(const char *fmt, ...)
         actual_fmt = fmt + 2;
     }
 
-    if (log_level_idx != -1) {
+    if (log_level_idx != -1 && log_level_idx <= TRACE_LEVEL) {
         // Build the level prefix: [LEVEL] 
         char *p = level_prefix;
         *p++ = '[';

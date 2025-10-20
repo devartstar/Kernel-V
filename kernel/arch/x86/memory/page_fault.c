@@ -42,7 +42,7 @@ void page_fault_handler (page_fault_stack_t* frame)
     }
 
 
-    printk("[PAGE FAULT] at address: 0x%x, error code: 0x%x [eip=0x%x, esp=0x%x, ebp=0x%x]\n", 
+    pr_verbose("[PAGE FAULT] at address: 0x%x, error code: 0x%x [eip=0x%x, esp=0x%x, ebp=0x%x]\n", 
             fault_address, 
             frame->error_code, 
             frame->eip,
@@ -52,7 +52,7 @@ void page_fault_handler (page_fault_stack_t* frame)
     // Check if the fault_address is in the kernel heap range
     if (fault_address >= KERNEL_HEAP_START && fault_address < KERNEL_HEAP_END) 
     {
-        printk("[PAGE FAULT] Address within kernel heap region: allocating and mapping new page.\n");
+        pr_verbose("[PAGE FAULT] Address within kernel heap region: allocating and mapping new page.\n");
 
         void* new_frame = pmm_alloc_frame();
         if(!new_frame)
@@ -68,7 +68,7 @@ void page_fault_handler (page_fault_stack_t* frame)
     const uint32_t STACK_GROWTH_GAP = 32; // or 128, or 0
     if (fault_address >= KERNEL_STACK_BOTTOM_VIRT + PAGE_SIZE && fault_address < KERNEL_STACK_TOP_VIRT) {
         if (fault_address >= frame->esp - STACK_GROWTH_GAP && fault_address < frame->esp) {
-            printk("[PF] Stack growth: mapping new stack page at 0x%x (esp=0x%x)\n", fault_address, frame->esp);
+            pr_verbose("[PF] Stack growth: mapping new stack page at 0x%x (esp=0x%x)\n", fault_address, frame->esp);
             void* new_frame = pmm_alloc_frame();
             if (!new_frame) panik("Out of memory in stack PF recovery");
             paging_map_page(fault_address, (uint32_t)new_frame, PAGE_PRESENT | PAGE_WRITE);
@@ -91,23 +91,23 @@ void page_fault_handler (page_fault_stack_t* frame)
 
     if (!(frame->error_code & 0x1))
     {
-        printk("[PAGE FAULT] Page not present.\n");
+        pr_verbose("[PAGE FAULT] Page not present.\n");
     }
     if (frame->error_code & 0x2)
     {
-        printk("[PAGE FAULT] Write access.\n");
+        pr_verbose("[PAGE FAULT] Write access.\n");
     }
     if (frame->error_code & 0x4)
     {
-        printk("[PAGE FAULT] User mode access.\n");
+        pr_verbose("[PAGE FAULT] User mode access.\n");
     }
     if (frame->error_code & 0x8)
     {
-        printk("[PAGE FAULT] Reserved bit set.\n");
+        pr_verbose("[PAGE FAULT] Reserved bit set.\n");
     }
     if (frame->error_code & 0x10)
     {
-        printk("[PAGE FAULT] Instruction fetch.\n");
+        pr_verbose("[PAGE FAULT] Instruction fetch.\n");
     }
 
     // halt or implement fault recovery

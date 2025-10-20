@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include "core/debug.h"
 #include "arch/x86/gdt.h"
 #include "arch/x86/tss.h" // for your tss_entry and extern tss_df
 
@@ -15,17 +16,24 @@ static void set_gdt_entry(int num, uint32_t base, uint32_t limit, uint8_t access
     gdt[num].access       = access;
     gdt[num].granularity  = ((limit >> 16) & 0x0F) | (gran & 0xF0);
     gdt[num].base_high    = (base >> 24) & 0xFF;
+
+    debug_module (IDT_GDT, "Set GDT entry %d: base=0x%08x, limit=0x%05x, access=0x%02x, gran=0x%02x\n", num, base, limit, access, gran);
 }
 
 void gdt_init(void) {
     set_gdt_entry(0, 0, 0, 0, 0);                    // Null
+    pr_verbose ("[GDT] Null entry initialized successfully!\n");
     set_gdt_entry(1, 0, 0xFFFFF, 0x9A, 0xCF);        // Code seg (0x08)
+    pr_verbose ("[GDT] Code segment initialized successfully!\n");
     set_gdt_entry(2, 0, 0xFFFFF, 0x92, 0xCF);        // Data seg (0x10)
+    pr_verbose ("[GDT] Data segment initialized successfully!\n");
     set_gdt_entry(3, (uint32_t)&tss_df, sizeof(struct tss_entry)-1, 0x89, 0x40); // TSS (0x18)
+    pr_verbose ("[GDT] TSS segment initialized successfully!\n");
 
     gdtp.limit = sizeof(gdt) - 1;
     gdtp.base  = (uint32_t)&gdt;
     gdt_flush((uint32_t)&gdtp);
+    pr_info ("[GDT] GDT initialized and loaded\n");
 
     // Load TSS selector (0x18, 3rd entry)
     __asm__ volatile("ltr %%ax" : : "a"(0x18));
@@ -33,5 +41,5 @@ void gdt_init(void) {
     // VERIFY TSS IS LOADED
     uint16_t current_tr;
     __asm__ volatile("str %0" : "=r"(current_tr));
-    printk("Current Task Register: 0x%04x (should be 0x18)\n", current_tr);
+    debug_module (TSS, "Current Task Register: 0x%04x (should be 0x18)\n", current_tr);
 }

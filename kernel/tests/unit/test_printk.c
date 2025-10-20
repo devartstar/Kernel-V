@@ -1,21 +1,18 @@
-#include "printk.h"
+#include "lib/printk.h"
 #include "drivers/vga.h"
 #include "tests/test_printk.h"
 
 void run_printk_tests(void) {
 
     // Test colored log levels
-    pr_info("Kernel initialized successfully.\n");
     pr_emerg("Emergency test message\n");
-    pr_alert("Alert test message\n");
-    pr_crit("Critical test message\n");
-    pr_err("Error test message\n");
-    pr_warning("Warning test message\n");
-    pr_notice("Notice test message\n");
-    pr_debug("Debug test message\n");
+    pr_error("Error test message\n");
+    pr_warn("Warning test message\n");
+    pr_info("Information test message\n");
+    pr_verbose("Debug test message\n");
     
     // Regular printk without level (defaults to INFO)
-    printk("Regular printk message (defaults to INFO level)\n\n");
+    pr_verbose("Regular printk message (defaults to INFO level)\n\n");
     
     // Demonstrate VGA colors
     vga_print_string("Testing different colors:\n", WHITE_ON_BLACK);
@@ -25,18 +22,18 @@ void run_printk_tests(void) {
     vga_print_string("Yellow on Black\n", YELLOW_ON_BLACK);
     
     // Test printk formatting
-    printk("\nTesting printk formatting:\n");
-    printk("String: %s\n", "Hello World");
-    printk("Character: %c\n", 'A');
-    printk("Decimal: %d\n", 42);
-    printk("Hexadecimal: 0x%x\n", 255);
-    printk("Pointer: %p\n", (void*)0xDEADBEEF);
+    pr_verbose("\nTesting printk formatting:\n");
+    pr_verbose("String: %s\n", "Hello World");
+    pr_verbose("Character: %c\n", 'A');
+    pr_verbose("Decimal: %d\n", 42);
+    pr_verbose("Hexadecimal: 0x%x\n", 255);
+    pr_verbose("Pointer: %p\n", (void*)0xDEADBEEF);
 
 }
 
 void run_printk_scrolling_test(void) {
-    printk("\nScrolling test:\n");
+    pr_verbose("\nScrolling test:\n");
     for (int i = 0; i < 30; i++) {
-        printk("Line %d - Testing kernel scrolling functionality\n", i);
+        pr_verbose("Line %d - Testing kernel scrolling functionality\n", i);
     }
 }

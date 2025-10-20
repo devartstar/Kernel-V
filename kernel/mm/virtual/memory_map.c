@@ -1,3 +1,4 @@
+#include "core/debug.h"
 #include "mm/memory_map.h"
 #include "lib/printk.h"
 
@@ -25,14 +26,16 @@ void parse_and_print_e820_map(void)
     // count of number of entries in the E820 map
     uint16_t count = *(uint16_t*)E820_MAP_COUNT_PTR;
 
-    printk("\n[MEMORY MAP] BIOS provided %u entries:\n", count);
+    pr_verbose ("\n[MEMORY MAP] BIOS provided %u entries:\n", count);
+    debug_module(MEMORY, "\n==================================================\n");
+    debug_module(MEMORY, "Parsing BIOS Memory Map (E820)...\n");
 
     for (uint16_t i = 0; i < count; i++)
     {
         const char* current_region_type = region_type_to_string(map[i].type);
-        printk("[%u] Base: 0x%08x%08x, Length: 0x%08x%08x, Type: %s\n",
-               i,
-               (uint32_t)(map[i].base >> 32),
+        debug_module(MEMORY, "[%u] Base: 0x%08x%08x, Length: 0x%08x%08x, Type: %s\n",
+            i,
+            (uint32_t)(map[i].base >> 32),
                (uint32_t)(map[i].base & 0xFFFFFFFF),
                (uint32_t)(map[i].length >> 32),
                (uint32_t)(map[i].length & 0xFFFFFFFF),
@@ -49,7 +52,7 @@ void parse_and_print_e820_map(void)
             usable_memory_region_count++;
         }
     }
-
-    printk("\n[MEMORY MAP] Usable memory regions count: %u\n", usable_memory_region_count);
-
+    
+    debug_module(MEMORY, "\n==================================================\n");
+    pr_verbose ("\n[MEMORY MAP] Usable memory regions count: %u\n", usable_memory_region_count);
 }

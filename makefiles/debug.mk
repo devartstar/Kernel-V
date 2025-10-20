@@ -3,7 +3,8 @@
 # ==============================================================================
 
 # Override settings for debug builds  
-ENABLE_DEBUG := 1
+DEBUG_ENABLED := 1
+DEBUG_MODULES := -DDEBUG_ENABLED=1 -DDEBUG_IDT_GDT=0 -DDEBUG_TSS=0 -DDEBUG_MEMORY=1 -DDEBUG_PAGING=0 -DDEBUG_STACK=0
 
 # Debug-specific disk images
 DISK_DEBUG_IMG := $(BUILDDIR)/disk_debug.img

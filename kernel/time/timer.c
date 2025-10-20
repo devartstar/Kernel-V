@@ -24,6 +24,8 @@ void pit_init (uint32_t hz)
 	*/
 	outb (0x40, (uint8_t)(divisor & 0xFF));
 	outb (0x40, (uint8_t)((divisor >> 0x8) & 0xFF));
+
+	pr_info ("[PIT] Initialized Successfully at %d Hz\n", hz);
 }
 
 void timer_interrupt_handler (void)

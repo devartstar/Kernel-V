@@ -1,4 +1,5 @@
 #include "arch/x86/tss.h"
+#include "core/debug.h"
 
 // Define the double fault stack
 uint8_t double_fault_stack[DOUBLE_FAULT_STACK_SIZE];
@@ -27,6 +28,16 @@ void init_tss() {
     tss_df.eflags = 0x202;
     tss_df.cr3 = current_cr3; // This will be updated later
     tss_df.ds = tss_df.es = tss_df.fs = tss_df.gs = 0x10;
+    debug_module (TSS, 
+        "Initialized double fault TSS at %p: ss=0x%04x, esp=0x%08x, cs=0x%04x, eip=0x%08x, eflags=0x%08x\n", 
+        (void*)&tss_df, 
+        tss_df.ss, 
+        tss_df.esp, 
+        tss_df.cs, 
+        tss_df.eip, 
+        tss_df.eflags
+    );
+    pr_verbose ("[TSS] Initialized successfully!\n");
 }
 
 void update_tss_cr3(void) {

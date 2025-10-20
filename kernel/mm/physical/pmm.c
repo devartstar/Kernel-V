@@ -1,7 +1,8 @@
+#include "core/debug.h"
 #include "mm/pmm.h"
 #include "mm/memory_map.h"
-#include "lib/printk.h"
 #include "mm/paging.h"
+#include "lib/printk.h"
 
 static uint8_t* frame_bitmap = NULL;;
 static uint32_t total_frames = 0;
@@ -69,7 +70,8 @@ void pmm_init(void)
 
     // initially none of the usable frames are used
     used_frames = 0;
-    printk("[PMM] Total Usable Frames: %u\n", total_frames);
+    pr_verbose ("[PMM] Total Usable Frames: %u\n", total_frames);
+    pr_info ("[PMM] Frame Bitmap initialized at address: %p\n", frame_bitmap);
 }
 
 //
@@ -85,7 +87,7 @@ void pmm_reserve_memory_region(reserved_memory_type_t reserved_type)
     {
         pmm_set_frame_bitmap(0x0, 0x100000);
 
-        printk("[PMM] Reserved kernel range: 0x%u - 0x%u\n", 0, 100000);
+        debug_module (MEMORY, "[PMM] Reserved kernel range: 0x%u - 0x%u\n", 0, 100000);
     }
  
     // reserve the kernel memory region
@@ -100,7 +102,7 @@ void pmm_reserve_memory_region(reserved_memory_type_t reserved_type)
         uint32_t kernel_memory_end   = (uint32_t)&kernel_end;
         pmm_set_frame_bitmap(kernel_memory_start, kernel_memory_end);
 
-        printk("[PMM] Reserved kernel range: 0x%u - 0x%u\n", kernel_memory_start, kernel_memory_end);
+        debug_module (MEMORY, "[PMM] Reserved kernel range: 0x%u - 0x%u\n", kernel_memory_start, kernel_memory_end);
     }
 
     // reserve memory used by memory bitmap
@@ -112,7 +114,7 @@ void pmm_reserve_memory_region(reserved_memory_type_t reserved_type)
         uint32_t bitmap_end = bitmap_start + bitmap_bytes;
         pmm_set_frame_bitmap(bitmap_start, bitmap_end);
 
-        printk("[PMM] Reserved bitmap: 0x%u - 0x%u (%u bytes)\n", bitmap_start, bitmap_end, bitmap_bytes);
+        debug_module (MEMORY, "[PMM] Reserved bitmap: 0x%u - 0x%u (%u bytes)\n", bitmap_start, bitmap_end, bitmap_bytes);
     }
 
     // reserve memory used by page tables
@@ -123,17 +125,19 @@ void pmm_reserve_memory_region(reserved_memory_type_t reserved_type)
         uint32_t page_dir_start = PAGE_DIR_START_ADDR;
         uint32_t page_dir_end = page_dir_start + PAGE_ENTRIES * sizeof(uint32_t);
         pmm_set_frame_bitmap(page_dir_start, page_dir_end);
-        printk("[PMM] Page Directory: 0x%u - 0x%u (%u bytes)\n", page_dir_start, page_dir_end, page_dir_end - page_dir_start);
+        debug_module (MEMORY, "[PMM] Page Directory: 0x%u - 0x%u (%u bytes)\n", page_dir_start, page_dir_end, page_dir_end - page_dir_start);
         
         // Reserve page table (4K at 0x81000)
         uint32_t page_table_start = PAGE_TABLE_START_ADDR;
         uint32_t page_table_end = page_table_start + PAGE_ENTRIES * sizeof(uint32_t);
         pmm_set_frame_bitmap(page_table_start, page_table_end);
-        printk("[PMM] Page Table: 0x%u - 0x%u (%u bytes)\n", page_table_start, page_table_end, page_table_end - page_table_start);
+        debug_module (MEMORY, "[PMM] Page Table: 0x%u - 0x%u (%u bytes)\n", page_table_start, page_table_end, page_table_end - page_table_start);
     }
 
-    printk("[PMM] Total usable frames: %u\n", total_frames);
-    printk("[PMM] Total reserved frames: %u\n", used_frames);
+    pr_verbose("[PMM] Total usable frames: %u\n", total_frames);
+    pr_verbose("[PMM] Total reserved frames: %u\n", used_frames);
+    pr_verbose("[PMM] Free frames: %u\n", total_frames - used_frames);
+    pr_verbose ("[PMM] Reserved memory regions: %u\n", reserved_type);
 }
 
 //
@@ -174,7 +178,7 @@ void* pmm_alloc_frame (void)
             return (void*)(frame_idx * PAGE_SIZE);
         }
     }
-    printk("[PMM] No free frames available!\n");
+    pr_verbose("[PMM] No free frames available!\n");
     return 0;
 }
 
@@ -188,6 +192,6 @@ void pmm_free_frame (void* addr)
     }
     else
     {
-        printk("[PMM] Attempted to free an invalid frame at address: %p\n", addr);
+        pr_verbose("[PMM] Attempted to free an invalid frame at address: %p\n", addr);
     }
 }

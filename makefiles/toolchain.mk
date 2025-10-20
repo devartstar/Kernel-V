@@ -27,14 +27,14 @@ COMMON_FLAGS 	:= -ffreestanding -nostdlib -fno-builtin -fno-stack-protector
 
 # --- C Compiler Flags ---
 CFLAGS_BASE 	:= $(ARCH_FLAGS) $(COMMON_FLAGS) -std=c99 -Wall -Wextra
-CFLAGS_OPT 		:= -O2 -fomit-frame-pointer
-CFLAGS_DEBUG 	:= -g -O0 -DDEBUG
-CFLAGS_TEST 	:= -DKERNEL_TESTS=$(ENABLE_TESTS)
+CFLAGS_OPT 		:= -O2 -fomit-frame-pointer -DTRACE_LEVEL=$(TRACE_LEVEL)
+CFLAGS_DEBUG 	:= -g -O0 -DDEBUG -DTRACE_LEVEL=$(TRACE_LEVEL) $(DEBUG_MODULES)
+CFLAGS_TEST 	:= -DKERNEL_TESTS=$(TESTS_ENABLED)
 
 # --- C++ Compiler Flags ---
 CXXFLAGS_BASE 	:= $(ARCH_FLAGS) $(COMMON_FLAGS) -std=c++11 -fno-exceptions -fno-rtti
-CXXFLAGS_OPT 	:= -O2 -fomit-frame-pointer
-CXXFLAGS_DEBUG 	:= -g -O0 -DDEBUG
+CXXFLAGS_OPT 	:= -O2 -fomit-frame-pointer -DTRACE_LEVEL=$(TRACE_LEVEL)
+CXXFLAGS_DEBUG 	:= -g -O0 -DDEBUG -DTRACE_LEVEL=$(TRACE_LEVEL)
 
 # --- Assembler Flags ---
 ASFLAGS 		:= -F stabs

@@ -16,13 +16,11 @@
 // Log levels
 #define KERN_SOH        "\001"              // Start of Header for Log Messages
 #define KERN_EMERG      KERN_SOH    "0"     // Emergency messages
-#define KERN_ALERT      KERN_SOH    "1"     // Alert messages
-#define KERN_CRIT       KERN_SOH    "2"     // Critical messages
-#define KERN_ERR        KERN_SOH    "3"     // Error messages
-#define KERN_WARNING    KERN_SOH    "4"     // Warning messages
-#define KERN_NOTICE     KERN_SOH    "5"     // Notice messages
-#define KERN_INFO       KERN_SOH    "6"     // Informational messages
-#define KERN_DEBUG      KERN_SOH    "7"     // Debug messages
+#define KERN_ERROR      KERN_SOH    "1"     // Error messages
+#define KERN_WARN       KERN_SOH    "2"     // Warning messages
+#define KERN_INFO       KERN_SOH    "3"     // Informational messages
+#define KERN_VERBOSE    KERN_SOH    "4"     // Verbose messages
+
 
 // Log level structure definition
 struct loglevel {
@@ -31,31 +29,46 @@ struct loglevel {
     uint8_t color;
 };
 
-// External declaration of log levels array
+/* External declaration of log levels array */
 extern const struct loglevel loglevels[];
 extern const int num_loglevels;
 
-// Main printk function
+/**
+ * printk - Main printk function.
+ * @fmt - format string to be printed.
+ * @returns number of characters printed.
+ */
 int printk(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 
-// Convenience macros for different log levels
-#define pr_emerg(fmt, ...)    printk(KERN_EMERG fmt, ##__VA_ARGS__)
-#define pr_alert(fmt, ...)    printk(KERN_ALERT fmt, ##__VA_ARGS__)
-#define pr_crit(fmt, ...)     printk(KERN_CRIT fmt, ##__VA_ARGS__)
-#define pr_err(fmt, ...)      printk(KERN_ERR fmt, ##__VA_ARGS__)
-#define pr_warning(fmt, ...)  printk(KERN_WARNING fmt, ##__VA_ARGS__)
-#define pr_warn pr_warning
-#define pr_notice(fmt, ...)   printk(KERN_NOTICE fmt, ##__VA_ARGS__)
-#define pr_info(fmt, ...)     printk(KERN_INFO fmt, ##__VA_ARGS__)
-#define pr_debug(fmt, ...)    printk(KERN_DEBUG fmt, ##__VA_ARGS__)
+/* Convenience macros for different log levels */
+#define pr_emerg(fmt, ...)      printk(KERN_EMERG fmt, ##__VA_ARGS__)
+#define pr_error(fmt, ...)      printk(KERN_ERROR fmt, ##__VA_ARGS__)
+#define pr_warn(fmt, ...)       printk(KERN_WARN fmt, ##__VA_ARGS__)
+#define pr_info(fmt, ...)       printk(KERN_INFO fmt, ##__VA_ARGS__)
+#define pr_verbose(fmt, ...)    printk(KERN_VERBOSE fmt, ##__VA_ARGS__)
 
-// Initialize printk subsystem
+/**
+ * printk_init - Initialize printk subsystem.
+ * @returns void.
+ */
 void printk_init(void);
 
-// Internal formatting function (used by panik.c)
+/**
+ * my_vsnprintf - Internal formatting function to generate the final string after parsing arguments.
+ * @buf - buffer to write formatted string
+ * @size - size of the buffer
+ * @fmt - format string
+ * @args - variable argument list
+ * @returns number of characters written
+ */
 int my_vsnprintf(char *buf, size_t size, const char *fmt, va_list args);
 
-// Ring buffer write function (used by panik.c)
+/**
+ * ringbuf_write - Write a string to the ring buffer.
+ * @str - string to write.
+ * @str_len - length of the string.
+ * @returns void
+ */
 void ringbuf_write(const char* str, size_t str_len);
 
 #endif /* KERNEL_PRINTK_H */

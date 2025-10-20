@@ -1,3 +1,4 @@
+#include "core/debug.h"
 #include "mm/paging.h"
 #include "lib/printk.h"
 
@@ -10,8 +11,10 @@ static uint32_t* first_page_table       = (uint32_t*)PAGE_TABLE_START_ADDR;
 //
 void paging_init()
 {
-    printk("[PAGING] Initializing Paging structures...\n");
-
+    pr_verbose("[PAGING] Initializing Paging structures...\n");
+    debug_module (PAGING, "\n==================================================\n");
+    debug_module (PAGING, "Initializing Paging...\n");
+    
     // clear the page directory table
     for (uint32_t entry = 0; entry < PAGE_ENTRIES; entry++)
     {
@@ -29,8 +32,9 @@ void paging_init()
 
     // LINK first page table to the first entry of the page directory
     page_directory[0] = (uint32_t)first_page_table | PAGE_PRESENT | PAGE_WRITE;
-
-    printk ("[PAGING] Directory at %p, Table[0] at %p\n", page_directory, first_page_table);
+    
+    debug_module (PAGING, "[PAGING] Directory at %p, Table[0] at %p\n", page_directory, first_page_table);
+    debug_module (PAGING, "\n==================================================\n");
 
     // Load the page directory address into CR3
     __asm__ __volatile__ (
@@ -57,7 +61,7 @@ void paging_init()
     );
 
     // From now on all memory access will be virtual
-    printk("[PAGING] Paging enabled successfully!\n");
+    pr_info ("[PAGING] Paging enabled successfully!\n");
 }
 
 //
@@ -112,23 +116,4 @@ void paging_map_page (uint32_t virtual_addr, uint32_t physical_addr, uint32_t fl
         : "r"(virtual_addr)
         : "memory"
     );
-}
-
-void debug_page_tables ()
-{
-    uint32_t* page_dir = (uint32_t*)PAGE_DIR_START_ADDR;
-    uint32_t* page_table = (uint32_t*)PAGE_TABLE_START_ADDR;
-
-    printk("[DEBUG_PAGING] Page directory entry 0: 0x%08x\n", page_dir[0]);
-
-    // Checking for VGA memory mapping (0xB8000 = page 0xB8)
-    uint32_t vga_page = 0xB8000 / PAGE_SIZE;
-    printk("[DEBUG_PAGING] VGA memory mapping (0xB8000): Page Table Entry %d: 0x%08x\n", vga_page, page_table[vga_page]);
-
-    // Check if VGA Page is marked present
-    if (page_table[vga_page] & PAGE_PRESENT) {
-        printk("[DEBUG_PAGING] VGA memory is mapped and present.\n");
-    } else {
-        printk("[DEBUG_PAGING] VGA memory is NOT mapped!\n");
-    }
 }

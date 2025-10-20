@@ -26,12 +26,12 @@ static int tests_failed = 0;
             pr_info("[PASS] %s\n", message); \
         } else { \
             tests_failed++; \
-            pr_err("[FAIL] %s\n", message); \
+            pr_error("[FAIL] %s\n", message); \
         } \
     } while(0)
 
 #define TEST_START(test_name) \
-    pr_notice("Starting test: %s\n", test_name)
+    pr_info("Starting test: %s\n", test_name)
 
 #define TEST_END() \
     pr_info("Test completed\n")
@@ -42,7 +42,7 @@ static int tests_failed = 0;
  */
 void test_null_pointer_panik(void)
 {
-    pr_notice("Testing: Null pointer dereference detection\n");
+    pr_info("Testing: Null pointer dereference detection\n");
     reset_panik_state();
     
     // Simulate null pointer access - common kernel panik cause
@@ -57,7 +57,7 @@ void test_null_pointer_panik(void)
 
 void test_memory_corruption_panik(void)
 {
-    pr_notice("Testing: Memory corruption detection\n");
+    pr_info("Testing: Memory corruption detection\n");
     reset_panik_state();
     
     // Simulate memory corruption detection
@@ -77,7 +77,7 @@ void test_memory_corruption_panik(void)
 
 void test_division_by_zero_panik(void)
 {
-    pr_notice("Testing: Division by zero detection\n");
+    pr_info("Testing: Division by zero detection\n");
     reset_panik_state();
     
     // Simulate division by zero - real kernel scenario
@@ -92,7 +92,7 @@ void test_division_by_zero_panik(void)
 
 void test_assert_failures(void)
 {
-    pr_notice("Testing: Kernel assertions\n");
+    pr_info("Testing: Kernel assertions\n");
     reset_panik_state();
     
     // Test kernel assertions - real debugging scenarios
@@ -111,7 +111,7 @@ void test_assert_failures(void)
 
 void test_stack_overflow_panik(void)
 {
-    pr_notice("Testing: Stack overflow detection\n");
+    pr_info("Testing: Stack overflow detection\n");
     reset_panik_state();
     
     // Simulate stack overflow detection
@@ -123,7 +123,7 @@ void test_stack_overflow_panik(void)
 
 void test_hardware_fault_panik(void)
 {
-    pr_notice("Testing: Hardware fault handling\n");
+    pr_info("Testing: Hardware fault handling\n");
     reset_panik_state();
     
     // Simulate hardware faults that cause kernel paniks
@@ -135,7 +135,7 @@ void test_hardware_fault_panik(void)
 
 void test_panik_with_real_formatting(void)
 {
-    pr_notice("Testing: Real panik message formatting\n");
+    pr_info("Testing: Real panik message formatting\n");
     reset_panik_state();
     
     // Test realistic panik messages with actual kernel data
@@ -152,7 +152,7 @@ void test_panik_with_real_formatting(void)
  */
 void run_panik_unit_tests(void)
 {
-    pr_notice("=== KERNEL panik TESTS - Real Scenarios ===\n");
+    pr_info("=== KERNEL panik TESTS - Real Scenarios ===\n");
     
     // Set test mode for safe testing
     set_panik_mode(PANIK_MODE_TEST);
@@ -172,7 +172,7 @@ void run_panik_unit_tests(void)
     test_panik_with_real_formatting();
     
     // Test summary
-    pr_notice("\n=== TEST RESULTS ===\n");
+    pr_info("\n=== TEST RESULTS ===\n");
     pr_info("Tests run: %d\n", tests_run);
     pr_info("Tests passed: %d\n", tests_passed);
     pr_info("Tests failed: %d\n", tests_run - tests_passed);
@@ -180,14 +180,14 @@ void run_panik_unit_tests(void)
     if (tests_passed == tests_run) {
         pr_info("✓ All kernel panik scenarios tested successfully!\n");
     } else {
-        pr_err("✗ Some tests failed!\n");
+        pr_error("✗ Some tests failed!\n");
     }
     
     // Show panik statistics
     const panik_state_t* state = get_panik_state();
     pr_info("Total panik calls: %d\n", state->panik_call_count);
     
-    pr_notice("=== END TESTS ===\n");
+    pr_info("=== END TESTS ===\n");
     
     // Manual test instructions
     pr_warn("\nTo test REAL panik (system will halt):\n");
@@ -197,7 +197,7 @@ void run_panik_unit_tests(void)
     
     // Uncomment to test REAL panik (WILL HALT SYSTEM):
     /*
-    pr_crit("TESTING REAL panik - SYSTEM WILL HALT!\n");
+    pr_error("TESTING REAL panik - SYSTEM WILL HALT!\n");
     set_panik_mode(PANIK_MODE_NORMAL);
     panik("Real panik test - system should halt now!");
     */
