@@ -3,8 +3,7 @@
 # ==================================================================
 
 # --- Kernel Tracing Level ---
-TRACE_LEVEL_RELEASE ?= 2  # 0: None, 1: Error, 2: Warning, 3: Info, 4: Debug
-TRACE_LEVEL_TEST ?= 4  # 0: None, 1: Error, 2: Warning, 3: Info, 4: Debug
+TRACE_LEVEL ?= 3  # 0: None, 1: Error, 2: Warning, 3: Info, 4: Debug
 
 # --- Cross-compilation toolchain ---
 TARGET 			:= i686-elf
@@ -31,14 +30,14 @@ COMMON_FLAGS 	:= -ffreestanding -nostdlib -fno-builtin -fno-stack-protector
 
 # --- C Compiler Flags ---
 CFLAGS_BASE 	:= $(ARCH_FLAGS) $(COMMON_FLAGS) -std=c99 -Wall -Wextra
-CFLAGS_OPT 		:= -O2 -fomit-frame-pointer -DTRACE_LEVEL=$(TRACE_LEVEL_RELEASE)
-CFLAGS_DEBUG 	:= -g -O0 -DDEBUG -DTRACE_LEVEL=$(TRACE_LEVEL_TEST) $(DEBUG_MODULES)
+CFLAGS_OPT 		:= -O2 -fomit-frame-pointer -DTRACE_LEVEL=$(TRACE_LEVEL)
+CFLAGS_DEBUG 	:= -g -O0 -DDEBUG -DTRACE_LEVEL=$(TRACE_LEVEL) $(DEBUG_MODULES)
 CFLAGS_TEST 	:= -DKERNEL_TESTS=$(TESTS_ENABLED)
 
 # --- C++ Compiler Flags ---
 CXXFLAGS_BASE 	:= $(ARCH_FLAGS) $(COMMON_FLAGS) -std=c++11 -fno-exceptions -fno-rtti
-CXXFLAGS_OPT 	:= -O2 -fomit-frame-pointer -DTRACE_LEVEL=$(TRACE_LEVEL_RELEASE)
-CXXFLAGS_DEBUG 	:= -g -O0 -DDEBUG -DTRACE_LEVEL=$(TRACE_LEVEL_TEST)
+CXXFLAGS_OPT 	:= -O2 -fomit-frame-pointer -DTRACE_LEVEL=$(TRACE_LEVEL)
+CXXFLAGS_DEBUG 	:= -g -O0 -DDEBUG -DTRACE_LEVEL=$(TRACE_LEVEL)
 
 # --- Assembler Flags ---
 ASFLAGS 		:= -F stabs

@@ -19,6 +19,7 @@ TOOLS_DIR := $(ROOT_DIR)/tools
 # --- Include Common Configuration ---
 include $(MAKE_DIR)/config.mk
 include $(MAKE_DIR)/toolchain.mk
+include $(MAKE_DIR)/kconfig.mk
 
 # --- Conditional Includes Based on Build Type ---
 ifeq ($(BUILD_TYPE),debug)

@@ -1,0 +1,99 @@
+# -----------------------------------------------
+
+menu "Kernel Configuration"
+
+config 64BIT
+	bool "Build for 64 bits"
+	default n
+
+config SMP
+	bool "Enable SMP (Systematic Multi-Processing)"
+	default n
+
+choice
+	prompt "Build Type"
+	default BUILD_RELEASE
+
+config BUILD_RELEASE
+	bool "Release build (optimized, fewer checks)"
+
+config BUILD_TEST
+	bool "Test build (Testing modules)"
+
+config BUILD_DEBUG
+	bool "Debug build (less optimization, more checks)"
+
+endchoice
+
+endmenu
+
+# -----------------------------------------------
+
+menu "Tracing Options"
+
+config TRACE_LEVEL
+	int "Kernel Tracing Levels [0-4]"
+	range 0 4
+	default 3
+	help
+		Set the kernel tracing verbosity level.
+		0 = No Trace
+		1 = Errors
+		2 = Warnings
+		3 = Info
+		4 = Debug
+	
+endmenu
+
+# -----------------------------------------------
+
+if BUILD_TEST
+
+menu "Test Modules"
+
+config DEBUG_ENABLED 
+	tristate "Enable debugging for Tests"
+	default y
+
+config TESTS_UNIT
+	tristate "Enable Unit Testing"
+	default y
+
+config TESTS_INTEGRATION
+	tristate "Enable Integration Testing"
+	default y
+
+endmenu
+
+endif
+
+# -----------------------------------------------
+
+if (BUILD_TEST && DEBUG_ENABLED) || BUILD_DEBUG
+
+menu "Debugging"
+
+config DEBUG_IDT_GDT
+	tristate "Enable debugging on IDT & GDT"
+	default y
+
+config DEBUG_TSS
+	tristate "Enable debugging on TSS stack"
+	default n
+
+config DEBUG_MEMORY
+	tristate "Enable Memory Management debugging"
+	default y
+
+config DEBUG_PAGING
+	tristate "Enable Paging debugging"
+	default y
+
+config DEBUG_STACK
+	tristate "Enable Stack Management debugging"
+	default y
+
+endmenu
+
+endif
+
