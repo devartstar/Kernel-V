@@ -1,59 +1,40 @@
 KCONFIG_DIR := tools/kconfig
 
-KCONFIG_SRCS_COMMON := \
-    $(KCONFIG_DIR)/expr.c \
-    $(KCONFIG_DIR)/menu.c \
-    $(KCONFIG_DIR)/symbol.c \
-    $(KCONFIG_DIR)/lkc.c \
-    $(KCONFIG_DIR)/confdata.c \
-    $(KCONFIG_DIR)/preprocess.c \
-    $(KCONFIG_DIR)/util.c
+# Automatically gather all .c files in kconfig and lxdialog
+KCONFIG_SRCS := $(wildcard $(KCONFIG_DIR)/*.c)
+KCONFIG_LXDIALOG_SRCS := $(wildcard $(KCONFIG_DIR)/lxdialog/*.c)
 
-MCONF_LXDIALOG_SRCS := \
-    $(KCONFIG_DIR)/lxdialog/checklist.c \
-    $(KCONFIG_DIR)/lxdialog/inputbox.c \
-    $(KCONFIG_DIR)/lxdialog/menubox.c \
-    $(KCONFIG_DIR)/lxdialog/msgbox.c \
-    $(KCONFIG_DIR)/lxdialog/textbox.c \
-    $(KCONFIG_DIR)/lxdialog/util.c \
-    $(KCONFIG_DIR)/lxdialog/yesno.c
-
-# All sources for menuconfig (mconf)
+# All sources needed for menuconfig (TUI)
 MCONF_SRCS := \
     $(KCONFIG_DIR)/mconf.c \
-    $(KCONFIG_SRCS_COMMON) \
-    $(MCONF_LXDIALOG_SRCS)
+    $(KCONFIG_LXDIALOG_SRCS) \
+    $(filter-out $(KCONFIG_DIR)/conf.c $(KCONFIG_DIR)/mconf.c, $(KCONFIG_SRCS))
 
-# All sources for config (conf)
+# All sources needed for conf (CLI config)
 CONF_SRCS := \
     $(KCONFIG_DIR)/conf.c \
-    $(KCONFIG_SRCS_COMMON)
+    $(filter-out $(KCONFIG_DIR)/mconf.c $(KCONFIG_DIR)/conf.c, $(KCONFIG_SRCS))
 
 KCONFIG_CFLAGS := -I$(KCONFIG_DIR) -I$(KCONFIG_DIR)/lxdialog
 
 .PHONY: config menuconfig oldconfig kconfig-clean
 
-# Build and run command-line config
-config: $(KCONFIG_DIR)/conf
-	$(KCONFIG_DIR)/conf Kconfig
-
-# Build and run menuconfig
 menuconfig: $(KCONFIG_DIR)/mconf
 	$(KCONFIG_DIR)/mconf Kconfig
 
-# Build and run oldconfig
+config: $(KCONFIG_DIR)/conf
+	$(KCONFIG_DIR)/conf Kconfig
+
 oldconfig: $(KCONFIG_DIR)/conf
 	$(KCONFIG_DIR)/conf --oldconfig Kconfig
 
-# Clean kconfig tools
 kconfig-clean:
 	rm -f $(KCONFIG_DIR)/conf $(KCONFIG_DIR)/mconf
 
-# Build mconf (menuconfig UI)
+# Build menuconfig (TUI)
 $(KCONFIG_DIR)/mconf: $(MCONF_SRCS)
 	gcc $(KCONFIG_CFLAGS) -o $@ $^ -lncurses
 
 # Build conf (CLI)
 $(KCONFIG_DIR)/conf: $(CONF_SRCS)
 	gcc $(KCONFIG_CFLAGS) -o $@ $^
-

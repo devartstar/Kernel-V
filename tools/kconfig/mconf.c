@@ -12,10 +12,14 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <limits.h>
 #include <signal.h>
 #include <unistd.h>
 
@@ -24,6 +28,15 @@
 #include "lkc.h"
 #include "lxdialog/dialog.h"
 #include "mnconf-common.h"
+
+// Definition for jump_key_char
+int jump_key_char = 0;
+
+// Stub implementation for handle_search_keys
+int handle_search_keys(int key, size_t start, size_t end, void *_data) {
+	// TODO: Replace with real implementation from Linux source
+	return 0;
+}
 
 static const char mconf_readme[] =
 "Overview\n"
