@@ -8,7 +8,6 @@ VERSION := 0.5.0
 BUILD_DATE := $(shell date +%Y-%m-%d)
 
 # --- Build Configuration ---
-BUILD_TYPE ?= release  # release, debug, test
 VERBOSE ?= 0
 
 # --- Directory Structure ---
@@ -22,11 +21,12 @@ include $(MAKE_DIR)/toolchain.mk
 include $(MAKE_DIR)/kconfig.mk
 
 # --- Conditional Includes Based on Build Type ---
-ifeq ($(BUILD_TYPE),debug)
+ifeq ($(CONFIG_BUILD_DEBUG),y)
 	include $(MAKE_DIR)/debug.mk
-else ifeq ($(BUILD_TYPE),test)
+else ifeq ($(CONFIG_BUILD_TEST),y)
 	include $(MAKE_DIR)/test.mk
 else
+	# CONFIG_BUILD_RELEASE=y
 	# Include debug.mk even for release to get debug targets
 	include $(MAKE_DIR)/debug.mk
 endif
@@ -51,7 +51,20 @@ help: ## Show this help message
 	@echo "  make BUILD_TYPE=test       Build with full test suite"
 	@echo ""
 	@echo "Available targets:"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-20s %s\n", $$1, $$2}'
+		@awk '\
+	  BEGIN { FS=":.*##[ \t]*" } \
+	  /^[[:alnum:]_.-]+:.*##[ \t]*/ { \
+	    n = split(FILENAME, p, "/"); f = p[n]; \
+	    match($$0, /^[[:alnum:]_.-]+/); t = substr($$0, RSTART, RLENGTH); \
+	    items[f] = items[f] "  - " t "  # " $$2 "\n"; \
+	  } \
+	  END { \
+	    n = split("$(MAKEFILE_LIST)", fl, /[ \t]+/); \
+	    for (i=1; i<=n; i++) { \
+	      m = split(fl[i], q, "/"); f = q[m]; \
+	      if (items[f] != "") printf "%s\n%s", f, items[f]; \
+	    } \
+	  }' $(MAKEFILE_LIST)
 	@echo ""
 	@echo "Examples:"
 	@echo "  make clean all             Clean and build"

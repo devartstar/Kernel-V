@@ -38,3 +38,14 @@ $(KCONFIG_DIR)/mconf: $(MCONF_SRCS)
 # Build conf (CLI)
 $(KCONFIG_DIR)/conf: $(CONF_SRCS)
 	gcc $(KCONFIG_CFLAGS) -o $@ $^
+
+$(INCDIR)/kconfig.h: .config
+	@echo "Generating kconfig.h from .config"
+	@grep '^CONFIG_' .config | \
+		sed -e 's/CONFIG_\([A-Z0-9_]*\)=y/#define CONFIG_\1 1/' \
+			-e 's/CONFIG_\([A-Z0-9_]*\)=n/#undef CONFIG_\1/' \
+    		-e 's/CONFIG_\([A-Z0-9_]*\)=\([0-9][0-9]*\)/#define CONFIG_\1 \2/' \
+    		-e 's/CONFIG_\([A-Z0-9_]*\)=0x\([0-9A-Fa-f]\+\)/#define CONFIG_\1 0x\2/' \
+    		-e 's/CONFIG_\([A-Z0-9_]*\)="\(.*\)"/#define CONFIG_\1 \"\2\"/' \
+	> $(INCDIR)/kconfig.h
+

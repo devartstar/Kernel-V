@@ -55,7 +55,7 @@ $(KERNEL_ENTRY_OBJ): $(KERNEL_ENTRY_SRC) $(PROC_OFFSET_HDR) | $(BUILD_KERN)
 	$(Q)$(NASM) $(NASMFLAGS) $< -o $@
 
 # --- Pattern Rules ---
-$(BUILD_KERN)/%.o: $(KERNDIR)/%.c | $(BUILD_KERN)
+$(BUILD_KERN)/%.o: $(KERNDIR)/%.c $(INCDIR)/kconfig.h | $(BUILD_KERN)
 	$(ECHO) "  CC      $@"
 	$(Q)mkdir -p $(dir $@)
 	$(Q)$(CC) $(CFLAGS) -c $< -o $@

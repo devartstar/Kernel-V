@@ -16,7 +16,7 @@ CONFIG_BUILD_TEST=y
 #
 # Tracing Options
 #
-CONFIG_TRACE_LEVEL=3
+CONFIG_TRACE_LEVEL=4
 # end of Tracing Options
 
 #
