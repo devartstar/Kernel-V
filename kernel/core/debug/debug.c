@@ -76,7 +76,7 @@ void debug_tss_contents(void) {
 }
 
 void test_stack_overflow(int depth) {
-    if (!DEBUG_STACK) return;
+    if (!DEBUG_STACK_HEAP) return;
     
     volatile uint8_t dummy[512];
     dummy[0] = (uint8_t)depth;
@@ -84,11 +84,11 @@ void test_stack_overflow(int depth) {
     uint32_t current_esp;
     __asm__ __volatile__ ("mov %%esp, %0" : "=r"(current_esp));
     
-    debug_module(STACK, "Stack depth: %d, ESP=0x%08x\n", depth, current_esp);
+    debug_module(STACK_HEAP, "Stack depth: %d, ESP=0x%08x\n", depth, current_esp);
     
     if (current_esp <= KERNEL_STACK_BOTTOM_VIRT + PAGE_SIZE + 0x1000) {
-        debug_module(STACK, "WARNING: Approaching guard page at 0x%08x!\n", KERNEL_STACK_BOTTOM_VIRT);
-        debug_module(STACK, "Current ESP: 0x%08x, Guard page: 0x%08x\n", current_esp, KERNEL_STACK_BOTTOM_VIRT);
+        debug_module(STACK_HEAP, "WARNING: Approaching guard page at 0x%08x!\n", KERNEL_STACK_BOTTOM_VIRT);
+        debug_module(STACK_HEAP, "Current ESP: 0x%08x, Guard page: 0x%08x\n", current_esp, KERNEL_STACK_BOTTOM_VIRT);
         return; // Stop recursion in debug mode
     }
     
@@ -96,5 +96,5 @@ void test_stack_overflow(int depth) {
 }
 
 void debug_print_esp_args(uint32_t arg1, uint32_t arg2) {
-    debug_module(STACK, "switch_to_high_stack: [esp+4]=0x%08x [esp+8]=0x%08x\n", arg1, arg2);
+    debug_module(STACK_HEAP, "switch_to_high_stack: [esp+4]=0x%08x [esp+8]=0x%08x\n", arg1, arg2);
 }

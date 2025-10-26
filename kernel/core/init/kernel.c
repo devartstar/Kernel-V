@@ -20,28 +20,28 @@ void high_stack_entry() {
     
     uint32_t cur_esp;
     __asm__ __volatile__ ("mov %%esp, %0" : "=r"(cur_esp));
-    pr_verbose ("ESP after stack switch: 0x%08x\n", cur_esp);
+    debug_module (STACK_HEAP, "ESP after stack switch: 0x%08x\n", cur_esp);
 
     // Test demand-paged heap access
-    pr_verbose ("Triggering demand-paged heap access...\n");
+    debug_module (STACK_HEAP, "Triggering demand-paged heap access...\n");
     volatile int *heap_ptr = (int *)(KERNEL_HEAP_START + 0x1234);
     *heap_ptr = 42;
-    pr_verbose("Heap page mapped and write succeeded!\n");
+    debug_module (STACK_HEAP, "Heap page mapped and write succeeded!\n");
 
     // Stack overflow testing (debug only)
-    if (DEBUG_STACK) {
-        pr_verbose("Testing stack overflow detection...\n");
+    if (DEBUG_STACK_HEAP) {
+        debug_module (STACK_HEAP, "Testing stack overflow detection...\n");
         pr_info("Current page directory CR3: 0x%08x\n", tss_df.cr3);
     }
 
     // VGA memory test
     volatile uint16_t* vga_test = (volatile uint16_t*)0xB8000;
     *vga_test = 0x4F41; // 'A' with white on red
-    pr_verbose("VGA memory test: wrote to 0xB8000\n");
+    debug_module (STACK_HEAP, "VGA memory test: wrote to 0xB8000\n");
 
     // Initialize Process Management
     proc_init();
-    pr_info("Initialized Process Management...\n");
+    pr_info ("Initialized Process Management...\n");
 
     // Create test processes only if tests are enabled
     #ifdef KERNEL_TESTS
@@ -107,6 +107,6 @@ void kernel_main() {
 
     // Switch to high virtual stack
     uint32_t new_stack_ptr = KERNEL_STACK_TOP_VIRT - 16;
-    pr_verbose ("About to switch to high virtual stack. New stack pointer: 0x%08x\n", new_stack_ptr);
+    debug_print ("About to switch to high virtual stack. New stack pointer: 0x%08x\n", new_stack_ptr);
     switch_to_high_stack(new_stack_ptr, high_stack_entry);
 }

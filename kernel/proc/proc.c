@@ -5,6 +5,7 @@
 #include "proc/proc.h"
 #include "proc/context_switch.h"
 #include "proc/scheduler.h"
+#include "core/debug.h"
 
 // PID starts from 1
 static uint32_t next_pid = 1;
@@ -17,7 +18,7 @@ void cleanup_terminated_processes(void) {
         pcb_t *next = p->next;
         
         if (p->state == PROC_TERMINATED && strcmp(p->name, "idle") != 0) {
-            pr_verbose("Cleaning up terminated process: %s\n", p->name);
+            debug_module(PROCESS_MGMT, "Cleaning up terminated process: %s\n", p->name);
             proc_free(p);
         }
         
@@ -29,7 +30,7 @@ static void idle_process(void *arg) {
     static int idle_count = 0;
     
     while (1) {
-        pr_verbose("IDLE process running (count: %d)\n", idle_count++);
+        debug_module(PROCESS_MGMT, "IDLE process running (count: %d)\n", idle_count++);
         
         // Every 10 idle cycles, clean up terminated processes
         if (idle_count % 10 == 0) {
@@ -79,9 +80,9 @@ void proc_init (void)
     if (idle) {
         current_proc = idle;  // Set as current process
         idle->state = PROC_RUNNING;  // Mark as running
-        pr_verbose("Created idle process with PID %d\n", idle->pid);
+        debug_module(PROCESS_MGMT, "Created idle process with PID %d\n", idle->pid);
     } else {
-        pr_verbose("ERROR: Failed to create idle process!\n");
+        debug_module(PROCESS_MGMT, "ERROR: Failed to create idle process!\n");
     }
     */
 }
@@ -282,13 +283,13 @@ void yield (void)
     pcb_t *proc_now = current_proc;
     pcb_t *proc_next = NULL;
 
-    pr_verbose("\n=== YIELD DEBUG ===\n");
-    pr_verbose("Current process: %s (state: %d)\n", proc_now ? proc_now->name : "NULL", proc_now ? proc_now->state : -1);
+    debug_module(PROCESS_MGMT, "\n=== YIELD DEBUG ===\n");
+    debug_module(PROCESS_MGMT, "Current process: %s (state: %d)\n", proc_now ? proc_now->name : "NULL", proc_now ? proc_now->state : -1);
 
     // Print the list of PCB in the process list
     for (pcb_t *p = ready_list_head; p; p = p->next) 
     {
-        pr_verbose("PCB[%s]: EIP=0x%08x ESP=0x%08x state=%d\n", p->name, (uint32_t)p->context.eip, (uint32_t)p->context.esp, p->state);
+        debug_module(PROCESS_MGMT, "PCB[%s]: EIP=0x%08x ESP=0x%08x state=%d\n", p->name, (uint32_t)p->context.eip, (uint32_t)p->context.esp, p->state);
     }
 
     proc_next = scheduler_pick_next ();
@@ -297,7 +298,7 @@ void yield (void)
 
     if (proc_next && proc_next != proc_now)
     {
-        pr_verbose("Switching from %s to %s\n", proc_now->name, proc_next->name);
+        debug_module(PROCESS_MGMT, "Switching from %s to %s\n", proc_now->name, proc_next->name);
 
         // Don't mark TERMINATED processes as READY
         if (proc_now->state == PROC_RUNNING) 
@@ -314,7 +315,7 @@ void yield (void)
         if (proc_now && strcmp(proc_now->name, "idle") == 0 && 
             proc_now->context.eip == (uint32_t)idle_process) {
             
-            pr_verbose("First switch from unstarted idle process - jumping directly\n");
+            debug_module(PROCESS_MGMT, "First switch from unstarted idle process - jumping directly\n");
             
             // Jump directly to the process without saving idle context
             __asm__ __volatile__ (
@@ -328,18 +329,18 @@ void yield (void)
             );
             
             // Should never reach here
-            pr_verbose("ERROR: Returned from direct jump!\n");
+            debug_module(PROCESS_MGMT, "ERROR: Returned from direct jump!\n");
         } else {
             // Normal context switch between processes
             switch_to (proc_now, proc_next);
         }
 
         // Execution resumes from here when switch back
-        pr_verbose("Resumed process: %s\n", current_proc->name);
+        debug_module(PROCESS_MGMT, "Resumed process: %s\n", current_proc->name);
     }
     else
     {
-        pr_verbose("No context switch needed - staying in %s\n", proc_now ? proc_now->name : "NULL");
+        debug_module(PROCESS_MGMT, "No context switch needed - staying in %s\n", proc_now ? proc_now->name : "NULL");
     }
 }
 

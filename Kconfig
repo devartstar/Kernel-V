@@ -89,8 +89,12 @@ config DEBUG_PAGING
 	tristate "Enable Paging debugging"
 	default y
 
-config DEBUG_STACK
+config DEBUG_STACK_HEAP
 	tristate "Enable Stack Management debugging"
+	default y
+
+config DEBUG_PROCESS_MGMT
+	tristate "Enable Process Management debugging"
 	default y
 
 endmenu

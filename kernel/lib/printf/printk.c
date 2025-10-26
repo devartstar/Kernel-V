@@ -13,11 +13,11 @@ static size_t rb_tail = 0;  // Position of oldest byte in buffer
 
 /* Log levels for kernel messages */
 const struct loglevel loglevels[] = {
-    { '0', "ERROR",  VGA_COLOR(VGA_BLACK, VGA_RED) },
-    { '1', "WARN",   VGA_COLOR(VGA_BLACK, VGA_YELLOW) },
-    { '2', "INFO",   VGA_COLOR(VGA_BLACK, VGA_WHITE) },
-    { '3', "DEBUG",  VGA_COLOR(VGA_BLACK, VGA_DARK_GREY) },
-    { '4', "TRACE",  VGA_COLOR(VGA_BLACK, VGA_LIGHT_CYAN) }
+    { '0', "EMERG",  VGA_COLOR(VGA_BLACK, VGA_RED) },
+    { '1', "ERROR",   VGA_COLOR(VGA_BLACK, VGA_YELLOW) },
+    { '2', "WARN",   VGA_COLOR(VGA_BLACK, VGA_WHITE) },
+    { '3', "INFO",  VGA_COLOR(VGA_BLACK, VGA_DARK_GREY) },
+    { '4', "VERBOSE",  VGA_COLOR(VGA_BLACK, VGA_LIGHT_CYAN) }
 };
 
 const int num_loglevels = sizeof(loglevels) / sizeof(loglevels[0]);
@@ -303,6 +303,7 @@ int printk(const char *fmt, ...)
     const char* actual_fmt = fmt;
     int log_level_idx = -1;
     int total_len = 0;
+    int tracelevel = CONFIG_TRACE_LEVEL;
 
     if (fmt[0] == '\001' && fmt[1] >= '0' && fmt[1] <= '7') {
         int idx = find_loglevel(fmt[1]);
@@ -312,7 +313,7 @@ int printk(const char *fmt, ...)
         actual_fmt = fmt + 2;
     }
 
-    if(log_level_idx != -1 && log_level_idx > TRACE_LEVEL)
+    if(log_level_idx != -1 && log_level_idx > CONFIG_TRACE_LEVEL)
     {
         return 0;
     }

@@ -2,9 +2,6 @@
 # Project Configuration
 # ==================================================================
 
-# --- Kernel Tracing Level ---
-TRACE_LEVEL ?= 3  # 0: None, 1: Error, 2: Warning, 3: Info, 4: Debug
-
 # --- Cross-compilation toolchain ---
 TARGET 			:= i686-elf
 CROSS_PREFIX 	?= $(TARGET)-
@@ -28,16 +25,19 @@ NASM_FORMAT 	:= elf32
 ARCH_FLAGS 		:= -m32
 COMMON_FLAGS 	:= -ffreestanding -nostdlib -fno-builtin -fno-stack-protector
 
+# --- Version Flags ---
+VERSION_FLAGS := -DKERNEL_VERSION=\"$(VERSION)\" -DBUILD_DATE=\"$(BUILD_DATE)\"
+
 # --- C Compiler Flags ---
-CFLAGS_BASE 	:= $(ARCH_FLAGS) $(COMMON_FLAGS) -std=c99 -Wall -Wextra
-CFLAGS_OPT 		:= -O2 -fomit-frame-pointer -DTRACE_LEVEL=$(TRACE_LEVEL)
-CFLAGS_DEBUG 	:= -g -O0 -DDEBUG -DTRACE_LEVEL=$(TRACE_LEVEL) $(DEBUG_MODULES)
+CFLAGS_BASE 	:= $(ARCH_FLAGS) $(COMMON_FLAGS) -std=c99 -Wall -Wextra $(VERSION_FLAGS)
+CFLAGS_OPT 		:= -O2 -fomit-frame-pointer
+CFLAGS_DEBUG 	:= -g -O0 -DDEBUG
 CFLAGS_TEST 	:= -DKERNEL_TESTS=$(TESTS_ENABLED)
 
 # --- C++ Compiler Flags ---
 CXXFLAGS_BASE 	:= $(ARCH_FLAGS) $(COMMON_FLAGS) -std=c++11 -fno-exceptions -fno-rtti
-CXXFLAGS_OPT 	:= -O2 -fomit-frame-pointer -DTRACE_LEVEL=$(TRACE_LEVEL)
-CXXFLAGS_DEBUG 	:= -g -O0 -DDEBUG -DTRACE_LEVEL=$(TRACE_LEVEL)
+CXXFLAGS_OPT 	:= -O2 -fomit-frame-pointer
+CXXFLAGS_DEBUG 	:= -g -O0 -DDEBUG
 
 # --- Assembler Flags ---
 ASFLAGS 		:= -F stabs

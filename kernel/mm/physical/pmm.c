@@ -70,8 +70,8 @@ void pmm_init(void)
 
     // initially none of the usable frames are used
     used_frames = 0;
-    pr_verbose ("[PMM] Total Usable Frames: %u\n", total_frames);
-    pr_info ("[PMM] Frame Bitmap initialized at address: %p\n", frame_bitmap);
+    debug_module (MEMORY, "Total Usable Frames: %u\n", total_frames);
+    pr_info ("[PROCESS_MGMT] Frame Bitmap initialized at address: %p\n", frame_bitmap);
 }
 
 //
@@ -134,10 +134,10 @@ void pmm_reserve_memory_region(reserved_memory_type_t reserved_type)
         debug_module (MEMORY, "[PMM] Page Table: 0x%u - 0x%u (%u bytes)\n", page_table_start, page_table_end, page_table_end - page_table_start);
     }
 
-    pr_verbose("[PMM] Total usable frames: %u\n", total_frames);
-    pr_verbose("[PMM] Total reserved frames: %u\n", used_frames);
-    pr_verbose("[PMM] Free frames: %u\n", total_frames - used_frames);
-    pr_verbose ("[PMM] Reserved memory regions: %u\n", reserved_type);
+    debug_module (MEMORY, "Total usable frames: %u\n", total_frames);
+    debug_module (MEMORY, "Total reserved frames: %u\n", used_frames);
+    debug_module (MEMORY, "Free frames: %u\n", total_frames - used_frames);
+    debug_module (MEMORY, "Reserved memory regions: %u\n", reserved_type);
 }
 
 //
@@ -178,7 +178,7 @@ void* pmm_alloc_frame (void)
             return (void*)(frame_idx * PAGE_SIZE);
         }
     }
-    pr_verbose("[PMM] No free frames available!\n");
+    debug_module(MEMORY, "[PMM] No free frames available!\n");
     return 0;
 }
 
@@ -192,6 +192,6 @@ void pmm_free_frame (void* addr)
     }
     else
     {
-        pr_verbose("[PMM] Attempted to free an invalid frame at address: %p\n", addr);
+        debug_module(MEMORY, "[PMM] Attempted to free an invalid frame at address: %p\n", addr);
     }
 }

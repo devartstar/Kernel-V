@@ -26,7 +26,7 @@ void parse_and_print_e820_map(void)
     // count of number of entries in the E820 map
     uint16_t count = *(uint16_t*)E820_MAP_COUNT_PTR;
 
-    pr_verbose ("\n[MEMORY MAP] BIOS provided %u entries:\n", count);
+    debug_module(MEMORY, "\n[MEMORY MAP] BIOS provided %u entries:\n", count);
     debug_module(MEMORY, "\n==================================================\n");
     debug_module(MEMORY, "Parsing BIOS Memory Map (E820)...\n");
 
@@ -54,5 +54,5 @@ void parse_and_print_e820_map(void)
     }
     
     debug_module(MEMORY, "\n==================================================\n");
-    pr_verbose ("\n[MEMORY MAP] Usable memory regions count: %u\n", usable_memory_region_count);
+    debug_module(MEMORY, "\n[MEMORY MAP] Usable memory regions count: %u\n", usable_memory_region_count);
 }

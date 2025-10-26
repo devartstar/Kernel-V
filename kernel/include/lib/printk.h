@@ -4,6 +4,7 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "kconfig.h"
 
 /**
  * Kernel print function - similar to printf but for kernel space
@@ -21,6 +22,10 @@
 #define KERN_INFO       KERN_SOH    "3"     // Informational messages
 #define KERN_VERBOSE    KERN_SOH    "4"     // Verbose messages
 
+#ifndef CONFIG_TRACE_LEVEL
+
+#define CONFIG_TRACE_LEVEL 3
+#endif
 
 // Log level structure definition
 struct loglevel {

@@ -21,8 +21,16 @@
 
 // Kernel version information
 #define KERNEL_NAME     "Kernel-V"
-#define KERNEL_VERSION  "0.2"
+
+#ifndef KERNEL_VERSION
+#define KERNEL_VERSION  "0.1.0"
+#endif
+
 #define KERNEL_AUTHOR   "Devjit"
+
+#ifndef BUILD_DATE
+#define BUILD_DATE      "unknown"
+#endif
 
 // Common macros
 #ifndef NULL

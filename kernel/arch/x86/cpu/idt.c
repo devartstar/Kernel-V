@@ -58,20 +58,20 @@ void idt_init ()
 
     // Set up double fault as task gate (TSS selector is 0x18 - 3rd entry in GDT)
     set_task_gate(8, 0x18);
-    pr_verbose ("[TSS] Task gate initialized successfully in IDT!\n");
+    debug_module (TSS, "Task gate initialized successfully in IDT!\n");
 
     extern void isr_page_fault();
     // add entry for page fault handler in idt
     // P=1(Present), DPL=0(Kernel only access), Type=0xE(Interrupt Gate)
     idt_set_gate(14, (uint32_t)isr_page_fault, 0x08, 0x8E); 
-    pr_verbose ("[IDT] Page Fault Entry Initialized successfully!\n");
+    debug_module (IDT_GDT, "[IDT] Page Fault Entry Initialized successfully!\n");
 
     /* Set up IDT entry for hardware Timer Interrupts 
        IRQ 0 -> entry 32 in IDT
      */
     extern void isr_timer();
     idt_set_gate (32, (uint32_t)isr_timer, 0x08, 0x8E);
-    pr_verbose ("[IDT] Timer Entry Initialized successfully!\n");
+    debug_module (IDT_GDT, "[IDT] Timer Entry Initialized successfully!\n");
 
     idt_flush((uint32_t)&idt_ptr);
     pr_info ("[IDT] Loaded successfully!\n");

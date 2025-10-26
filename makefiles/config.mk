@@ -49,4 +49,3 @@ STAGE2_LOAD_ADDR := 0x7E00
 
 # --- Feature Flags ---
 TESTS_ENABLED ?= 0
-DEBUG_ENABLED ?= 0

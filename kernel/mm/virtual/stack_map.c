@@ -13,7 +13,7 @@ void map_high_stack(uint32_t stack_bottom, uint32_t stack_top)
         uint32_t virt = stack_bottom + off;
         void* phys_frame = pmm_alloc_frame();
         if (!phys_frame) {
-            pr_verbose("Failed to allocate stack frame for virt=0x%08x\n", virt);
+            debug_module (MEMORY, "Failed to allocate stack frame for virt=0x%08x\n", virt);
             panik("Stack frame allocation failed");
         }
         debug_module (MEMORY,"Mapping stack page: virt=0x%08x phys=0x%08x\n", virt, (uint32_t)phys_frame);

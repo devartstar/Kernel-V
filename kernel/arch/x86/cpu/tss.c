@@ -37,7 +37,7 @@ void init_tss() {
         tss_df.eip, 
         tss_df.eflags
     );
-    pr_verbose ("[TSS] Initialized successfully!\n");
+    debug_module (TSS, "Initialized successfully!\n");
 }
 
 void update_tss_cr3(void) {

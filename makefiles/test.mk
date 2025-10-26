@@ -4,7 +4,6 @@
 
 # Override settings for test builds
 TESTS_ENABLED := 1
-DEBUG_ENABLED := 1
 
 # Test-specific sources
 UNIT_TEST_SOURCES := $(wildcard $(TESTDIR)/unit/*.c)

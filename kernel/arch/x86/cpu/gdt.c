@@ -22,13 +22,13 @@ static void set_gdt_entry(int num, uint32_t base, uint32_t limit, uint8_t access
 
 void gdt_init(void) {
     set_gdt_entry(0, 0, 0, 0, 0);                    // Null
-    pr_verbose ("[GDT] Null entry initialized successfully!\n");
+    debug_module (IDT_GDT, "Null entry initialized successfully!\n");
     set_gdt_entry(1, 0, 0xFFFFF, 0x9A, 0xCF);        // Code seg (0x08)
-    pr_verbose ("[GDT] Code segment initialized successfully!\n");
+    debug_module (IDT_GDT, "Code segment initialized successfully!\n");
     set_gdt_entry(2, 0, 0xFFFFF, 0x92, 0xCF);        // Data seg (0x10)
-    pr_verbose ("[GDT] Data segment initialized successfully!\n");
+    debug_module (IDT_GDT, "Data segment initialized successfully!\n");
     set_gdt_entry(3, (uint32_t)&tss_df, sizeof(struct tss_entry)-1, 0x89, 0x40); // TSS (0x18)
-    pr_verbose ("[GDT] TSS segment initialized successfully!\n");
+    debug_module (TSS, "TSS segment initialized successfully!\n");
 
     gdtp.limit = sizeof(gdt) - 1;
     gdtp.base  = (uint32_t)&gdt;

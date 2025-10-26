@@ -1,6 +1,7 @@
 # ==============================================================================
 # Kernel-V Advanced Build System  
 # ==============================================================================
+-include .config
 
 # --- Project Configuration ---
 PROJECT_NAME := Kernel-V
@@ -8,6 +9,7 @@ VERSION := 0.5.0
 BUILD_DATE := $(shell date +%Y-%m-%d)
 
 # --- Build Configuration ---
+BUILD_TYPE ?= unknown
 VERBOSE ?= 0
 
 # --- Directory Structure ---
@@ -23,12 +25,15 @@ include $(MAKE_DIR)/kconfig.mk
 # --- Conditional Includes Based on Build Type ---
 ifeq ($(CONFIG_BUILD_DEBUG),y)
 	include $(MAKE_DIR)/debug.mk
+	BUILD_TYPE := debug
 else ifeq ($(CONFIG_BUILD_TEST),y)
 	include $(MAKE_DIR)/test.mk
+	BUILD_TYPE := test
 else
 	# CONFIG_BUILD_RELEASE=y
 	# Include debug.mk even for release to get debug targets
 	include $(MAKE_DIR)/debug.mk
+	BUILD_TYPE := release
 endif
 
 # --- Component Includes ---

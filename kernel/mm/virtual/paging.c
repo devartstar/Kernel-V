@@ -11,7 +11,7 @@ static uint32_t* first_page_table       = (uint32_t*)PAGE_TABLE_START_ADDR;
 //
 void paging_init()
 {
-    pr_verbose("[PAGING] Initializing Paging structures...\n");
+    debug_module (PAGING, "[PAGING] Initializing Paging structures...\n");
     debug_module (PAGING, "\n==================================================\n");
     debug_module (PAGING, "Initializing Paging...\n");
     
