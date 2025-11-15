@@ -165,8 +165,7 @@ pcb_t *proc_create (void (*entry)(void*), void *arg, const char *name)
 	}
 	proc->stack_base = stack;
 
-	/* since stack grows downwards, stack pointer should point to top of stack
-	*/
+	/* since stack grows downwards, stack pointer should point to top of stack */
 	uint32_t *stack_top = (uint32_t *)((uint8_t *)stack + KERNEL_STACK_SIZE);
 
     /* 
@@ -294,6 +293,13 @@ void yield (void)
 
     proc_next = scheduler_pick_next ();
 
+    /* If not idle process. Allow the process to run for 10 timer ticks */
+    if (strcmp(proc_next->name, "idle") != 0)
+    {
+        proc_next->timeslice_ticks = DEFAULT_TIMESLICE;
+    }
+
+
     pr_info("Selected next process: %s\n", proc_next ? proc_next->name : "NULL");
 
     if (proc_next && proc_next != proc_now)
@@ -344,7 +350,7 @@ void yield (void)
     }
 }
 
-void timer_interrupt_proc_handler (void)
+void timer_interrupt_proc_handler (uint32_t tickcount)
 {
     pcb_t *p = wait_list_head;
 
@@ -366,10 +372,20 @@ void timer_interrupt_proc_handler (void)
         p = next_p;
     }
 
-    /* 
-     Process premption scheduling
-     yeild();
-    */
+    /* Process premption scheduling */
+    /* Premption - Kernel to context switch automatically on timer tick */
+    if (current_proc != NULL && current_proc->state == PROC_RUNNING)
+    {
+        current_proc->timeslice_ticks--;
+        debug_module(PROCESS_MGMT, "[TICK %u] %s: timeslice ticks = %d\n", tickcount, current_proc->name, current_proc->timeslice_ticks);
+        if (current_proc->timeslice_ticks <= 0)
+        {
+            current_proc->timeslice_ticks = DEFAULT_TIMESLICE;
+            debug_module(PROCESS_MGMT, "%s out of timeslice! Switching...\n", current_proc->name);
+            yield();
+        }
+
+    }
 }
 
 void thread_entry_wrapper (void (*entry)(void *), void *arg)

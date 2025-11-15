@@ -5,6 +5,7 @@
 
 #define PROC_NAME_MAX		16
 #define KERNEL_STACK_SIZE	4096
+#define DEFAULT_TIMESLICE	10
 
 //
 // Process States
@@ -28,18 +29,31 @@ typedef struct regs_context
 	uint32_t eflags;
 } regs_context_t;
 
-//
-// PCB - Process control block
-// Contains important info related to a specific process.
-//
+/**
+ * PCB - Process control block
+ * Contains important info related to a specific process.
+ * @pid Process Id
+ * @state Current state of the process
+ * @context Register value to store for context switch
+ * @stack_base Allocated stack base address for cleanup
+ * @stack_ptr Current stack pointer
+ * @sleep_ticks Cycles for the process to sleep
+ * @timeslice_ticks Cycles for the process to execute before switch
+ * @name Name of the process
+ *
+ * @parent Pointer to the parent process PCB struct
+ * @next Pointer to the next PCB struct in the linked list
+ * @prev Pointer to the previous PCB struct in the linked list
+ */
 typedef struct pcb
 {
-	uint32_t		pid;		// process id
-	proc_state_t	state;		// current state of the process
-	regs_context_t	context;	// registers value
-	uint8_t			*stack_base;// allocated stack base for cleanup
-	uint8_t			*stack_ptr;	// current stack pointer
-	uint32_t		sleep_ticks;// cycles for the procss to sleep
+	uint32_t		pid;
+	proc_state_t	state;
+	regs_context_t	context;
+	uint8_t			*stack_base;
+	uint8_t			*stack_ptr;
+	uint32_t		sleep_ticks;
+	uint32_t		timeslice_ticks;
 	char			name[PROC_NAME_MAX];
 
 	// for linked list
@@ -103,6 +117,11 @@ void thread_entry_wrapper (void (*entry)(void *), void *arg);
 /**
  * scheduler_pick_next - Picks a process ready to execute from the process list
  *
+ * 1. Try to pick up a process in READY state.
+ * 2. No such process - check for the current process.
+ * 3. If current process is TERMINATED. Schedule an IDLE process.
+ * 4. 
+ *
  * @returns the pointer to the pcb memory block
  */ 
 pcb_t *scheduler_pick_next (void);
@@ -116,10 +135,11 @@ void yield (void);
 /*
  * timer_interrupt_proc_handler - Handels an interrupt then process sleep time
  * becomes 0.
+ * @tickcount current timer tick
  *
  * @return - void
  */
-void timer_interrupt_proc_handler (void);
+void timer_interrupt_proc_handler (uint32_t tickcount);
 
 extern pcb_t *current_proc;
 

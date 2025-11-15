@@ -32,5 +32,5 @@ void timer_interrupt_handler (void)
 {
 	tick_count++;
 	/* Handle waking up sleeping process on timer interrupt */
-	timer_interrupt_proc_handler ();
+	timer_interrupt_proc_handler(tick_count);
 }
