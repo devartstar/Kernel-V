@@ -22,7 +22,7 @@ KERNEL_C_OBJECTS := $(patsubst $(KERNDIR)/%.c,$(BUILD_KERN)/%.o,$(KERNEL_C_SOURC
 KERNEL_ASM_OBJECTS := $(patsubst $(KERNDIR)/%.asm,$(BUILD_KERN)/%.o,$(KERNEL_ASM_SOURCES))
 
 # --- Test Sources (conditional) ---
-ifeq ($(TESTS_ENABLED),1)
+ifeq ($(CONFIG_BUILD_TEST),1)
     TEST_C_SOURCES := $(shell find $(TESTDIR) -name "*.c")
     TEST_C_OBJECTS := $(patsubst $(KERNDIR)/%.c,$(BUILD_KERN)/%.o,$(TEST_C_SOURCES))
     KERNEL_OBJECTS := $(KERNEL_ENTRY_OBJ) $(KERNEL_C_OBJECTS) $(KERNEL_ASM_OBJECTS) $(TEST_C_OBJECTS)

@@ -2,9 +2,6 @@
 # Test Build Configuration
 # ==============================================================================
 
-# Override settings for test builds
-TESTS_ENABLED := 1
-
 # Test-specific sources
 UNIT_TEST_SOURCES := $(shell find $(TESTDIR)/unit --type -f -name "*.c")
 INTEGRATION_TEST_SOURCES := $(shell find $(TESTDIR)/integration -type f -name "*.c")

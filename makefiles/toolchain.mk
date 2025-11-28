@@ -22,6 +22,11 @@ NASM 			:= nasm
 NASM_FORMAT 	:= elf32
 
 # --- Common Flags ---
+# m32					: Forces 32 bit code.
+# nostdlib				: Removes all standard library stuff.
+# fno-builtin			: Prevents compiler magic for optimization.
+# fno-stack-protector	: Disable stack smashing protection
+# ffreestanding			: Tell compiler we are writing an OS/boot environment.
 ARCH_FLAGS 		:= -m32
 COMMON_FLAGS 	:= -ffreestanding -nostdlib -fno-builtin -fno-stack-protector
 
@@ -32,7 +37,7 @@ VERSION_FLAGS := -DKERNEL_VERSION=\"$(VERSION)\" -DBUILD_DATE=\"$(BUILD_DATE)\"
 CFLAGS_BASE 	:= $(ARCH_FLAGS) $(COMMON_FLAGS) -std=c99 -Wall -Wextra $(VERSION_FLAGS)
 CFLAGS_OPT 		:= -O2 -fomit-frame-pointer
 CFLAGS_DEBUG 	:= -g -O0 -DDEBUG
-CFLAGS_TEST 	:= -DKERNEL_TESTS=$(TESTS_ENABLED)
+CFLAGS_TEST 	:= -DKERNEL_TESTS=$(CONFIG_BUILD_TEST)
 
 # --- C++ Compiler Flags ---
 CXXFLAGS_BASE 	:= $(ARCH_FLAGS) $(COMMON_FLAGS) -std=c++11 -fno-exceptions -fno-rtti

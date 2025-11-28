@@ -25,10 +25,24 @@ void my_sleep_proc(void *arg) {
     }
 }
 
+void preemptive_proc(void *args)
+{
+    int i = 0;
+    while(1)
+    {
+        if (i % 1000 == 0)
+        {
+            pr_verbose ("Thread %s is running, for i=%d\n", current_proc->name, i);
+        }
+        i++;
+    }
+}
+
+
 void create_test_processes(void) {
     pcb_t *test_proc1 = proc_create(my_test_proc, NULL, "thread1");
-    pcb_t *test_proc2 = proc_create(my_test_proc, NULL, "thread2");
-    pcb_t *test_proc3 = proc_create(my_test_proc, NULL, "thread3");
+    pcb_t *test_proc2 = proc_create(preemptive_proc, NULL, "thread2");
+    pcb_t *test_proc3 = proc_create(preemptive_proc, NULL, "thread3");
     pcb_t *test_proc4 = proc_create(my_sleep_proc, NULL, "thread4");
 
     if (test_proc1 && test_proc2 && test_proc3 && test_proc4) {
@@ -39,3 +53,4 @@ void create_test_processes(void) {
         pr_verbose("Failed to create test processes!\n");
     }
 }
+
