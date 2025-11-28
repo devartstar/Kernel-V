@@ -16,8 +16,8 @@ ALL_TEST_OBJS 				:= $(UNIT_TEST_OBJS) $(INTEGRATION_TEST_OBJS) $(TEST_RUNNER_OB
 
 # Core kernel objects for tests (excluding tests themselves)
 KERNEL_CORE_TEST_OBJS := $(BUILD_TEST)/kernel_entry.o \
-                         $(patsubst $(KERNDIR)/%.c,$(BUILD_TEST)/%.o,$(shell find $(KERNDIR) -name "*.c" -not -path "$(TESTDIR)/*" -not -name "*_generator.c")) \
-                         $(patsubst $(KERNDIR)/%.asm,$(BUILD_TEST)/%.o,$(shell find $(KERNDIR) -name "*.asm" -not -path "$(BOOTDIR)/*" -not -name "kernel_entry.asm"))
+						 $(patsubst $(KERNDIR)/%.c,$(BUILD_TEST)/%.o,$(shell find $(KERNDIR) -name "*.c" -not -path "$(TESTDIR)/*" -not -name "*_generator.c")) \
+						 $(patsubst $(KERNDIR)/%.asm,$(BUILD_TEST)/%.o,$(shell find $(KERNDIR) -name "*.asm" -not -path "$(BOOTDIR)/*" -not -name "kernel_entry.asm"))
 
 # Test kernels - UNIT, INTEGRATION, FULL
 KERNEL_TEST_ELF 			:= $(BUILD_TEST)/kernel_test.elf
@@ -100,7 +100,7 @@ $(BUILD_TEST)/%.o: $(KERNDIR)/tests/unit/%.c | $(BUILD_TEST)
 	$(Q)mkdir -p $(dir $@)
 	$(Q)$(CC) $(CFLAGS) -DKERNEL_TESTS -DUNIT_TESTS -c $< -o $@
 
-$(BUILD_TEST)/%.o: $(KERNDIR)/tests/proc/%.c | $(BUILD_TEST)
+$(BUILD_TEST)/%.o: $(KERNDIR)/tests/integration/%.c | $(BUILD_TEST)
 	$(ECHO) "  CC-TEST $@"
 	$(Q)mkdir -p $(dir $@)
 	$(Q)$(CC) $(CFLAGS) -DKERNEL_TESTS -DPROC_TESTS -c $< -o $@
@@ -170,7 +170,7 @@ $(BUILD_TEST):
 	$(Q)mkdir -p $(BUILD_TEST)/unit
 	$(Q)mkdir -p $(BUILD_TEST)/proc
 	$(Q)mkdir -p $(BUILD_TEST)/tests/unit
-	$(Q)mkdir -p $(BUILD_TEST)/tests/proc
+	$(Q)mkdir -p $(BUILD_TEST)/tests/integration
 
 clean-tests: ## Clean test artifacts
 	$(Q)rm -rf $(BUILD_TEST)
