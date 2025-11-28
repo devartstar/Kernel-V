@@ -3,8 +3,8 @@
 # ==============================================================================
 
 # Test-specific sources
-UNIT_TEST_SOURCES 			:= $(shell find $(TESTDIR)/unit --type f -name "*.c")
-INTEGRATION_TEST_SOURCES 	:= $(shell find $(TESTDIR)/integration --type f -name "*.c")
+UNIT_TEST_SOURCES 			:= $(shell find $(TESTDIR)/unit -type f -name "*.c")
+INTEGRATION_TEST_SOURCES 	:= $(shell find $(TESTDIR)/integration -type f -name "*.c")
 TEST_RUNNER_SOURCE 			:= $(TESTDIR)/test_runner.c
 
 # Test objects

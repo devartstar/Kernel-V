@@ -39,7 +39,6 @@ endif
 # --- Component Includes ---
 include $(MAKE_DIR)/bootloader.mk
 include $(MAKE_DIR)/kernel.mk
-include $(MAKE_DIR)/test.mk
 include $(MAKE_DIR)/targets.mk
 
 # --- Default Target ---
