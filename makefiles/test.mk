@@ -3,16 +3,16 @@
 # ==============================================================================
 
 # Test-specific sources
-UNIT_TEST_SOURCES := $(shell find $(TESTDIR)/unit --type -f -name "*.c")
-INTEGRATION_TEST_SOURCES := $(shell find $(TESTDIR)/integration -type f -name "*.c")
-TEST_RUNNER_SOURCE := $(TESTDIR)/test_runner.c
+UNIT_TEST_SOURCES 			:= $(shell find $(TESTDIR)/unit --type f -name "*.c")
+INTEGRATION_TEST_SOURCES 	:= $(shell find $(TESTDIR)/integration --type f -name "*.c")
+TEST_RUNNER_SOURCE 			:= $(TESTDIR)/test_runner.c
 
 # Test objects
-UNIT_TEST_OBJS := $(patsubst $(KERNDIR)/%.c,$(BUILD_TEST)/%.o,$(UNIT_TEST_SOURCES))
-INTEGRATION_TEST_OBJS := $(patsubst $(KERNDIR)/%.c,$(BUILD_TEST)/%.o,$(INTEGRATION_TEST_SOURCES))
-TEST_RUNNER_OBJECT := $(BUILD_TEST)/test_runner.o
+UNIT_TEST_OBJS 				:= $(patsubst $(KERNDIR)/%.c,$(BUILD_TEST)/%.o,$(UNIT_TEST_SOURCES))
+INTEGRATION_TEST_OBJS 		:= $(patsubst $(KERNDIR)/%.c,$(BUILD_TEST)/%.o,$(INTEGRATION_TEST_SOURCES))
+TEST_RUNNER_OBJECT 			:= $(BUILD_TEST)/test_runner.o
 
-ALL_TEST_OBJS := $(UNIT_TEST_OBJS) $(INTEGRATION_TEST_OBJS) $(TEST_RUNNER_OBJECT)
+ALL_TEST_OBJS 				:= $(UNIT_TEST_OBJS) $(INTEGRATION_TEST_OBJS) $(TEST_RUNNER_OBJECT)
 
 # Core kernel objects for tests (excluding tests themselves)
 KERNEL_CORE_TEST_OBJS := $(BUILD_TEST)/kernel_entry.o \
@@ -20,29 +20,28 @@ KERNEL_CORE_TEST_OBJS := $(BUILD_TEST)/kernel_entry.o \
                          $(patsubst $(KERNDIR)/%.asm,$(BUILD_TEST)/%.o,$(shell find $(KERNDIR) -name "*.asm" -not -path "$(BOOTDIR)/*" -not -name "kernel_entry.asm"))
 
 # Test kernels - UNIT, INTEGRATION, FULL
-KERNEL_TEST_ELF := $(BUILD_TEST)/kernel_test.elf
-KERNEL_TEST_BIN := $(BUILD_TEST)/kernel_test.bin
-KERNEL_UNIT_TEST_ELF := $(BUILD_TEST)/kernel_unit_test.elf
-KERNEL_UNIT_TEST_BIN := $(BUILD_TEST)/kernel_unit_test.bin
-KERNEL_INTEGRATION_ELF := $(BUILD_TEST)/kernel_integration.elf  
-KERNEL_INTEGRATION_BIN := $(BUILD_TEST)/kernel_integration.bin
+KERNEL_TEST_ELF 			:= $(BUILD_TEST)/kernel_test.elf
+KERNEL_TEST_BIN 			:= $(BUILD_TEST)/kernel_test.bin
+KERNEL_UNIT_TEST_ELF 		:= $(BUILD_TEST)/kernel_unit_test.elf
+KERNEL_UNIT_TEST_BIN 		:= $(BUILD_TEST)/kernel_unit_test.bin
+KERNEL_INTEGRATION_ELF 		:= $(BUILD_TEST)/kernel_integration.elf  
+KERNEL_INTEGRATION_BIN 		:= $(BUILD_TEST)/kernel_integration.bin
 
 # Test disk images - UNIT, INTEGRATION, FULL
-DISK_TEST_IMG := $(BUILD_TEST)/disk_test.img
-DISK_UNIT_TEST_IMG := $(BUILD_TEST)/disk_unit_test.img
-DISK_INTEGRATION_IMG := $(BUILD_TEST)/disk_integration.img
-DISK_FULL_TEST_IMG := $(BUILD_TEST)/disk_full_test.img
+DISK_TEST_IMG 				:= $(BUILD_TEST)/disk_test.img
+DISK_UNIT_TEST_IMG 			:= $(BUILD_TEST)/disk_unit_test.img
+DISK_INTEGRATION_IMG 		:= $(BUILD_TEST)/disk_integration.img
+DISK_FULL_TEST_IMG 			:= $(BUILD_TEST)/disk_full_test.img
+
 
 .PHONY: tests test test-unit test-integration test-all clean-tests
 
-
-ifeq ($(CONFIG_KERNEL_TESTS), y)
+ifeq ($(CONFIG_BUILD_TEST), y)
 tests: test-all ## Build all tests
 endif
 
 ### DISK IMAGES ###
-
-ifeq ($(CONFIG_KERNEL_TESTS), y)
+ifeq ($(CONFIG_BUILD_TEST), y)
 
 $(DISK_TEST_IMG): $(STAGE1_BIN) $(STAGE2_BIN) $(KERNEL_TEST_BIN) | $(BUILD_TEST)
 	$(ECHO) "  DISK    $@"
@@ -51,7 +50,7 @@ $(DISK_TEST_IMG): $(STAGE1_BIN) $(STAGE2_BIN) $(KERNEL_TEST_BIN) | $(BUILD_TEST)
 	$(Q)$(DD) if=$(STAGE2_BIN) of=$@ bs=512 seek=$(STAGE2_SECTOR) conv=notrunc 2>/dev/null
 	$(Q)$(DD) if=$(KERNEL_TEST_BIN) of=$@ bs=512 seek=$(KERNEL_SECTOR) conv=notrunc 2>/dev/null
 
-ifeq ($(CONFIG_UNIT_TESTS), y)
+ifeq ($(CONFIG_TESTS_UNIT), y)
 $(DISK_UNIT_TEST_IMG): $(STAGE1_BIN) $(STAGE2_BIN) $(KERNEL_UNIT_TEST_BIN) | $(BUILD_TEST)
 	$(ECHO) "  DISK    $@"
 	$(Q)$(DD) if=/dev/zero of=$@ bs=1K count=1440 2>/dev/null
@@ -60,7 +59,7 @@ $(DISK_UNIT_TEST_IMG): $(STAGE1_BIN) $(STAGE2_BIN) $(KERNEL_UNIT_TEST_BIN) | $(B
 	$(Q)$(DD) if=$(KERNEL_UNIT_TEST_BIN) of=$@ bs=512 seek=$(KERNEL_SECTOR) conv=notrunc 2>/dev/null
 endif
 
-ifeq ($(CONFIG_INTEGRATION_TESTS), y)
+ifeq ($(CONFIG_TESTS_INTEGRATION), y)
 $(DISK_INTEGRATION_IMG): $(STAGE1_BIN) $(STAGE2_BIN) $(KERNEL_INTEGRATION_BIN) | $(BUILD_TEST)
 	$(ECHO) "  DISK    $@"
 	$(Q)$(DD) if=/dev/zero of=$@ bs=1K count=1440 2>/dev/null
@@ -73,7 +72,7 @@ endif
 
 ### COMPILE AND GENERATE OBJECTS ###
 
-ifeq ($(CONFIG_KERNEL_TESTS), y)
+ifeq ($(CONFIG_BUILD_TEST), y)
 
 # Special rule for test kernel entry point
 $(BUILD_TEST)/kernel_entry.o: $(KERN_ARCH_DIR)/boot/kernel_entry.asm $(PROC_OFFSET_HDR) | $(BUILD_TEST)
@@ -110,7 +109,7 @@ endif
 
 ### LINK: FULL TESTS ###
 
-ifeq ($(CONFIG_KERNEL_TESTS), y)
+ifeq ($(CONFIG_BUILD_TEST), y)
 
 $(KERNEL_TEST_ELF): $(KERNEL_CORE_TEST_OBJS) $(ALL_TEST_OBJS) $(KERNEL_LD) | $(BUILD_TEST)
 	$(ECHO) "  LD-TEST $@"
@@ -129,7 +128,7 @@ endif
 
 ### LINK UNIT TESTS ###
 
-ifeq ($(CONFIG_UNIT_TESTS), y)
+ifeq ($(CONFIG_TESTS_UNIT), y)
 
 $(KERNEL_UNIT_TEST_ELF): $(KERNEL_CORE_TEST_OBJS) $(UNIT_TEST_OBJS) $(TEST_RUNNER_OBJECT) $(KERNEL_LD) | $(BUILD_TEST)
 	$(ECHO) "  LD-TEST $@"
@@ -138,7 +137,6 @@ $(KERNEL_UNIT_TEST_ELF): $(KERNEL_CORE_TEST_OBJS) $(UNIT_TEST_OBJS) $(TEST_RUNNE
 $(KERNEL_UNIT_TEST_BIN): $(KERNEL_UNIT_TEST_ELF) | $(BUILD_TEST)
 	$(ECHO) "  OBJCOPY $@"
 	$(Q)$(OBJCOPY) -O binary $< $@
-
 
 test-unit: $(DISK_UNIT_TEST_IMG) ## Run unit tests (panik, printk)
 	@echo "Running unit tests (panik, printk)..."
@@ -149,7 +147,7 @@ endif
 
 ### LINK INTEGRATION TESTS ###
 
-ifeq ($(CONFIG_INTEGRATION_TESTS), y)
+ifeq ($(CONFIG_TESTS_INTEGRATION), y)
 
 $(KERNEL_INTEGRATION_ELF): $(KERNEL_CORE_TEST_OBJS) $(INTEGRATION_TEST_OBJS) $(TEST_RUNNER_OBJECT) $(KERNEL_LD) | $(BUILD_TEST)
 	$(ECHO) "  LD-TEST $@"
@@ -158,7 +156,6 @@ $(KERNEL_INTEGRATION_ELF): $(KERNEL_CORE_TEST_OBJS) $(INTEGRATION_TEST_OBJS) $(T
 $(KERNEL_INTEGRATION_BIN): $(KERNEL_INTEGRATION_ELF) | $(BUILD_TEST)
 	$(ECHO) "  OBJCOPY $@"
 	$(Q)$(OBJCOPY) -O binary $< $@
-
 
 test-integration: $(DISK_INTEGRATION_IMG) ## Run integration tests (process tests)
 	@echo "Running integration tests (process tests)..."

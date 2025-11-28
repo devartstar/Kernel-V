@@ -77,3 +77,23 @@ help: ## Show this help message
 	@echo "  make test-unit VERBOSE=1   Run unit tests with verbose output"
 
 .PHONY: help
+
+# make menuconfig
+# BUILD RELEASE:
+# 	make all
+# 	make run
+# 	make clean all
+#
+# BUILD TESTS:
+# 	make test-unit
+# 	make test-integration
+# 	make test-all
+#
+# BUILD DEBUG:
+# 	make all
+# 	make debug
+# 	make debug-kernel
+# 	make debug-bootloader
+# 	make verify-symbols
+# 	make run-debug
+
