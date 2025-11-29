@@ -22,6 +22,11 @@ include $(MAKE_DIR)/config.mk
 include $(MAKE_DIR)/toolchain.mk
 include $(MAKE_DIR)/kconfig.mk
 
+# --- Component Includes ---
+include $(MAKE_DIR)/bootloader.mk
+include $(MAKE_DIR)/kernel.mk
+include $(MAKE_DIR)/targets.mk
+
 # --- Conditional Includes Based on Build Type ---
 ifeq ($(CONFIG_BUILD_DEBUG),y)
 	include $(MAKE_DIR)/debug.mk
@@ -35,11 +40,6 @@ else
 	include $(MAKE_DIR)/debug.mk
 	BUILD_TYPE := release
 endif
-
-# --- Component Includes ---
-include $(MAKE_DIR)/bootloader.mk
-include $(MAKE_DIR)/kernel.mk
-include $(MAKE_DIR)/targets.mk
 
 # --- Default Target ---
 .DEFAULT_GOAL := help
