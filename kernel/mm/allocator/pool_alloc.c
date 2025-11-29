@@ -35,7 +35,7 @@ void* pool_alloc(pool_allocator_t* pool)
 {
 	if (!pool)
 	{
-		return;
+		return NULL;
 	}
 
 	/* If no free object, allocate a new page and split into object */

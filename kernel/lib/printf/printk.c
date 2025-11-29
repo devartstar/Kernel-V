@@ -99,6 +99,23 @@ int my_vsnprintf(char* buf, size_t size, const char* fmt, va_list args)
 				fmt++;
 			}
 
+			// Handle length modifier (only 'l' supported for now)
+			int long_flag = 0;
+			int longlong_flag = 0;
+			if (*fmt == 'l')
+			{
+				fmt++;
+				if (*fmt == 'l')
+				{
+					longlong_flag = 1;
+					fmt++;
+				}
+				else
+				{
+					long_flag = 1;
+				}
+			}
+
 			switch (*fmt)
 			{
 			case 's':
@@ -232,26 +249,66 @@ int my_vsnprintf(char* buf, size_t size, const char* fmt, va_list args)
 			}
 			case 'x':
 			{
-				unsigned int num = va_arg(args, unsigned int);
-				//  convert unsigned hex into char array
-				char tmp[12];
+				char tmp[24];
 				int tmplen = 0;
 
-				if (num == 0)
+				//  convert unsigned hex into char array
+				if (longlong_flag)
 				{
-					tmp[tmplen++] = '0';
+					unsigned long long num = va_arg(args, unsigned long long);
+					if (num == 0)
+					{
+						tmp[tmplen++] = '0';
+					}
+					else
+					{
+						do
+						{
+							int digit = num % 16;
+							tmp[tmplen++] =
+								(digit < 10) ? ('0' + digit) : ('a' + digit - 10);
+							num /= 16;	
+						} while (num && tmplen < (int)sizeof(tmp));
+						
+					}
+				}
+				else if (long_flag)
+				{
+					unsigned long num = va_arg(args, unsigned long);
+					if (num == 0)
+					{
+						tmp[tmplen++] = '0';
+					}
+					else
+					{
+						do
+						{
+							int digit = num % 16;
+							tmp[tmplen++] =
+								(digit < 10) ? ('0' + digit) : ('a' + digit - 10);
+							num /= 16;	
+						} while (num && tmplen < (int)sizeof(tmp));
+					}
 				}
 				else
 				{
-					do
+					unsigned int num = va_arg(args, unsigned int);
+					if (num == 0)
 					{
-						int digit = num % 16;
-						tmp[tmplen++] =
-							(digit < 10) ? ('0' + digit) : ('a' + digit - 10);
-						num /= 16;
-					} while (num && tmplen < (int)sizeof(tmp));
+						tmp[tmplen++] = '0';
+					}
+					else
+					{
+						do
+						{
+							int digit = num % 16;
+							tmp[tmplen++] =
+								(digit < 10) ? ('0' + digit) : ('a' + digit - 10);
+							num /= 16;
+						} while (num && tmplen < (int)sizeof(tmp));
+					}
 				}
-
+				
 				//  calculate the padding needed
 				int to_pad_width = pad_width - tmplen;
 				if (to_pad_width < 0)

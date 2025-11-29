@@ -9,7 +9,8 @@ DISK_IMG := $(BUILDDIR)/disk.img
 .PHONY: debug-symbols verify-symbols debug-stage1 debug-stage2 debug-bootloader debug-kernel
 .PHONY: gdb-bootloader gdb-kernel gdb-bootloader-regs gdb-kernel-split gdb-full-debug
 
-all: $(DISK_IMG) debug-symbols ## Build complete system with debug symbols
+all: $(DISK_IMG) debug-symbols
+	@echo "Build complete."
 
 build: all ## Alias for all
 
@@ -137,3 +138,10 @@ commands-help: ## Show this help message
 	@echo "  make info    - Show build configuration"
 	@echo "  make sizes   - Show component sizes"
 	@echo "  make help    - Show this help"
+
+all-logged:
+	@echo "Building and saving logs..."
+	@$(MAKE) all > build.log 2>&1 || true
+	@grep -i "error" build.log > errors.log || true
+	@grep -i "warning" build.log > warnings.log || true
+	@echo "Build log, errors, and warnings saved."
