@@ -1,12 +1,12 @@
-#include <stdint.h>
 #include "time/timer.h"
 #include "core/io.h"
 #include "lib/printk.h"
 #include "proc/proc.h"
+#include <stdint.h>
 
 volatile uint32_t tick_count = 0;
 
-void pit_init (uint32_t hz)
+void pit_init(uint32_t hz)
 {
 	uint32_t divisor = PIT_FREQ / hz;
 
@@ -16,19 +16,19 @@ void pit_init (uint32_t hz)
 	 Access Mode	(bits 4-5) - 11	 - lobyte/hibyte
 	 Operating Mode	(bits 1-3) - 011 - square wave generator
 	*/
-	outb (0x43, 0x36);
+	outb(0x43, 0x36);
 
 	/* Access mode - 11 Two consecutive writes
 	 First write is low 8 bits
 	 Next write is high 8 bits
 	*/
-	outb (0x40, (uint8_t)(divisor & 0xFF));
-	outb (0x40, (uint8_t)((divisor >> 0x8) & 0xFF));
+	outb(0x40, (uint8_t)(divisor & 0xFF));
+	outb(0x40, (uint8_t)((divisor >> 0x8) & 0xFF));
 
-	pr_info ("[PIT] Initialized Successfully at %d Hz\n", hz);
+	pr_info("[PIT] Initialized Successfully at %d Hz\n", hz);
 }
 
-void timer_interrupt_handler (void)
+void timer_interrupt_handler(void)
 {
 	tick_count++;
 	/* Handle waking up sleeping process on timer interrupt */

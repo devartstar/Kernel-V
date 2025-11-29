@@ -40,7 +40,13 @@ debug: $(DISK_IMG) $(STAGE1_ELF) $(STAGE2_ELF) $(KERNEL_ELF) ## Run with GDB sup
 	$(Q)$(QEMU) -drive format=raw,file=$< -s -S -display curses
 
 # --- Maintenance Targets ---
-clean: clean-bootloader clean-kernel clean-tests ## Clean all build artifacts
+ifeq ($(CONFIG_BUILD_TEST), y)
+CLEAN_TESTS := clean-tests
+else
+CLEAN_TESTS :=
+endif
+
+clean: clean-bootloader clean-kernel $(CLEAN_TESTS) ## Clean all build artifacts
 	$(Q)rm -f $(DISK_IMG)
 	$(Q)rm -f $(BUILDDIR)/*.o $(BUILDDIR)/*.bin $(BUILDDIR)/*.elf
 

@@ -3,12 +3,12 @@
 
 #include <stdint.h>
 
-#define PROC_NAME_MAX		16
-#define KERNEL_STACK_SIZE	4096
-#define DEFAULT_TIMESLICE	10
+#define PROC_NAME_MAX 16
+#define KERNEL_STACK_SIZE 4096
+#define DEFAULT_TIMESLICE 10
 
 //
-// Process States
+//  Process States
 //
 typedef enum
 {
@@ -20,7 +20,7 @@ typedef enum
 } proc_state_t;
 
 //
-// Store the context of the registers here.
+//  Store the context of the registers here.
 //
 typedef struct regs_context
 {
@@ -47,28 +47,28 @@ typedef struct regs_context
  */
 typedef struct pcb
 {
-	uint32_t		pid;
-	proc_state_t	state;
-	regs_context_t	context;
-	uint8_t			*stack_base;
-	uint8_t			*stack_ptr;
-	uint32_t		sleep_ticks;
-	uint32_t		timeslice_ticks;
-	char			name[PROC_NAME_MAX];
+	uint32_t pid;
+	proc_state_t state;
+	regs_context_t context;
+	uint8_t* stack_base;
+	uint8_t* stack_ptr;
+	uint32_t sleep_ticks;
+	uint32_t timeslice_ticks;
+	char name[PROC_NAME_MAX];
 
-	// for linked list
-	struct pcb		*parent;
-	struct pcb		*next;
-	struct pcb		*prev;
+	//  for linked list
+	struct pcb* parent;
+	struct pcb* next;
+	struct pcb* prev;
 } pcb_t;
 
-void proc_init (void);
+void proc_init(void);
 
-pcb_t *proc_alloc (const char *name);
+pcb_t* proc_alloc(const char* name);
 
-void proc_free (pcb_t *proc);
+void proc_free(pcb_t* proc);
 
-pcb_t *proc_find (uint32_t pid);
+pcb_t* proc_find(uint32_t pid);
 
 /**
  * proc_create - Create a new process that runs a function.
@@ -76,8 +76,8 @@ pcb_t *proc_find (uint32_t pid);
  *		  takes in a pointer of any type and returns void
  * @args arguments passed to the thread
  * @name string for debuging
-*/
-pcb_t *proc_create (void (*entry)(void*), void *args, const char* name);
+ */
+pcb_t* proc_create(void (*entry)(void*), void* args, const char* name);
 
 /**
  * proc_sleep - Puts the current running process to sleep till next tick.
@@ -85,7 +85,7 @@ pcb_t *proc_create (void (*entry)(void*), void *args, const char* name);
  *
  * @return - void
  */
-void proc_sleep (uint32_t ticks);
+void proc_sleep(uint32_t ticks);
 
 /**
  * proc_wakeup - Wakes up a sleeping process and adds to ready queue.
@@ -93,14 +93,14 @@ void proc_sleep (uint32_t ticks);
  *
  * @return - void
  */
-void proc_wakeup (pcb_t *proc);
+void proc_wakeup(pcb_t* proc);
 
 /**
  * proc_exit - Exits and cleanup the process
  *
  * @return - void
  */
-void proc_exit (void);
+void proc_exit(void);
 
 /**
  * thread_entry_wrapper - Wrapper for process entry and exit.
@@ -111,8 +111,8 @@ void proc_exit (void);
  * @args  - pointer to the args list for the entry method
  *
  * @return - void
-*/
-void thread_entry_wrapper (void (*entry)(void *), void *arg);
+ */
+void thread_entry_wrapper(void (*entry)(void*), void* arg);
 
 /**
  * scheduler_pick_next - Picks a process ready to execute from the process list
@@ -120,17 +120,17 @@ void thread_entry_wrapper (void (*entry)(void *), void *arg);
  * 1. Try to pick up a process in READY state.
  * 2. No such process - check for the current process.
  * 3. If current process is TERMINATED. Schedule an IDLE process.
- * 4. 
+ * 4.
  *
  * @returns the pointer to the pcb memory block
- */ 
-pcb_t *scheduler_pick_next (void);
+ */
+pcb_t* scheduler_pick_next(void);
 
 /**
- * yeild - Find the next process ready to run from scheduler 
+ * yeild - Find the next process ready to run from scheduler
  * Coxtext Switch to the next process
  */
-void yield (void);
+void yield(void);
 
 /*
  * timer_interrupt_proc_handler - Handels an interrupt then process sleep time
@@ -139,8 +139,8 @@ void yield (void);
  *
  * @return - void
  */
-void timer_interrupt_proc_handler (uint32_t tickcount);
+void timer_interrupt_proc_handler(uint32_t tickcount);
 
-extern pcb_t *current_proc;
+extern pcb_t* current_proc;
 
 #endif

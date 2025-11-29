@@ -1,12 +1,12 @@
 #include "proc/scheduler.h"
 
-pcb_t *ready_list_head = NULL;
-pcb_t *ready_list_tail = NULL;
+pcb_t* ready_list_head = NULL;
+pcb_t* ready_list_tail = NULL;
 
-pcb_t *wait_list_head = NULL;
-pcb_t *wait_list_tail = NULL;
+pcb_t* wait_list_head = NULL;
+pcb_t* wait_list_tail = NULL;
 
-void enqueue_ready (pcb_t *proc)
+void enqueue_ready(pcb_t* proc)
 {
 	proc->next = NULL;
 	proc->prev = NULL;
@@ -26,19 +26,18 @@ void enqueue_ready (pcb_t *proc)
 	}
 }
 
-void dequeue_ready (pcb_t *proc)
+void dequeue_ready(pcb_t* proc)
 {
 	if (proc->prev)
 	{
 		/* Adjust the process pointer prior to the one dequeued */
 		proc->prev->next = proc->next;
 	}
-	else 
+	else
 	{
 		/* No process prior, asjust the head */
 		ready_list_head = proc->next;
 	}
-
 
 	if (proc->next)
 	{
@@ -55,7 +54,7 @@ void dequeue_ready (pcb_t *proc)
 	proc->prev = NULL;
 }
 
-void enqueue_wait (pcb_t *proc)
+void enqueue_wait(pcb_t* proc)
 {
 	proc->next = NULL;
 	proc->prev = NULL;
@@ -76,7 +75,7 @@ void enqueue_wait (pcb_t *proc)
 	}
 }
 
-void dequeue_wait (pcb_t *proc)
+void dequeue_wait(pcb_t* proc)
 {
 	if (proc->prev)
 	{

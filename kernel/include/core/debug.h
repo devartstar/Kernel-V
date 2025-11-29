@@ -1,22 +1,22 @@
 #ifndef KERNEL_DEBUG_H
 #define KERNEL_DEBUG_H
 
-#include "lib/printk.h"
 #include "kconfig.h"
+#include "lib/printk.h"
 
 #ifdef CONFIG_BUILD_DEBUG
-    // Debug build: Always enable debugging
-    #define DEBUG_ENABLED 1
+//  Debug build: Always enable debugging
+#define DEBUG_ENABLED 1
 #elif defined(CONFIG_BUILD_TEST)
-    // Test build: Use Kconfig setting
-    #ifdef CONFIG_DEBUG_ENABLED
-        #define DEBUG_ENABLED CONFIG_DEBUG_ENABLED
-    #else
-        #define DEBUG_ENABLED 0
-    #endif
+//  Test build: Use Kconfig setting
+#ifdef CONFIG_DEBUG_ENABLED
+#define DEBUG_ENABLED CONFIG_DEBUG_ENABLED
 #else
-    // Release build: Debugging disabled
-    #define DEBUG_ENABLED 0
+#define DEBUG_ENABLED 0
+#endif
+#else
+//  Release build: Debugging disabled
+#define DEBUG_ENABLED 0
 #endif
 
 #ifdef CONFIG_DEBUG_IDT_GDT
@@ -25,7 +25,7 @@
 #define DEBUG_IDT_GDT 0
 #endif
 
-#ifdef CONFIG_DEBUG_TSS  
+#ifdef CONFIG_DEBUG_TSS
 #define DEBUG_TSS CONFIG_DEBUG_TSS
 #else
 #define DEBUG_TSS 0
@@ -55,19 +55,23 @@
 #define DEBUG_PROCESS_MGMT 0
 #endif
 
-// Debug macros
-#define debug_print(fmt, ...) \
-    do { \
-        if (DEBUG_ENABLED) { \
-            pr_verbose(fmt, ##__VA_ARGS__); \
-        } \
-    } while(0)
+//  Debug macros
+#define debug_print(fmt, ...)                                                  \
+	do                                                                         \
+	{                                                                          \
+		if (DEBUG_ENABLED)                                                     \
+		{                                                                      \
+			pr_verbose(fmt, ##__VA_ARGS__);                                    \
+		}                                                                      \
+	} while (0)
 
-#define debug_module(sub_sys, fmt, ...) \
-    do { \
-        if (DEBUG_ENABLED && (DEBUG_##sub_sys)) { \
-            pr_verbose(fmt, ##__VA_ARGS__); \
-        } \
-    } while(0)
+#define debug_module(sub_sys, fmt, ...)                                        \
+	do                                                                         \
+	{                                                                          \
+		if (DEBUG_ENABLED && (DEBUG_##sub_sys))                                \
+		{                                                                      \
+			pr_verbose(fmt, ##__VA_ARGS__);                                    \
+		}                                                                      \
+	} while (0)
 
 #endif /* KERNEL_DEBUG_H */

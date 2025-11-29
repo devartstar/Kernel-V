@@ -1,45 +1,45 @@
 #ifndef KERNEL_H
 #define KERNEL_H
 
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 
-// Core kernel includes
-#include "lib/printk.h"
-#include "drivers/vga.h"
-#include "core/panik.h"
-#include "mm/memory_map.h"
-#include "mm/pmm.h"
-#include "mm/paging.h"
+//  Core kernel includes
 #include "arch/x86/idt.h"
 #include "arch/x86/tss.h"
+#include "core/panik.h"
+#include "drivers/vga.h"
+#include "lib/printk.h"
+#include "mm/memory_map.h"
+#include "mm/paging.h"
+#include "mm/pmm.h"
 
 #ifdef KERNEL_TESTS
-#include "tests/test_printk.h"
 #include "tests/test_panik.h"
+#include "tests/test_printk.h"
 #endif
 
-// Kernel version information
-#define KERNEL_NAME     "Kernel-V"
+//  Kernel version information
+#define KERNEL_NAME "Kernel-V"
 
 #ifndef KERNEL_VERSION
-#define KERNEL_VERSION  "0.1.0"
+#define KERNEL_VERSION "0.1.0"
 #endif
 
-#define KERNEL_AUTHOR   "Devjit"
+#define KERNEL_AUTHOR "Devjit"
 
 #ifndef BUILD_DATE
-#define BUILD_DATE      "unknown"
+#define BUILD_DATE "unknown"
 #endif
 
-// Common macros
+//  Common macros
 #ifndef NULL
-#define NULL            ((void*)0)  
+#define NULL ((void*)0)
 #endif
 
-#define ARRAY_SIZE(x)   (sizeof(x) / sizeof((x)[0]))
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
-// Kernel main function (called from assembly)
+//  Kernel main function (called from assembly)
 void kernel_main(void);
 
 void grow_stack(int depth);

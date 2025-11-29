@@ -3,7 +3,8 @@
 
 #include "core/assert.h"
 
-typedef enum {
+typedef enum
+{
 	PANIK_MODE_NORMAL,
 	PANIK_MODE_TEST
 } panik_mode_t;
@@ -11,7 +12,8 @@ typedef enum {
 void set_panik_mode(panik_mode_t mode);
 panik_mode_t get_panik_mode(void);
 
-typedef struct {
+typedef struct
+{
 	int panik_called;
 	char last_panik_msg[256];
 	int panik_call_count;
@@ -20,8 +22,6 @@ typedef struct {
 void reset_panik_state(void);
 const panik_state_t* get_panik_state(void);
 
-void panik(const char* fmt, ...) __attribute__((format(printf,1,2)));
+void panik(const char* fmt, ...) __attribute__((format(printf, 1, 2)));
 
 #endif /* PANIK_H */
-
-
