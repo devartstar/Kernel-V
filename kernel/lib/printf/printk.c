@@ -178,22 +178,81 @@ int my_vsnprintf(char* buf, size_t size, const char* fmt, va_list args)
 			}
 			case 'd':
 			{
-				int num = va_arg(args, int);
-				//  convert signed decimal into char array
-				int is_negative = (num < 0);
-				unsigned int val = is_negative ? -num : num;
-				char tmp[12];
+				char tmp[24];
 				int tmplen = 0;
-
-				do
+				
+				if (longlong_flag)
 				{
-					tmp[tmplen++] = '0' + (val % 10);
-					val /= 10;
-				} while (val && tmplen < (int)sizeof(tmp));
+					/* long long is not supported
+					long long num = va_arg(args, long long);
+					//  convert signed decimal into char array
+					int is_negative = (num < 0);
+					unsigned long long val = is_negative ? -num : num;
+					if (val == 0)
+					{
+						tmp[tmplen++] = '0';
+					}
+					else
+					{
+						do
+						{
+							tmp[tmplen++] = '0' + (val % 10);
+							val /= 10;
+						} while (val && tmplen < (int)sizeof(tmp));
+					}
 
-				if (is_negative && tmplen < (int)sizeof(tmp))
+					if (is_negative && tmplen < (int)sizeof(tmp))
+					{
+						tmp[tmplen++] = '-'; //  Fixed: increment tmplen
+					}
+					*/
+				}
+				else if (long_flag)
 				{
-					tmp[tmplen++] = '-'; //  Fixed: increment tmplen
+					long num = va_arg(args, long);
+					//  convert signed decimal into char array
+					int is_negative = (num < 0);
+					unsigned long val = is_negative ? -num : num;
+					if (val == 0)
+					{
+						tmp[tmplen++] = '0';
+					}
+					else
+					{
+						do
+						{
+							tmp[tmplen++] = '0' + (val % 10);
+							val /= 10;
+						} while (val && tmplen < (int)sizeof(tmp));
+					}
+
+					if (is_negative && tmplen < (int)sizeof(tmp))
+					{
+						tmp[tmplen++] = '-'; //  Fixed: increment tmplen
+					}
+				}
+				else
+				{
+					int num = va_arg(args, int);
+					int is_negative = (num < 0);
+					unsigned int val = is_negative ? -num : num;
+					if (val == 0)
+					{
+						tmp[tmplen++] = '0';
+					}
+					else
+					{
+						do
+						{
+							tmp[tmplen++] = '0' + (val % 10);
+							val /= 10;
+						} while (val && tmplen < (int)sizeof(tmp));
+					}
+
+					if (is_negative && tmplen < (int)sizeof(tmp))
+					{
+						tmp[tmplen++] = '-'; //  Fixed: increment tmplen
+					}
 				}
 
 				//  calculate the padding needed
@@ -217,21 +276,66 @@ int my_vsnprintf(char* buf, size_t size, const char* fmt, va_list args)
 			}
 			case 'u':
 			{
-				int num = va_arg(args, int);
-
-				char tmp[12];
+				char tmp[24];
 				int tmplen = 0;
 
-				do
+				// Convert number value to a character array
+				if (longlong_flag)
 				{
-					tmp[tmplen++] = '0' + (num % 10);
-					num /= 10;
-				} while (num && tmplen < (int)sizeof(tmp));
-
+					/* long long not supported yet 
+					unsigned long long num = va_arg(args, unsigned long long);
+					if (num == 0)
+					{
+						tmp[tmplen++] = '0';
+					}
+					else
+					{
+						do
+						{
+							tmp[tmplen++] = '0' + (num - num / 10 * 10);
+							num /= 10;
+						} while (num && tmplen < (int)sizeof(tmp));
+					}
+					*/
+				}
+				else if (long_flag)
+				{
+					unsigned long num = va_arg(args, unsigned long);
+					if (num == 0)
+					{
+						tmp[tmplen++] = '0';
+					}
+					else
+					{
+						do
+						{
+							tmp[tmplen++] = '0' + (num % 10);
+							num /= 10;
+						} while (num && tmplen < (int)sizeof(tmp));
+					}
+				}
+				else
+				{
+					int num = va_arg(args, unsigned int);
+					if (num == 0)
+					{
+						tmp[tmplen++] = '0';
+					}
+					else
+					{
+						do
+						{
+							tmp[tmplen++] = '0' + (num % 10);
+							num /= 10;
+						} while (num && tmplen < (int)sizeof(tmp));
+					}
+				}	
 				//  calculate the padding needed
 				int to_pad_width = pad_width - tmplen;
 				if (to_pad_width < 0)
+				{
 					to_pad_width = 0;
+				}
 
 				//  Write padding if needed
 				while (to_pad_width-- > 0 && p < end)
@@ -255,6 +359,7 @@ int my_vsnprintf(char* buf, size_t size, const char* fmt, va_list args)
 				//  convert unsigned hex into char array
 				if (longlong_flag)
 				{
+					/* long long not supported yet
 					unsigned long long num = va_arg(args, unsigned long long);
 					if (num == 0)
 					{
@@ -271,6 +376,7 @@ int my_vsnprintf(char* buf, size_t size, const char* fmt, va_list args)
 						} while (num && tmplen < (int)sizeof(tmp));
 						
 					}
+					*/
 				}
 				else if (long_flag)
 				{
@@ -372,7 +478,9 @@ int my_vsnprintf(char* buf, size_t size, const char* fmt, va_list args)
 			}
 			default:
 				if (p < end)
+				{
 					*p++ = *fmt; //  Just copy unknown specifier
+				}
 			}
 		}
 		else
@@ -407,12 +515,10 @@ int vprintk(const char* fmt, va_list args)
 
 int printk(const char* fmt, ...)
 {
-	char tmp[LOG_BUF_SIZE];
 	char level_prefix[32];
 	const char* actual_fmt = fmt;
 	int log_level_idx = -1;
 	int total_len = 0;
-	int tracelevel = CONFIG_TRACE_LEVEL;
 
 	if (fmt[0] == '\001' && fmt[1] >= '0' && fmt[1] <= '7')
 	{

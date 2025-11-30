@@ -82,7 +82,7 @@ void pmm_init(void)
 
 	//  initially none of the usable frames are used
 	used_frames = 0;
-	debug_module(MEMORY, "Total Usable Frames: %u\n", total_frames);
+	debug_module(MEMORY, "Total Usable Frames: %u\n", PRINT_UINT32(total_frames));
 	pr_info("[PROCESS_MGMT] Frame Bitmap initialized at address: %p\n",
 			frame_bitmap);
 }
@@ -93,9 +93,10 @@ void pmm_init(void)
 void pmm_reserve_memory_region(reserved_memory_type_t reserved_type)
 {
 	//  addr < 1Mib Reserve all memory below 1Mb for BIOS, IVT, VGA
-	if (reserved_type & RESERVED_TYPE_INIT |
-		reserved_type & RESERVED_TYPE_BIOS | reserved_type & RESERVED_TYPE_IVT |
-		reserved_type & RESERVED_TYPE_VGA)
+	if ((reserved_type & RESERVED_TYPE_INIT) |
+		(reserved_type & RESERVED_TYPE_BIOS) | 
+		(reserved_type & RESERVED_TYPE_IVT) |
+		(reserved_type & RESERVED_TYPE_VGA))
 	{
 		pmm_set_frame_bitmap(0x0, 0x100000);
 
@@ -117,8 +118,8 @@ void pmm_reserve_memory_region(reserved_memory_type_t reserved_type)
 
 		debug_module(MEMORY,
 					 "[PMM] Reserved kernel range: 0x%u - 0x%u\n",
-					 kernel_memory_start,
-					 kernel_memory_end);
+					 PRINT_UINT32(kernel_memory_start),
+					 PRINT_UINT32(kernel_memory_end));
 	}
 
 	//  reserve memory used by memory bitmap
@@ -133,9 +134,9 @@ void pmm_reserve_memory_region(reserved_memory_type_t reserved_type)
 
 		debug_module(MEMORY,
 					 "[PMM] Reserved bitmap: 0x%u - 0x%u (%u bytes)\n",
-					 bitmap_start,
-					 bitmap_end,
-					 bitmap_bytes);
+					 PRINT_UINT32(bitmap_start),
+					 PRINT_UINT32(bitmap_end),
+					 PRINT_UINT32(bitmap_bytes));
 	}
 
 	//  reserve memory used by page tables
@@ -149,9 +150,9 @@ void pmm_reserve_memory_region(reserved_memory_type_t reserved_type)
 		pmm_set_frame_bitmap(page_dir_start, page_dir_end);
 		debug_module(MEMORY,
 					 "[PMM] Page Directory: 0x%u - 0x%u (%u bytes)\n",
-					 page_dir_start,
-					 page_dir_end,
-					 page_dir_end - page_dir_start);
+					 PRINT_UINT32(page_dir_start),
+					 PRINT_UINT32(page_dir_end),
+					 PRINT_UINT32(page_dir_end - page_dir_start));
 
 		//  Reserve page table (4K at 0x81000)
 		uint32_t page_table_start = PAGE_TABLE_START_ADDR;
@@ -160,15 +161,15 @@ void pmm_reserve_memory_region(reserved_memory_type_t reserved_type)
 		pmm_set_frame_bitmap(page_table_start, page_table_end);
 		debug_module(MEMORY,
 					 "[PMM] Page Table: 0x%u - 0x%u (%u bytes)\n",
-					 page_table_start,
-					 page_table_end,
-					 page_table_end - page_table_start);
+					 PRINT_UINT32(page_table_start),
+					 PRINT_UINT32(page_table_end),
+					 PRINT_UINT32(page_table_end - page_table_start));
 	}
 
-	debug_module(MEMORY, "Total usable frames: %u\n", total_frames);
-	debug_module(MEMORY, "Total reserved frames: %u\n", used_frames);
-	debug_module(MEMORY, "Free frames: %u\n", total_frames - used_frames);
-	debug_module(MEMORY, "Reserved memory regions: %u\n", reserved_type);
+	debug_module(MEMORY, "Total usable frames: %u\n", PRINT_UINT32(total_frames));
+	debug_module(MEMORY, "Total reserved frames: %u\n", PRINT_UINT32(used_frames));
+	debug_module(MEMORY, "Free frames: %u\n", PRINT_UINT32(total_frames - used_frames));
+	debug_module(MEMORY, "Reserved memory regions: %u\n", PRINT_UINT32(reserved_type));
 }
 
 //

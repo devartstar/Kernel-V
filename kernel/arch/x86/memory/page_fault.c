@@ -48,12 +48,11 @@ void page_fault_handler(page_fault_stack_t* frame)
 	debug_module(PAGING,
 				 "[PAGE FAULT] at address: 0x%x, error code: 0x%x [eip=0x%x, "
 				 "esp=0x%x, ebp=0x%x]\n",
-				 fault_address,
-				 frame->error_code,
-				 frame->eip,
-				 esp,
-				 ebp);
-
+				 PRINT_UINT32(fault_address),
+				 PRINT_UINT32(frame->error_code),
+				 PRINT_UINT32(frame->eip),
+				 PRINT_UINT32(esp),
+				 PRINT_UINT32(ebp));
 	//  Check if the fault_address is in the kernel heap range
 	if (fault_address >= KERNEL_HEAP_START && fault_address < KERNEL_HEAP_END)
 	{
@@ -67,7 +66,7 @@ void page_fault_handler(page_fault_stack_t* frame)
 			panik("Out of memory: Unable to allocate frame for page fault at "
 				  "address "
 				  "0x%x",
-				  fault_address);
+				  PRINT_UINT32(fault_address));
 		}
 		paging_map_page(
 			fault_address, (uint32_t)new_frame, PAGE_PRESENT | PAGE_WRITE);
@@ -88,8 +87,8 @@ void page_fault_handler(page_fault_stack_t* frame)
 				PAGING,
 				"[PAGE FAULT] Stack growth: mapping new stack page at 0x%x "
 				"(esp=0x%x)\n",
-				fault_address,
-				frame->esp);
+				PRINT_UINT32(fault_address),
+				PRINT_UINT32(frame->esp));
 			void* new_frame = pmm_alloc_frame();
 			if (!new_frame)
 				panik("Out of memory in stack PF recovery");

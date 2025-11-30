@@ -28,9 +28,9 @@ void idt_set_gate(int num, uint32_t base, uint16_t sel, uint8_t flags)
 	debug_module(IDT_GDT,
 				 "Set IDT gate %d: base=0x%08x, sel=0x%04x, flags=0x%02x\n",
 				 num,
-				 base,
-				 sel,
-				 flags);
+				 PRINT_UINT32(base),
+				 PRINT_UINT16(sel),
+				 PRINT_UINT8(flags));
 }
 
 //  Set up a task gate for double fault (interrupt 8)
@@ -46,8 +46,8 @@ void set_task_gate(uint8_t num, uint16_t sel)
 	debug_module(TSS,
 				 "Set task gate %d: sel=0x%04x, flags=0x%02x\n",
 				 num,
-				 sel,
-				 idt[num].flags);
+				 PRINT_UINT16(sel),
+				 PRINT_UINT8(idt[num].flags));
 }
 
 /*

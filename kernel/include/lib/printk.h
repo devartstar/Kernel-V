@@ -2,6 +2,7 @@
 #define KERNEL_PRINTK_H
 
 #include "kconfig.h"
+#include "lib/print_macros.h"
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>

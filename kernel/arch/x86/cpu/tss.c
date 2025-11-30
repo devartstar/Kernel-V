@@ -13,7 +13,7 @@ extern void double_fault_handler(void);
 void init_tss()
 {
 	//  Clear TSS
-	for (int i = 0; i < sizeof(struct tss_entry); i++)
+	for (int i = 0; i < (int)sizeof(struct tss_entry); i++)
 	{
 		((uint8_t*)&tss_df)[i] = 0;
 	}
@@ -35,11 +35,11 @@ void init_tss()
 				 "Initialized double fault TSS at %p: ss=0x%04x, esp=0x%08x, "
 				 "cs=0x%04x, eip=0x%08x, eflags=0x%08x\n",
 				 (void*)&tss_df,
-				 tss_df.ss,
-				 tss_df.esp,
-				 tss_df.cs,
-				 tss_df.eip,
-				 tss_df.eflags);
+				 PRINT_UINT32(tss_df.ss),
+				 PRINT_UINT32(tss_df.esp),
+				 PRINT_UINT32(tss_df.cs),
+				 PRINT_UINT32(tss_df.eip),
+				 PRINT_UINT32(tss_df.eflags));
 	debug_module(TSS, "Initialized successfully!\n");
 }
 

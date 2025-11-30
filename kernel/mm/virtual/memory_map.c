@@ -43,10 +43,10 @@ void parse_and_print_e820_map(void)
 		debug_module(MEMORY,
 					 "[%u] Base: 0x%08x%08x, Length: 0x%08x%08x, Type: %s\n",
 					 i,
-					 (uint32_t)(map[i].base >> 32),
-					 (uint32_t)(map[i].base & 0xFFFFFFFF),
-					 (uint32_t)(map[i].length >> 32),
-					 (uint32_t)(map[i].length & 0xFFFFFFFF),
+					 PRINT_UINT64_HI(map[i].base >> 32),
+					 PRINT_UINT64_LO(map[i].base & 0xFFFFFFFF),
+					 PRINT_UINT64_HI(map[i].length >> 32),
+					 PRINT_UINT64_LO(map[i].length & 0xFFFFFFFF),
 					 current_region_type);
 
 		if (map[i].type == E820_TYPE_AVAILABLE &&

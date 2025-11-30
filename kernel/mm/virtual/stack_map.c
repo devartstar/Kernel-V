@@ -3,6 +3,7 @@
 #include "lib/printk.h"
 #include "mm/paging.h"
 #include "mm/pmm.h"
+#include "core/panik.h"
 
 void map_high_stack(uint32_t stack_bottom, uint32_t stack_top)
 {
@@ -17,13 +18,13 @@ void map_high_stack(uint32_t stack_bottom, uint32_t stack_top)
 		{
 			debug_module(MEMORY,
 						 "Failed to allocate stack frame for virt=0x%08x\n",
-						 virt);
+						 PRINT_UINT32(virt));
 			panik("Stack frame allocation failed");
 		}
 		debug_module(MEMORY,
 					 "Mapping stack page: virt=0x%08x phys=0x%08x\n",
-					 virt,
-					 (uint32_t)phys_frame);
+					 PRINT_UINT32(virt),
+					 PRINT_UINT32(phys_frame));
 		paging_map_page(virt, (uint32_t)phys_frame, PAGE_PRESENT | PAGE_WRITE);
 		pmm_set_frame_bitmap((uint32_t)phys_frame,
 							 (uint32_t)phys_frame + PAGE_SIZE);

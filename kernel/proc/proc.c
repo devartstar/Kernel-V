@@ -3,6 +3,7 @@
 #include "lib/printk.h"
 #include "lib/string.h"
 #include "mm/pool_alloc.h"
+#include "mm/pmm.h"
 #include "proc/context_switch.h"
 #include "proc/scheduler.h"
 #include <stddef.h>
@@ -32,6 +33,8 @@ void cleanup_terminated_processes(void)
 
 static void idle_process(void* arg)
 {
+	// Suppress unused parameter warning
+	(void)arg;
 	static int idle_count = 0;
 
 	while (1)
@@ -308,7 +311,7 @@ void yield(void)
 	debug_module(PROCESS_MGMT,
 				 "Current process: %s (state: %d)\n",
 				 proc_now ? proc_now->name : "NULL",
-				 proc_now ? proc_now->state : -1);
+				 proc_now ? (int)proc_now->state : -1);
 
 	//  Print the list of PCB in the process list
 	for (pcb_t* p = ready_list_head; p; p = p->next)
@@ -316,8 +319,8 @@ void yield(void)
 		debug_module(PROCESS_MGMT,
 					 "PCB[%s]: EIP=0x%08x ESP=0x%08x state=%d\n",
 					 p->name,
-					 (uint32_t)p->context.eip,
-					 (uint32_t)p->context.esp,
+					 PRINT_UINT32(p->context.eip),
+					 PRINT_UINT32(p->context.esp),
 					 p->state);
 	}
 
@@ -418,9 +421,9 @@ void timer_interrupt_proc_handler(uint32_t tickcount)
 		current_proc->timeslice_ticks--;
 		debug_module(PROCESS_MGMT,
 					 "[TICK %u] %s: timeslice ticks = %d\n",
-					 tickcount,
+					 PRINT_UINT32(tickcount),
 					 current_proc->name,
-					 current_proc->timeslice_ticks);
+					 PRINT_UINT32(current_proc->timeslice_ticks));
 		if (current_proc->timeslice_ticks <= 0)
 		{
 			current_proc->timeslice_ticks = DEFAULT_TIMESLICE;

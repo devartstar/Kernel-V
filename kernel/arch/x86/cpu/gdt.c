@@ -23,10 +23,10 @@ static void set_gdt_entry(
 				 "Set GDT entry %d: base=0x%08x, limit=0x%05x, access=0x%02x, "
 				 "gran=0x%02x\n",
 				 num,
-				 base,
-				 limit,
-				 access,
-				 gran);
+				 PRINT_UINT32(base),
+				 PRINT_UINT32(limit),
+				 PRINT_UINT8(access),
+				 PRINT_UINT8(gran));
 }
 
 void gdt_init(void)
@@ -56,5 +56,5 @@ void gdt_init(void)
 	uint16_t current_tr;
 	__asm__ volatile("str %0" : "=r"(current_tr));
 	debug_module(
-		TSS, "Current Task Register: 0x%04x (should be 0x18)\n", current_tr);
+		TSS, "Current Task Register: 0x%04x (should be 0x18)\n", PRINT_UINT16(current_tr));
 }

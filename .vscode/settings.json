@@ -15,6 +15,7 @@
         "proc_offset.h": "c",
         "debug.h": "c",
         "test_runner.h": "c",
-        "debug_funcs.h": "c"
+        "debug_funcs.h": "c",
+        "kconfig.h": "c"
     }
 }
