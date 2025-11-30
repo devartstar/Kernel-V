@@ -194,8 +194,8 @@ pcb_t* proc_create(void (*entry)(void*), void* arg, const char* name)
 	/* push the argument pointer */
 	*(--stack_top) = (uint32_t)arg;
 
-	proc->context.esp = (uint32_t*)stack_top;
-	proc->context.eip = (uint32_t*)thread_entry_wrapper;
+	proc->context.esp = (uint32_t)(uintptr_t)stack_top;
+	proc->context.eip = (uint32_t)(uintptr_t)thread_entry_wrapper;
 	proc->context.ebp = 0;
 
 	proc->state = PROC_READY;

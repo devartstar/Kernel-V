@@ -36,10 +36,10 @@ void debug_print_esp_args(uint32_t arg1, uint32_t arg2);
 			debug_print(                                                       \
 				"\n==================================================\n");     \
 			debug_print("Double fault TSS configured:\n");                     \
-			debug_print("  TSS address: 0x%08x\n", (uint32_t)&tss_df);         \
-			debug_print("  Handler EIP: 0x%08x\n", tss_df.eip);                \
-			debug_print("  Handler ESP: 0x%08x\n", tss_df.esp);                \
-			debug_print("  Handler CR3: 0x%08x\n", tss_df.cr3);                \
+			debug_print("  TSS address: 0x%08x\n", PRINT_UINT32((uint32_t)&tss_df));         \
+			debug_print("  Handler EIP: 0x%08x\n", PRINT_UINT32(tss_df.eip));                \
+			debug_print("  Handler ESP: 0x%08x\n", PRINT_UINT32(tss_df.esp));                \
+			debug_print("  Handler CR3: 0x%08x\n", PRINT_UINT32(tss_df.cr3));                \
 			debug_print(                                                       \
 				"\n==================================================\n");     \
 		}                                                                      \
@@ -53,13 +53,13 @@ void debug_print_esp_args(uint32_t arg1, uint32_t arg2);
 			uint32_t* page_dir = (uint32_t*)PAGE_DIR_START_ADDR;               \
 			uint32_t* page_table = (uint32_t*)PAGE_TABLE_START_ADDR;           \
 			debug_print("[DEBUG_PAGING] Page directory entry 0: 0x%08x\n",     \
-						page_dir[0]);                                          \
+						PRINT_UINT32(page_dir[0]));                                          \
 			uint32_t vga_page = 0xB8000 / PAGE_SIZE;                           \
 			debug_print(                                                       \
 				"[DEBUG_PAGING] VGA memory mapping (0xB8000): Page Table "     \
-				"Entry %d: 0x%08x\n",                                          \
-				vga_page,                                                      \
-				page_table[vga_page]);                                         \
+				"Entry %x: 0x%08x\n",                                          \
+				PRINT_UINT32(vga_page),                                                      \
+				PRINT_UINT32(page_table[vga_page]));                                         \
 			if (page_table[vga_page] & PAGE_PRESENT)                           \
 			{                                                                  \
 				debug_print(                                                   \

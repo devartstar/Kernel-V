@@ -6,6 +6,7 @@ extern pcb_t* current_proc;
 
 void my_test_proc(void* arg)
 {
+	(void)arg;
 	int max_runs = 3;
 
 	for (int i = 0; i < max_runs; i++)
@@ -23,6 +24,7 @@ void my_test_proc(void* arg)
 
 void my_sleep_proc(void* arg)
 {
+	(void)arg;
 	int i = 0;
 	while (1)
 	{
@@ -34,6 +36,7 @@ void my_sleep_proc(void* arg)
 
 void preemptive_proc(void* args)
 {
+	(void)args;
 	int i = 0;
 	while (1)
 	{

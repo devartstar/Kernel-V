@@ -20,7 +20,7 @@ __attribute__((noreturn)) void high_stack_entry()
 
 	uint32_t cur_esp;
 	__asm__ __volatile__("mov %%esp, %0" : "=r"(cur_esp));
-	debug_module(STACK_HEAP, "ESP after stack switch: 0x%08x\n", cur_esp);
+	debug_module(STACK_HEAP, "ESP after stack switch: 0x%08x\n", PRINT_UINT32(cur_esp));
 
 	//  Test demand-paged heap access
 	debug_module(STACK_HEAP, "Triggering demand-paged heap access...\n");
@@ -32,7 +32,7 @@ __attribute__((noreturn)) void high_stack_entry()
 	if (DEBUG_STACK_HEAP)
 	{
 		debug_module(STACK_HEAP, "Testing stack overflow detection...\n");
-		pr_info("Current page directory CR3: 0x%08x\n", tss_df.cr3);
+		pr_info("Current page directory CR3: 0x%08x\n", PRINT_UINT32(tss_df.cr3));
 	}
 
 	//  VGA memory test
@@ -53,7 +53,7 @@ __attribute__((noreturn)) void high_stack_entry()
 #endif
 
 	//  Main kernel loop
-	pr_info("\nKernel initialization complete. Entering main loop.\n");
+	pr_info("Kernel initialization complete. Entering main loop.");
 	while (1)
 	{
 		__asm__ __volatile__("cli; hlt");
@@ -112,6 +112,6 @@ void kernel_main()
 	uint32_t new_stack_ptr = KERNEL_STACK_TOP_VIRT - 16;
 	debug_print(
 		"About to switch to high virtual stack. New stack pointer: 0x%08x\n",
-		new_stack_ptr);
+		PRINT_UINT32(new_stack_ptr));
 	switch_to_high_stack(new_stack_ptr, high_stack_entry);
 }

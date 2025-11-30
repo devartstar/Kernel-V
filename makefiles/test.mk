@@ -83,7 +83,7 @@ $(BUILD_TEST)/kernel_entry.o: $(KERN_ARCH_DIR)/boot/kernel_entry.asm $(PROC_OFFS
 $(BUILD_TEST)/%.o: $(KERNDIR)/%.c | $(BUILD_TEST)
 	$(ECHO) "  CC-TEST $@"
 	$(Q)mkdir -p $(dir $@)
-	$(Q)$(CC) $(CFLAGS) -DKERNEL_TESTS -c $< -o $@
+	$(Q)$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD_TEST)/%.o: $(KERNDIR)/%.asm $(PROC_OFFSET_HDR) | $(BUILD_TEST)
 	$(ECHO) "  ASM-TEST $@"
@@ -93,18 +93,17 @@ $(BUILD_TEST)/%.o: $(KERNDIR)/%.asm $(PROC_OFFSET_HDR) | $(BUILD_TEST)
 $(BUILD_TEST)/%.o: $(KERNDIR)/tests/%.c | $(BUILD_TEST)
 	$(ECHO) "  CC-TEST $@"
 	$(Q)mkdir -p $(dir $@)
-	$(Q)$(CC) $(CFLAGS) -DKERNEL_TESTS -c $< -o $@
+	$(Q)$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD_TEST)/%.o: $(KERNDIR)/tests/unit/%.c | $(BUILD_TEST)
 	$(ECHO) "  CC-TEST $@"
 	$(Q)mkdir -p $(dir $@)
-	$(Q)$(CC) $(CFLAGS) -DKERNEL_TESTS -DUNIT_TESTS -c $< -o $@
+	$(Q)$(CC) $(CFLAGS) -DUNIT_TESTS -c $< -o $@
 
 $(BUILD_TEST)/%.o: $(KERNDIR)/tests/integration/%.c | $(BUILD_TEST)
 	$(ECHO) "  CC-TEST $@"
 	$(Q)mkdir -p $(dir $@)
-	$(Q)$(CC) $(CFLAGS) -DKERNEL_TESTS -DPROC_TESTS -c $< -o $@
-
+	$(Q)$(CC) $(CFLAGS) -DPROC_TESTS -c $< -o $@
 endif
 
 ### LINK: FULL TESTS ###

@@ -25,7 +25,7 @@ extern void create_test_processes(void) __attribute__((weak));
 
 void run_kernel_tests(void)
 {
-	pr_verbose("\n==================================================\n");
+	pr_verbose("==================================================\n");
 	pr_verbose("Running Kernel Tests...\n");
 	pr_verbose("==================================================\n");
 
@@ -56,7 +56,7 @@ void run_kernel_tests(void)
 		pr_verbose("No test functions found - check linking configuration\n");
 	}
 
-	pr_verbose("\n==================================================\n");
+	pr_verbose("==================================================\n");
 	pr_verbose("All Available Tests Completed\n");
 	pr_verbose("==================================================\n");
 }
