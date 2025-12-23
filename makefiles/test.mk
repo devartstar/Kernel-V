@@ -34,10 +34,74 @@ DISK_INTEGRATION_IMG 		:= $(BUILD_TEST)/disk_integration.img
 DISK_FULL_TEST_IMG 			:= $(BUILD_TEST)/disk_full_test.img
 
 
-.PHONY: tests test test-unit test-integration test-all clean-tests
+.PHONY: test-build test-run tests test-unit test-integration test-combined clean-tests
+
+### BUILD PHASE ###
 
 ifeq ($(CONFIG_BUILD_TEST), y)
-tests: test-all ## Build all tests
+test-build: ## Build test kernels based on enabled configs
+	@echo "======================================================================"
+	@echo "                    KERNEL-V TEST BUILD"
+	@echo "======================================================================"
+ifeq ($(CONFIG_TESTS_UNIT)$(CONFIG_TESTS_INTEGRATION), yy)
+	@echo "==> Building Combined Unit and Integration Test Kernel"
+	@echo "    • Unit Tests: panik, printk functionality"  
+	@echo "    • Integration Tests: process management"
+	$(MAKE) $(DISK_TEST_IMG)
+	@echo "    ✓ Combined test kernel built: $(KERNEL_COMBINED_TEST_BIN)"
+else ifeq ($(CONFIG_TESTS_UNIT), y)
+	@echo "==> Building Unit Test Kernel Only"
+	@echo "    • Unit Tests: panik, printk functionality"
+	$(MAKE) $(DISK_UNIT_TEST_IMG)
+	@echo "    ✓ Unit test kernel built: $(KERNEL_UNIT_TEST_BIN)"
+else ifeq ($(CONFIG_TESTS_INTEGRATION), y)
+	@echo "==> Building Integration Test Kernel Only"
+	@echo "    • Integration Tests: process management"
+	$(MAKE) $(DISK_INTEGRATION_IMG)
+	@echo "    ✓ Integration test kernel built: $(KERNEL_INTEGRATION_BIN)"
+else
+	@echo "==> No tests enabled!"
+	@echo "    Please enable tests via 'make menuconfig':"
+	@echo "    • CONFIG_BUILD_TEST=y (required)"
+	@echo "    • CONFIG_TESTS_UNIT=y (for unit tests)"
+	@echo "    • CONFIG_TESTS_INTEGRATION=y (for integration tests)"
+	@false
+endif
+	@echo "======================================================================"
+
+### RUN PHASE ###
+
+test-run: ## Run the built test kernel
+	@echo "======================================================================"
+	@echo "                    KERNEL-V TEST RUNNER"
+	@echo "======================================================================"
+ifeq ($(CONFIG_TESTS_UNIT)$(CONFIG_TESTS_INTEGRATION), yy)
+	@echo "==> Running Combined Test Suite"
+	@echo "    • Tests will run sequentially in single QEMU session"
+	@echo "    • Exit QEMU (Ctrl+Alt+G, then Ctrl+C) when tests complete"
+	@echo ""
+	$(Q)$(QEMU) -drive format=raw,file=$(DISK_TEST_IMG) -display curses
+else ifeq ($(CONFIG_TESTS_UNIT), y)
+	@echo "==> Running Unit Tests"
+	@echo "    • Testing: panik, printk functionality" 
+	@echo ""
+	$(Q)$(QEMU) -drive format=raw,file=$(DISK_UNIT_TEST_IMG) -display curses
+else ifeq ($(CONFIG_TESTS_INTEGRATION), y)
+	@echo "==> Running Integration Tests"
+	@echo "    • Testing: process management"
+	@echo ""
+	$(Q)$(QEMU) -drive format=raw,file=$(DISK_INTEGRATION_IMG) -display curses
+else
+	@echo "==> No tests enabled or built!"
+	@echo "    Run 'make test-build' first"
+	@false
+endif
+	@echo "======================================================================"
+
+### COMBINED COMMAND ###
+
+tests: test-build test-run ## Build and run tests (combined command)
+
 endif
 
 ### DISK IMAGES ###

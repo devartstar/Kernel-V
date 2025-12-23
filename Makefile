@@ -35,7 +35,6 @@ else ifeq ($(CONFIG_BUILD_TEST),y)
 	include $(MAKE_DIR)/test.mk
 	BUILD_TYPE := test
 else
-	# CONFIG_BUILD_RELEASE=y
 	# Include debug.mk even for release to get debug targets
 	include $(MAKE_DIR)/debug.mk
 	BUILD_TYPE := release
