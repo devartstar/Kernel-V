@@ -9,8 +9,14 @@ DISK_IMG := $(BUILDDIR)/disk.img
 .PHONY: debug-symbols verify-symbols debug-stage1 debug-stage2 debug-bootloader debug-kernel
 .PHONY: gdb-bootloader gdb-kernel gdb-bootloader-regs gdb-kernel-split gdb-full-debug
 
-all: $(DISK_IMG) debug-symbols
+# --- Build Based on BUILD_TYPE ---
+ifeq ($(CONFIG_BUILD_TEST), y)
+all: test-build debug-symbols ## Build test kernel when BUILD_TYPE=test
+	@echo "Test build complete."
+else
+all: $(DISK_IMG) debug-symbols ## Build production kernel (default)
 	@echo "Build complete."
+endif
 
 build: all ## Alias for all
 
@@ -27,9 +33,13 @@ $(BUILDDIR):
 	$(Q)mkdir -p $@
 
 # --- Run Targets ---
-run: $(DISK_IMG) ## Build and run in QEMU
+ifeq ($(CONFIG_BUILD_TEST), y)
+run: test-run ## Run test kernel when BUILD_TYPE=test
+else
+run: $(DISK_IMG) ## Build and run production kernel in QEMU
 	$(ECHO) "Starting QEMU..."
 	$(Q)$(QEMU) -drive format=raw,file=$< -display curses
+endif
 
 run-debug: $(DISK_IMG) ## Build and run in QEMU with debug output
 	$(ECHO) "Starting QEMU with debug output..."
