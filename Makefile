@@ -28,15 +28,17 @@ include $(MAKE_DIR)/kernel.mk
 include $(MAKE_DIR)/targets.mk
 
 # --- Conditional Includes Based on Build Type ---
-ifeq ($(CONFIG_BUILD_DEBUG),y)
+ifeq ($(CONFIG_BUILD_DEBUG)$(CONFIG_BUILD_TEST),yy)
+# Case 1: Debug + Test
+	include $(MAKE_DIR)/debug.mk
+	include $(MAKE_DIR)/test.mk	
+	BUILD_TYPE := test
+else ifeq ($(CONFIG_BUILD_DEBUG),y)
+# Case 2: Debug only (no test)
 	include $(MAKE_DIR)/debug.mk
 	BUILD_TYPE := debug
-else ifeq ($(CONFIG_BUILD_TEST),y)
-	include $(MAKE_DIR)/test.mk
-	BUILD_TYPE := test
 else
-	# Include debug.mk even for release to get debug targets
-	include $(MAKE_DIR)/debug.mk
+# Case 3: Release (production)
 	BUILD_TYPE := release
 endif
 
@@ -57,16 +59,16 @@ help: ## Show this help message
 		@awk '\
 	  BEGIN { FS=":.*##[ \t]*" } \
 	  /^[[:alnum:]_.-]+:.*##[ \t]*/ { \
-	    n = split(FILENAME, p, "/"); f = p[n]; \
-	    match($$0, /^[[:alnum:]_.-]+/); t = substr($$0, RSTART, RLENGTH); \
-	    items[f] = items[f] "  - " t "  # " $$2 "\n"; \
+		n = split(FILENAME, p, "/"); f = p[n]; \
+		match($$0, /^[[:alnum:]_.-]+/); t = substr($$0, RSTART, RLENGTH); \
+		items[f] = items[f] "  - " t "  # " $$2 "\n"; \
 	  } \
 	  END { \
-	    n = split("$(MAKEFILE_LIST)", fl, /[ \t]+/); \
-	    for (i=1; i<=n; i++) { \
-	      m = split(fl[i], q, "/"); f = q[m]; \
-	      if (items[f] != "") printf "%s\n%s", f, items[f]; \
-	    } \
+		n = split("$(MAKEFILE_LIST)", fl, /[ \t]+/); \
+		for (i=1; i<=n; i++) { \
+		  m = split(fl[i], q, "/"); f = q[m]; \
+		  if (items[f] != "") printf "%s\n%s", f, items[f]; \
+		} \
 	  }' $(MAKEFILE_LIST)
 	@echo ""
 	@echo "Examples:"

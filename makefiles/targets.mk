@@ -9,13 +9,22 @@ DISK_IMG := $(BUILDDIR)/disk.img
 .PHONY: debug-symbols verify-symbols debug-stage1 debug-stage2 debug-bootloader debug-kernel
 .PHONY: gdb-bootloader gdb-kernel gdb-bootloader-regs gdb-kernel-split gdb-full-debug
 
-# --- Build Based on BUILD_TYPE ---
-ifeq ($(CONFIG_BUILD_TEST), y)
-all: test-build debug-symbols ## Build test kernel when BUILD_TYPE=test
-	@echo "Test build complete."
+# --- Build Based on Configuration ---
+ifeq ($(CONFIG_BUILD_DEBUG)$(CONFIG_BUILD_TEST),yy)
+# Case 1: Debug + Test
+all: test-build debug-symbols ## Build test kernel (debug + test)
+	@echo "Debug + Test build complete."
+	@echo "Use 'make run' to run tests, or individual test commands."
+else ifeq ($(CONFIG_BUILD_DEBUG),y)
+# Case 2: Debug only
+all: $(DISK_IMG) debug-symbols ## Build debug kernel (debug only)
+	@echo "Debug build complete."
+	@echo "Use 'make run' for normal execution, 'make debug' for GDB."
 else
-all: $(DISK_IMG) debug-symbols ## Build production kernel (default)
-	@echo "Build complete."
+# Case 3: Release
+all: $(DISK_IMG) ## Build production kernel (release)
+	@echo "Release build complete."
+	@echo "Optimized production kernel ready."
 endif
 
 build: all ## Alias for all
@@ -32,11 +41,13 @@ $(DISK_IMG): $(STAGE1_BIN) $(STAGE2_BIN) $(KERNEL_BIN) | $(BUILDDIR)
 $(BUILDDIR):
 	$(Q)mkdir -p $@
 
-# --- Run Targets ---
-ifeq ($(CONFIG_BUILD_TEST), y)
-run: test-run ## Run test kernel when BUILD_TYPE=test
+# --- Run Targets Based on Configuration ---
+ifeq ($(CONFIG_BUILD_DEBUG)$(CONFIG_BUILD_TEST),yy)
+# Case 1: Debug + Test - Run tests
+run: test-run ## Run test kernel
 else
-run: $(DISK_IMG) ## Build and run production kernel in QEMU
+# Case 2 & 3: Debug or Release - Run normal kernel
+run: $(DISK_IMG) ## Build and run kernel in QEMU
 	$(ECHO) "Starting QEMU..."
 	$(Q)$(QEMU) -drive format=raw,file=$< -display curses
 endif

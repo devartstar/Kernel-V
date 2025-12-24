@@ -17,9 +17,6 @@ choice
 config BUILD_RELEASE
 	bool "Release build (optimized, fewer checks)"
 
-config BUILD_TEST
-	bool "Test build (Testing modules)"
-
 config BUILD_DEBUG
 	bool "Debug build (less optimization, more checks)"
 
@@ -47,31 +44,38 @@ endmenu
 
 # -----------------------------------------------
 
-if BUILD_TEST
+if BUILD_DEBUG
 
-menu "Test Modules"
+menu "Testing Options"
 
-config DEBUG_ENABLED 
-	tristate "Enable debugging for Tests"
-	default y
+config BUILD_TEST
+    bool "Enable Test Suite"
+    default n
+    help
+        Enable test modules for debugging and validation.
+        This includes unit tests and integration tests.
 
 config TESTS_UNIT
-	tristate "Enable Unit Testing"
-	default y
+    tristate "Enable Unit Testing"
+	depends on BUILD_TEST
+    default y
+    help
+        Enable unit tests for core kernel functions like
+        panik, printk, and basic functionality.
 
 config TESTS_INTEGRATION
-	tristate "Enable Integration Testing"
-	default y
+    tristate "Enable Integration Testing"
+	depends on BUILD_TEST
+    default y
+    help
+        Enable integration tests for process management
+        and system-level functionality.
 
 endmenu
 
-endif
-
 # -----------------------------------------------
 
-if (BUILD_TEST && DEBUG_ENABLED) || BUILD_DEBUG
-
-menu "Debugging"
+menu "Debugging Options"
 
 config DEBUG_IDT_GDT
 	tristate "Enable debugging on IDT & GDT"
@@ -100,4 +104,3 @@ config DEBUG_PROCESS_MGMT
 endmenu
 
 endif
-
