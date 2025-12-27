@@ -124,25 +124,22 @@ pcb_t* proc_alloc(const char* name)
 
 void proc_free(pcb_t* proc)
 {
-	if (!proc)
-	{
-		return;
-	}
+    if (!proc)
+    {
+        return;
+    }
 
-	/* Clean-up the exiting process */
-	proc->state = PROC_TERMINATED;
+    // Don't set state here - should already be TERMINATED
+    // Don't dequeue here - should already be dequeued
 
-	/* Remove the proc from the ready queue */
-	dequeue_ready(proc);
+    /* Free up the process stack memory */
+    if (proc->stack_base)
+    {
+        pmm_free_frame(proc->stack_base);
+    }
 
-	/* Free up the process stack memory */
-	if (proc->stack_base)
-	{
-		pmm_free_frame(proc->stack_base);
-	}
-
-	/* Free PCB */
-	pcb_free(proc);
+    /* Free PCB */
+    pcb_free(proc);
 }
 
 pcb_t* proc_find(uint32_t pid)
@@ -230,23 +227,27 @@ void proc_wakeup(pcb_t* proc)
 
 void proc_exit(void)
 {
-	pcb_t* proc_now = current_proc;
-	pcb_t* proc_next = NULL;
+    pcb_t* proc_now = current_proc;
+    pcb_t* proc_next = NULL;
 
-	proc_free(proc_now);
+    // Mark as terminated but DON'T free yet
+    proc_now->state = PROC_TERMINATED;
+    
+    // Remove from ready queue but keep the PCB alive
+    dequeue_ready(proc_now);
 
-	proc_next = scheduler_pick_next();
+    proc_next = scheduler_pick_next();
+    current_proc = proc_next;
 
-	current_proc = proc_next;
+    // Context switch away from this process
+    switch_to(proc_now, proc_next);  // Pass the process, don't use NULL
 
-	/* Context Switch to the new scheduled process */
-	switch_to(NULL, proc_next);
-
-	/* Ideally should never reach here as procees state is terminated */
-	while (1)
-	{
-		__asm__ __volatile__("hlt");
-	}
+    /* Should never reach here - the cleanup will happen later
+       when the idle process calls cleanup_terminated_processes() */
+    while (1)
+    {
+        __asm__ __volatile__("hlt");
+    }
 }
 
 pcb_t* scheduler_pick_next(void)

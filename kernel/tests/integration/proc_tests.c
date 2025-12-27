@@ -4,6 +4,13 @@
 
 extern pcb_t* current_proc;
 
+static volatile int test_processes_remaining = 3;
+
+void test_process_finished(void)
+{
+    test_processes_remaining--;
+}
+
 void my_test_proc(void* arg)
 {
 	(void)arg;
@@ -19,19 +26,24 @@ void my_test_proc(void* arg)
 	}
 
 	pr_verbose("[EXIT PROCESS] Process %s finished, terminating\n", current_proc->name);
+	test_process_finished();
 }
 
 void my_sleep_proc(void* arg)
 {
-	(void)arg;
-	int i = 0;
-	while (1)
-	{
-		pr_verbose("Thread %s sleeping, i=%d\n", current_proc->name, i++);
-		proc_sleep(50);
-		pr_verbose("Thread %s woke up!\n", current_proc->name);
-	}
-	pr_verbose("[EXIT PROCESS] Process %s finished, terminating\n", current_proc->name);
+    (void)arg;
+    int i = 0;
+    int max_sleep_cycles = 3;  // Limit the sleep cycles
+    
+    while (i < max_sleep_cycles)
+    {
+        pr_verbose("Thread %s sleeping, i=%d\n", current_proc->name, i);
+        proc_sleep(50);
+        pr_verbose("Thread %s woke up!\n", current_proc->name);
+        i++;
+    }
+    pr_verbose("[EXIT PROCESS] Process %s finished, terminating\n", current_proc->name);
+    test_process_finished();
 }
 
 void preemptive_proc(void* args)
@@ -52,6 +64,7 @@ void preemptive_proc(void* args)
     
     pr_verbose("[EXIT PROCESS] Process %s finished after %d iterations, terminating\n", 
                current_proc->name, max_iterations);
+	test_process_finished();
 }
 
 void create_test_processes(void)
@@ -65,7 +78,14 @@ void create_test_processes(void)
 	{
 		pr_verbose("Test processes created successfully\n");
 		pr_verbose("Starting scheduler with idle process...\n");
-		yield();
+        // Let processes run and wait for them to complete
+        yield(); // Start the processes
+        
+        // Wait for all test processes to finish
+        while (test_processes_remaining > 0) {
+			pr_verbose("Waiting for test processes to finish: %d remaining\n", test_processes_remaining);
+            yield(); // Keep yielding until all tests complete
+        }
 	}
 	else
 	{
