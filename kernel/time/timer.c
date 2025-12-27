@@ -39,7 +39,7 @@ void timer_interrupt_handler(void)
     tick_count++;
     
     // More verbose debugging
-    if (tick_count % 5 == 0) {  // Every 5 ticks
+    if (tick_count % 1000 == 0) {  // Every 5 ticks
         pr_info("[TIMER] Tick %u\n", PRINT_UINT32(tick_count));
     }
     
