@@ -14,104 +14,105 @@
 
 extern void switch_to_high_stack(uint32_t new_esp, void (*entry_func)());
 
-__attribute__((noreturn)) void high_stack_entry()
-{
-	pr_info("Switched to high virtual stack!\n");
+__attribute__((noreturn)) void high_stack_entry() {
+    pr_info("Switched to high virtual stack!\n");
 
-	uint32_t cur_esp;
-	__asm__ __volatile__("mov %%esp, %0" : "=r"(cur_esp));
-	debug_module(STACK_HEAP, "ESP after stack switch: 0x%08x\n", PRINT_UINT32(cur_esp));
+    uint32_t cur_esp;
+    __asm__ __volatile__("mov %%esp, %0" : "=r"(cur_esp));
+    debug_module(STACK_HEAP, "ESP after stack switch: 0x%08x\n",
+                 PRINT_UINT32(cur_esp));
 
-	//  Test demand-paged heap access
-	debug_module(STACK_HEAP, "Triggering demand-paged heap access...\n");
-	volatile int* heap_ptr = (int*)(KERNEL_HEAP_START + 0x1234);
-	*heap_ptr = 42;
-	debug_module(STACK_HEAP, "Heap page mapped and write succeeded!\n");
+    //  Test demand-paged heap access
+    debug_module(STACK_HEAP, "Triggering demand-paged heap access...\n");
+    volatile int *heap_ptr = (int *)(KERNEL_HEAP_START + 0x1234);
+    *heap_ptr = 42;
+    debug_module(STACK_HEAP, "Heap page mapped and write succeeded!\n");
 
-	//  Stack overflow testing (debug only)
-	if (DEBUG_STACK_HEAP)
-	{
-		debug_module(STACK_HEAP, "Testing stack overflow detection...\n");
-		pr_info("Current page directory CR3: 0x%08x\n", PRINT_UINT32(tss_df.cr3));
-	}
+    //  Stack overflow testing (debug only)
+    if (DEBUG_STACK_HEAP) {
+        debug_module(STACK_HEAP, "Testing stack overflow detection...\n");
+        pr_info("Current page directory CR3: 0x%08x\n",
+                PRINT_UINT32(tss_df.cr3));
+    }
 
-	//  VGA memory test
-	volatile uint16_t* vga_test = (volatile uint16_t*)0xB8000;
-	*vga_test = 0x4F41; //  'A' with white on red
-	debug_module(STACK_HEAP, "VGA memory test: wrote to 0xB8000\n");
+    //  VGA memory test
+    volatile uint16_t *vga_test = (volatile uint16_t *)0xB8000;
+    *vga_test = 0x4F41; //  'A' with white on red
+    debug_module(STACK_HEAP, "VGA memory test: wrote to 0xB8000\n");
 
-	//  Initialize Process Management
-	proc_init();
-	pr_info("Initialized Process Management...\n");
+    //  Initialize Process Management
+    proc_init();
+    pr_info("Initialized Process Management...\n");
 
 //  Create test processes only if tests are enabled
 #ifdef KERNEL_TESTS
-	//  Run kernel tests first
-	run_kernel_tests();
+    //  Run kernel tests first
+    run_kernel_tests();
 #else
-	pr_info("Production build - testing disabled\n");
+    pr_info("Production build - testing disabled\n");
 #endif
 
-	//  Main kernel loop
-	pr_info("Kernel initialization complete. Entering main loop.");
-	while (1)
-	{
-		__asm__ __volatile__("cli; hlt");
-	}
+    //  Main kernel loop
+    pr_info("Kernel initialization complete. Entering main loop.");
+    // Enable interrupts for timer-based preemption
+    __asm__ __volatile__("sti"); // Enable interrupts
+
+    while (1) {
+        __asm__ __volatile__("hlt"); // Remove cli, keep only hlt
+    }
 }
 
-void kernel_main()
-{
-	//  Console and Logger Initialization
-	printk_init();
-	printk("%s v%s - Hello Devjit!\n", KERNEL_NAME, KERNEL_VERSION);
-	printk("Kernel-V is running! Welcome to your custom kernel, Devjit!\n");
+void kernel_main() {
+    //  Console and Logger Initialization
+    printk_init();
+    printk("%s v%s - Hello Devjit!\n", KERNEL_NAME, KERNEL_VERSION);
+    printk("Kernel-V is running! Welcome to your custom kernel, Devjit!\n");
 
-	//  Debug breadcrumbs (debug build only)
-	check_double_fault_breadcrumbs();
+    //  Debug breadcrumbs (debug build only)
+    check_double_fault_breadcrumbs();
 
-	//  Initialize core systems
-	idt_init();
+    //  Initialize core systems
+    idt_init();
 
-	init_tss();
+    init_tss();
 
-	gdt_init();
+    gdt_init();
 
-	//  Debug system state
-	DEBUG_IDT_GDT_SETUP();
+    //  Debug system state
+    DEBUG_IDT_GDT_SETUP();
 
-	//  Initialize Timer
-	pit_init(PIT_DEFAULT_HZ);
+    //  Initialize Timer
+    pit_init(PIT_DEFAULT_HZ);
 
-	//  Memory Management Setup
-	parse_and_print_e820_map();
+    //  Memory Management Setup
+    parse_and_print_e820_map();
 
-	//  Physical Memory Manager
-	pmm_init();
+    //  Physical Memory Manager
+    pmm_init();
 
-	pmm_reserve_memory_region(RESERVED_TYPE_INIT);
-	pmm_reserve_memory_region(RESERVED_TYPE_KERNEL);
-	pmm_reserve_memory_region(RESERVED_TYPE_BITMAP);
+    pmm_reserve_memory_region(RESERVED_TYPE_INIT);
+    pmm_reserve_memory_region(RESERVED_TYPE_KERNEL);
+    pmm_reserve_memory_region(RESERVED_TYPE_BITMAP);
 
-	//  Virtual Memory & Paging
-	paging_init();
+    //  Virtual Memory & Paging
+    paging_init();
 
-	//  Debug page tables
-	DEBUG_PAGE_TABLES();
+    //  Debug page tables
+    DEBUG_PAGE_TABLES();
 
-	pmm_reserve_memory_region(RESERVED_TYPE_PAGE_TABLE);
-	update_tss_cr3();
+    pmm_reserve_memory_region(RESERVED_TYPE_PAGE_TABLE);
+    update_tss_cr3();
 
-	//  Debug double fault handler setup
-	DEBUG_DOUBLE_FAULT_SETUP();
+    //  Debug double fault handler setup
+    DEBUG_DOUBLE_FAULT_SETUP();
 
-	//  Map stack region
-	map_high_stack(KERNEL_STACK_BOTTOM_VIRT, KERNEL_STACK_TOP_VIRT);
+    //  Map stack region
+    map_high_stack(KERNEL_STACK_BOTTOM_VIRT, KERNEL_STACK_TOP_VIRT);
 
-	//  Switch to high virtual stack
-	uint32_t new_stack_ptr = KERNEL_STACK_TOP_VIRT - 16;
-	debug_print(
-		"About to switch to high virtual stack. New stack pointer: 0x%08x\n",
-		PRINT_UINT32(new_stack_ptr));
-	switch_to_high_stack(new_stack_ptr, high_stack_entry);
+    //  Switch to high virtual stack
+    uint32_t new_stack_ptr = KERNEL_STACK_TOP_VIRT - 16;
+    debug_print(
+        "About to switch to high virtual stack. New stack pointer: 0x%08x\n",
+        PRINT_UINT32(new_stack_ptr));
+    switch_to_high_stack(new_stack_ptr, high_stack_entry);
 }

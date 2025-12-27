@@ -32,5 +32,11 @@ void timer_interrupt_handler(void)
 {
 	tick_count++;
 	/* Handle waking up sleeping process on timer interrupt */
+
+	// Debug: Print tick count every 100 ticks
+    if (tick_count % 100 == 0) {
+        pr_verbose("[TIMER] Tick count: %u\n", PRINT_UINT32(tick_count));
+    }
+
 	timer_interrupt_proc_handler(tick_count);
 }

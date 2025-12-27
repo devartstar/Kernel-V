@@ -42,8 +42,10 @@ void preemptive_proc(void* args)
 	{
 		if (i % 1000 == 0)
 		{
+			/*
 			pr_verbose(
 				"Thread %s is running, for i=%d\n", current_proc->name, i);
+				*/
 		}
 		i++;
 	}

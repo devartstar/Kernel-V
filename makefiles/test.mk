@@ -3,13 +3,23 @@
 # ==============================================================================
 
 # Test-specific sources
+ifeq ($(CONFIG_TESTS_UNIT), y)
 UNIT_TEST_SOURCES 			:= $(shell find $(TESTDIR)/unit -type f -name "*.c")
-INTEGRATION_TEST_SOURCES 	:= $(shell find $(TESTDIR)/integration -type f -name "*.c")
-TEST_RUNNER_SOURCE 			:= $(TESTDIR)/test_runner.c
-
-# Test objects
 UNIT_TEST_OBJS 				:= $(patsubst $(KERNDIR)/%.c,$(BUILD_TEST)/%.o,$(UNIT_TEST_SOURCES))
+else
+UNIT_TEST_SOURCES 			:=
+UNIT_TEST_OBJS 				:=
+endif
+
+ifeq ($(CONFIG_TESTS_INTEGRATION), y)
+INTEGRATION_TEST_SOURCES 	:= $(shell find $(TESTDIR)/integration -type f -name "*.c")
 INTEGRATION_TEST_OBJS 		:= $(patsubst $(KERNDIR)/%.c,$(BUILD_TEST)/%.o,$(INTEGRATION_TEST_SOURCES))
+else
+INTEGRATION_TEST_SOURCES 	:=
+INTEGRATION_TEST_OBJS 		:=
+endif
+
+TEST_RUNNER_SOURCE 			:= $(TESTDIR)/test_runner.c
 TEST_RUNNER_OBJECT 			:= $(BUILD_TEST)/test_runner.o
 
 ALL_TEST_OBJS 				:= $(UNIT_TEST_OBJS) $(INTEGRATION_TEST_OBJS) $(TEST_RUNNER_OBJECT)
@@ -159,15 +169,22 @@ $(BUILD_TEST)/%.o: $(KERNDIR)/tests/%.c | $(BUILD_TEST)
 	$(Q)mkdir -p $(dir $@)
 	$(Q)$(CC) $(CFLAGS) -c $< -o $@
 
+# Only compile unit tests if they're enabled
+ifeq ($(CONFIG_TESTS_UNIT), y)
 $(BUILD_TEST)/%.o: $(KERNDIR)/tests/unit/%.c | $(BUILD_TEST)
 	$(ECHO) "  CC-TEST $@"
 	$(Q)mkdir -p $(dir $@)
-	$(Q)$(CC) $(CFLAGS) -DUNIT_TESTS -c $< -o $@
+	$(Q)$(CC) $(CFLAGS) -DUNIT_TESTS=1 -c $< -o $@
+endif
 
+# Only compile integration tests if they're enabled
+ifeq ($(CONFIG_TESTS_INTEGRATION), y)
 $(BUILD_TEST)/%.o: $(KERNDIR)/tests/integration/%.c | $(BUILD_TEST)
 	$(ECHO) "  CC-TEST $@"
 	$(Q)mkdir -p $(dir $@)
-	$(Q)$(CC) $(CFLAGS) -DPROC_TESTS -c $< -o $@
+	$(Q)$(CC) $(CFLAGS) -DINTEGRATION_TEST=1 -c $< -o $@
+endif
+
 endif
 
 ### LINK: FULL TESTS ###
