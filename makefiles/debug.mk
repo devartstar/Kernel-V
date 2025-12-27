@@ -9,6 +9,12 @@ DISK_DEBUG_IMG := $(BUILDDIR)/disk_debug.img
 .PHONY: gdb-bootloader gdb-kernel gdb-bootloader-regs gdb-kernel-split gdb-full-debug
 .PHONY: connect-gdb
 
+# ------------- DEBUGGING -------------
+#  1. Debug Build the module
+#  2. Generate the dbg script
+#  3. Start the gdb with debug script
+#  ------------------------------------
+
 # --- Debug Symbols ---
 debug-symbols: bootloader kernel ## Build all debug symbols
 
@@ -45,17 +51,6 @@ debug-kernel: debug-symbols all ## Debug kernel only
 	$(ECHO) "Starting QEMU for kernel debugging..."  
 	$(ECHO) "Connect with: $(GDB) -x tools/gdb/kernel.gdb"
 	$(Q)$(QEMU) -drive format=raw,file=$(DISK_IMG) -s -S -display curses
-
-# ---  GDB Connection Targets ---
-connect-gdb: gdb-kernel ## Connect GDB to running QEMU (use existing kernel.gdb)
-	@echo "Connecting GDB to running QEMU session..."
-	@echo "Make sure QEMU is running in another terminal!"
-	$(GDB) -x tools/gdb/kernel.gdb
-
-connect-bootloader: gdb-bootloader ## Connect GDB to running QEMU for bootloader
-	@echo "Connecting GDB to running QEMU session for bootloader..."
-	@echo "Make sure QEMU is running in another terminal!"
-	$(GDB) -x tools/gdb/bootloader.gdb
 
 # --- Advanced GDB Script Generation ---
 gdb-bootloader: debug-symbols ## Generate GDB script for bootloader debugging
@@ -192,3 +187,15 @@ gdb-full-debug: debug-symbols ## Generate comprehensive bootloader-to-kernel deb
 	@echo "echo =============================================" >> tools/gdb/full_debug.gdb
 	@echo "info breakpoints" >> tools/gdb/full_debug.gdb
 	@echo "GDB comprehensive debug script created: tools/gdb/full_debug.gdb"
+
+# ---  GDB Connection Targets ---
+connect-gdb: gdb-kernel ## Connect GDB to running QEMU (use existing kernel.gdb)
+	@echo "Connecting GDB to running QEMU session..."
+	@echo "Make sure QEMU is running in another terminal!"
+	$(GDB) -x tools/gdb/kernel.gdb
+
+connect-bootloader: gdb-bootloader ## Connect GDB to running QEMU for bootloader
+	@echo "Connecting GDB to running QEMU session for bootloader..."
+	@echo "Make sure QEMU is running in another terminal!"
+	$(GDB) -x tools/gdb/bootloader.gdb
+
