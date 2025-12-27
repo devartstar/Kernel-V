@@ -30,13 +30,19 @@ void pit_init(uint32_t hz)
 
 void timer_interrupt_handler(void)
 {
-	tick_count++;
-	/* Handle waking up sleeping process on timer interrupt */
-
-	// Debug: Print tick count every 100 ticks
-    if (tick_count % 100 == 0) {
-        pr_verbose("[TIMER] Tick count: %u\n", PRINT_UINT32(tick_count));
+    static int first_call = 1;
+    if (first_call) {
+        pr_info("[TIMER] First timer interrupt received!\n");
+        first_call = 0;
     }
-
-	timer_interrupt_proc_handler(tick_count);
+    
+    tick_count++;
+    
+    // More verbose debugging
+    if (tick_count % 5 == 0) {  // Every 5 ticks
+        pr_info("[TIMER] Tick %u\n", PRINT_UINT32(tick_count));
+    }
+    
+    /* Handle waking up sleeping process on timer interrupt */
+    timer_interrupt_proc_handler(tick_count);
 }

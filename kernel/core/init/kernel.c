@@ -1,6 +1,7 @@
 #include "core/kernel.h"
 #include "arch/x86/gdt.h"
 #include "arch/x86/tss.h"
+#include "arch/x86/pic.h"
 #include "core/debug.h"
 #include "core/debug_funcs.h"
 #include "mm/paging.h"
@@ -44,7 +45,22 @@ __attribute__((noreturn)) void high_stack_entry() {
     proc_init();
     pr_info("Initialized Process Management...\n");
 
-//  Create test processes only if tests are enabled
+    //  Main kernel loop
+    pr_info("Kernel initialization complete. Entering main loop.");
+
+    // Enable interrupts for timer-based preemption
+    __asm__ __volatile__("sti");
+
+    // Verify interrupts are enabled
+    uint32_t eflags;
+    __asm__ __volatile__("pushf; pop %0" : "=r" (eflags));
+    if (eflags & 0x200) {
+        pr_info("Interrupts successfully enabled (EFLAGS IF bit set)\n");
+    } else {
+        pr_info("ERROR: Interrupts NOT enabled!\n");
+    }
+
+    //  Create test processes only if tests are enabled
 #ifdef KERNEL_TESTS
     //  Run kernel tests first
     run_kernel_tests();
@@ -52,13 +68,8 @@ __attribute__((noreturn)) void high_stack_entry() {
     pr_info("Production build - testing disabled\n");
 #endif
 
-    //  Main kernel loop
-    pr_info("Kernel initialization complete. Entering main loop.");
-    // Enable interrupts for timer-based preemption
-    __asm__ __volatile__("sti"); // Enable interrupts
-
     while (1) {
-        __asm__ __volatile__("hlt"); // Remove cli, keep only hlt
+        __asm__ __volatile__("hlt");
     }
 }
 
@@ -73,6 +84,8 @@ void kernel_main() {
 
     //  Initialize core systems
     idt_init();
+
+    pic_init();
 
     init_tss();
 

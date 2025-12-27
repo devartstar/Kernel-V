@@ -198,6 +198,9 @@ pcb_t* proc_create(void (*entry)(void*), void* arg, const char* name)
 	proc->context.eip = (uint32_t)(uintptr_t)thread_entry_wrapper;
 	proc->context.ebp = 0;
 
+	// Initialize EFLAGS with interrupts enabled
+	proc->context.eflags = 0x202;  // IF (Interrupt Enable) bit set + reserved bit 1
+
 	proc->state = PROC_READY;
 
 	return proc;
@@ -377,8 +380,13 @@ void yield(void)
 		}
 		else
 		{
+			debug_module(PROCESS_MGMT,
+             "About to switch: prev=%s (eflags=0x%x) -> next=%s (eflags=0x%x)\n",
+             proc_now->name, proc_now->context.eflags,
+             proc_next->name, proc_next->context.eflags);
 			//  Normal context switch between processes
 			switch_to(proc_now, proc_next);
+			__asm__ __volatile__("sti");
 		}
 
 		//  Execution resumes from here when switch back
@@ -419,17 +427,15 @@ void timer_interrupt_proc_handler(uint32_t tickcount)
 	if (current_proc != NULL && current_proc->state == PROC_RUNNING)
 	{
 		current_proc->timeslice_ticks--;
-		debug_module(PROCESS_MGMT,
-					 "[TICK %u] %s: timeslice ticks = %d\n",
-					 PRINT_UINT32(tickcount),
-					 current_proc->name,
-					 PRINT_UINT32(current_proc->timeslice_ticks));
+		pr_info("[TICK %u] %s: timeslice ticks = %d\n",  // Changed from debug_module to pr_info
+				PRINT_UINT32(tickcount),
+				current_proc->name,
+				PRINT_UINT32(current_proc->timeslice_ticks));
 		if (current_proc->timeslice_ticks <= 0)
 		{
 			current_proc->timeslice_ticks = DEFAULT_TIMESLICE;
-			debug_module(PROCESS_MGMT,
-						 "%s out of timeslice! Switching...\n",
-						 current_proc->name);
+			pr_info("%s out of timeslice! Switching...\n",  // Changed from debug_module to pr_info
+					current_proc->name);
 			yield();
 		}
 	}
