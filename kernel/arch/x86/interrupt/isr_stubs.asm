@@ -1,0 +1,26 @@
+%macro ISR_STUB 1
+global isr_stub_%1
+; extern isr_common_handler
+
+isr_stub_%1:
+	pusha
+	push %1						; vector number
+	push esp					; pointer to register/context
+	call isr_common_handler
+	add esp, 8
+	popa
+	iretd
+%endmacro
+
+; Generate stubs 0...255
+%assign i 0
+%rep 256
+	ISR_STUB i
+%assign i i+1
+%endrep
+
+// tooo next:
+// isr_page fault - fix the handler method to be compatible with the common instialization
+// delete the isr_page_fault and isr_timer asm files
+// fix compilation
+// check...

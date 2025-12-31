@@ -5,6 +5,8 @@
 #include <string.h>
 
 extern void idt_flush(uint32_t);
+extern void timer_interrupt_handler(uint32_t idt_index, struct regs *regs);
+extern void pagefault_interrupt_handler(uint32_t idt_index, struct regs *regs);
 
 //  IDT (Interrupt Descriptor Table) Declaration
 idt_entry_t idt[IDT_ENTRIES];
@@ -12,79 +14,71 @@ idt_ptr_t idt_ptr;
 
 /*
 Function to set an IDT entry
-	num: Interrupt vector number
-	base: Address of the ISR (Interrupt Service Routine)
-	sel: Kernel code segment selector
-	flags: Flags for the IDT entry (Present, DPL, Gate Type)
+    num: Interrupt vector number
+    base: Address of the ISR (Interrupt Service Routine)
+    sel: Kernel code segment selector
+    flags: Flags for the IDT entry (Present, DPL, Gate Type)
 */
-void idt_set_gate(int num, uint32_t base, uint16_t sel, uint8_t flags)
-{
-	idt[num].base_low = (base & 0xFFFF);
-	idt[num].base_high = (base >> 16) & 0xFFFF;
-	idt[num].sel = sel;
-	idt[num].always0 = 0;
-	idt[num].flags = flags;
+void idt_set_gate(int num, uint32_t base, uint16_t sel, uint8_t flags) {
+    idt[num].base_low = (base & 0xFFFF);
+    idt[num].base_high = (base >> 16) & 0xFFFF;
+    idt[num].sel = sel;
+    idt[num].always0 = 0;
+    idt[num].flags = flags;
 
-	debug_module(IDT_GDT,
-				 "Set IDT gate %d: base=0x%08x, sel=0x%04x, flags=0x%02x\n",
-				 num,
-				 PRINT_UINT32(base),
-				 PRINT_UINT16(sel),
-				 PRINT_UINT8(flags));
+    debug_module(
+        IDT_GDT, "Set IDT gate %d: base=0x%08x, sel=0x%04x, flags=0x%02x\n",
+        num, PRINT_UINT32(base), PRINT_UINT16(sel), PRINT_UINT8(flags));
 }
 
 //  Set up a task gate for double fault (interrupt 8)
-void set_task_gate(uint8_t num, uint16_t sel)
-{
-	idt[num].base_low = 0;	//  Task gates don't use base addresses
-	idt[num].base_high = 0; //  They use TSS selector instead
-	idt[num].sel = sel;		//  TSS selector (0x18)
-	idt[num].always0 = 0;
-	idt[num].flags = 0x85; //  Present(1) + DPL(00) + Type(0101 = Task Gate)
+void set_task_gate(uint8_t num, uint16_t sel) {
+    idt[num].base_low = 0;  //  Task gates don't use base addresses
+    idt[num].base_high = 0; //  They use TSS selector instead
+    idt[num].sel = sel;     //  TSS selector (0x18)
+    idt[num].always0 = 0;
+    idt[num].flags = 0x85; //  Present(1) + DPL(00) + Type(0101 = Task Gate)
 
-	//  DEBUG: Verify the setup
-	debug_module(TSS,
-				 "Set task gate %d: sel=0x%04x, flags=0x%02x\n",
-				 num,
-				 PRINT_UINT16(sel),
-				 PRINT_UINT8(idt[num].flags));
+    //  DEBUG: Verify the setup
+    debug_module(TSS, "Set task gate %d: sel=0x%04x, flags=0x%02x\n", num,
+                 PRINT_UINT16(sel), PRINT_UINT8(idt[num].flags));
 }
 
 /*
 Initialize the IDT
 */
-void idt_init()
-{
-	idt_ptr.limit = sizeof(idt_entry_t) * IDT_ENTRIES - 1;
-	idt_ptr.base = (uint32_t)&idt;
+void idt_init() {
+    idt_ptr.limit = sizeof(idt_entry_t) * IDT_ENTRIES - 1;
+    idt_ptr.base = (uint32_t)&idt;
 
-	for (int i = 0; i < IDT_ENTRIES; i++)
-	{
-		idt[i].base_low = 0;
-		idt[i].base_high = 0;
-		idt[i].sel = 0;
-		idt[i].always0 = 0;
-		idt[i].flags = 0;
-	}
+    for (int i = 0; i < IDT_ENTRIES; i++) {
+        idt[i].base_low = 0;
+        idt[i].base_high = 0;
+        idt[i].sel = 0;
+        idt[i].always0 = 0;
+        idt[i].flags = 0;
+    }
 
-	//  Set up double fault as task gate (TSS selector is 0x18 - 3rd entry in
-	//  GDT)
-	set_task_gate(8, 0x18);
-	debug_module(TSS, "Task gate initialized successfully in IDT!\n");
+    //  Set up double fault as task gate (TSS selector is 0x18 - 3rd entry in
+    //  GDT)
+    set_task_gate(8, 0x18);
+    debug_module(TSS, "Task gate initialized successfully in IDT!\n");
 
-	extern void isr_page_fault();
-	//  add entry for page fault handler in idt
-	//  P=1(Present), DPL=0(Kernel only access), Type=0xE(Interrupt Gate)
-	idt_set_gate(14, (uint32_t)isr_page_fault, 0x08, 0x8E);
-	debug_module(IDT_GDT, "[IDT] Page Fault Entry Initialized successfully!\n");
+    register_interrupt_handler(14, pagefault_interrupt_handler);
+    extern void isr_stub_14();
+    //  add entry for page fault handler in idt
+    //  P=1(Present), DPL=0(Kernel only access), Type=0xE(Interrupt Gate)
+    idt_set_gate(14, (uint32_t)isr_stub_14, 0x08, 0x8E);
+    debug_module(IDT_GDT, "[IDT] Page Fault Entry Initialized successfully!\n");
 
-	/* Set up IDT entry for hardware Timer Interrupts
-	   IRQ 0 -> entry 32 in IDT
-	 */
-	extern void isr_timer();
-	idt_set_gate(32, (uint32_t)isr_timer, 0x08, 0x8E);
-	debug_module(IDT_GDT, "[IDT] Timer Entry Initialized successfully!\n");
+    /* Set up IDT entry for hardware Timer Interrupts
+       IRQ 0 -> entry 32 in IDT
+     */
+    register_interrupt_handler(32, timer_interrupt_handler);
+    extern void isr_stub_32();
+    idt_set_gate(32, (uint32_t)isr_stub_32, 0x08, 0x8E);
+    debug_module(IDT_GDT, "[IDT] Timer Entry Initialized successfully!\n");
 
-	idt_flush((uint32_t)&idt_ptr);
-	pr_info("[IDT] Loaded successfully!\n");
+    idt_flush((uint32_t)&idt_ptr);
+    pr_info("[IDT] Loaded successfully!\n");
 }

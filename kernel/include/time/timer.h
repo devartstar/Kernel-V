@@ -21,7 +21,7 @@ void pit_init(uint32_t hz);
  *
  * @return - void
  */
-void timer_interrupt_handler(void);
+void timer_interrupt_handler(uint32_t idt_index, struct regs *regs);
 
 /**
  * tick_count - counter of the number of ticks
