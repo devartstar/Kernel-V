@@ -1,12 +1,15 @@
 #include "arch/x86/idt.h"
 #include "arch/x86/tss.h"
+#include "arch/x86/page_fault.h"
+#include "arch/x86/interrupt.h"
 #include "core/debug.h"
+#include "time/timer.h"
 #include <stdint.h>
 #include <string.h>
 
 extern void idt_flush(uint32_t);
-extern void timer_interrupt_handler(uint32_t idt_index, struct regs *regs);
-extern void pagefault_interrupt_handler(uint32_t idt_index, struct regs *regs);
+extern void timer_interrupt_handler(uint32_t idt_index, regs_t *regs);
+extern void pagefault_interrupt_handler(uint32_t idt_index, regs_t *regs);
 
 //  IDT (Interrupt Descriptor Table) Declaration
 idt_entry_t idt[IDT_ENTRIES];

@@ -2,6 +2,7 @@
 #define TIMER_H
 
 #include <stdint.h>
+#include "arch/x86/interrupt.h"
 
 /* Base Hardware frequency */
 #define PIT_FREQ 1193182
@@ -21,7 +22,7 @@ void pit_init(uint32_t hz);
  *
  * @return - void
  */
-void timer_interrupt_handler(uint32_t idt_index, struct regs *regs);
+void timer_interrupt_handler(uint32_t idt_index, regs_t *regs);
 
 /**
  * tick_count - counter of the number of ticks

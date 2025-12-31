@@ -3,11 +3,12 @@ global isr_stub_%1
 ; extern isr_common_handler
 
 isr_stub_%1:
-	pusha
-	push %1						; vector number
+	pusha						; pushes edi, esi , ebp, esp, ebx, edx, ecx, eax
+	push %1						; interrupt vector number
+	push 0						; push error_code
 	push esp					; pointer to register/context
 	call isr_common_handler
-	add esp, 8
+	add esp, 12
 	popa
 	iretd
 %endmacro

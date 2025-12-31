@@ -27,7 +27,7 @@ void pit_init(uint32_t hz) {
     pr_info("[PIT] Initialized Successfully at %u Hz\n", PRINT_UINT32(hz));
 }
 
-void timer_interrupt_handler(uint32_t idt_index, struc regs *regs) {
+void timer_interrupt_handler(uint32_t idt_index, regs_t *regs) {
     static int first_call = 1;
     if (first_call) {
         pr_info("[TIMER] First timer interrupt received!\n");

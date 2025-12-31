@@ -6,7 +6,7 @@
 #include "mm/pmm.h"
 #include <stdint.h>
 
-void page_fault_handler(page_fault_stack_t* frame)
+void pagefault_interrupt_handler(uint32_t idt_index, regs_t* regs)
 {
 	//  Disable interrupts to prevent nested faults
 	__asm__ __volatile__("cli");
@@ -49,8 +49,8 @@ void page_fault_handler(page_fault_stack_t* frame)
 				 "[PAGE FAULT] at address: 0x%x, error code: 0x%x [eip=0x%x, "
 				 "esp=0x%x, ebp=0x%x]\n",
 				 PRINT_UINT32(fault_address),
-				 PRINT_UINT32(frame->error_code),
-				 PRINT_UINT32(frame->eip),
+				 PRINT_UINT32(regs->error_code),
+				 PRINT_UINT32(regs->eip),
 				 PRINT_UINT32(esp),
 				 PRINT_UINT32(ebp));
 	//  Check if the fault_address is in the kernel heap range
@@ -80,15 +80,15 @@ void page_fault_handler(page_fault_stack_t* frame)
 	if (fault_address >= KERNEL_STACK_BOTTOM_VIRT + PAGE_SIZE &&
 		fault_address < KERNEL_STACK_TOP_VIRT)
 	{
-		if (fault_address >= frame->esp - STACK_GROWTH_GAP &&
-			fault_address < frame->esp)
+		if (fault_address >= regs->esp - STACK_GROWTH_GAP &&
+			fault_address < regs->esp)
 		{
 			debug_module(
 				PAGING,
 				"[PAGE FAULT] Stack growth: mapping new stack page at 0x%x "
 				"(esp=0x%x)\n",
 				PRINT_UINT32(fault_address),
-				PRINT_UINT32(frame->esp));
+				PRINT_UINT32(regs->esp));
 			void* new_frame = pmm_alloc_frame();
 			if (!new_frame)
 				panik("Out of memory in stack PF recovery");
@@ -111,23 +111,23 @@ void page_fault_handler(page_fault_stack_t* frame)
 	Bit 4 (I)   : (0 = Normal fault)        (1 = Instruction fetch fault)
 	*/
 
-	if (!(frame->error_code & 0x1))
+	if (!(regs->error_code & 0x1))
 	{
 		debug_module(PAGING, "[PAGE FAULT] Page not present.\n");
 	}
-	if (frame->error_code & 0x2)
+	if (regs->error_code & 0x2)
 	{
 		debug_module(PAGING, "[PAGE FAULT] Write access.\n");
 	}
-	if (frame->error_code & 0x4)
+	if (regs->error_code & 0x4)
 	{
 		debug_module(PAGING, "[PAGE FAULT] User mode access.\n");
 	}
-	if (frame->error_code & 0x8)
+	if (regs->error_code & 0x8)
 	{
 		debug_module(PAGING, "[PAGE FAULT] Reserved bit set.\n");
 	}
-	if (frame->error_code & 0x10)
+	if (regs->error_code & 0x10)
 	{
 		debug_module(PAGING, "[PAGE FAULT] Instruction fetch.\n");
 	}

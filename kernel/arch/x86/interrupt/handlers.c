@@ -2,6 +2,9 @@
 
 #define IDT_VECTOR_COUNT 256
 
+#define REG_LINE(name, val) \
+    printk("| %-10s | 0x%08x |\n", name, (uint32_t)(val))
+
 /**
  * An array of interrupt handlers -
  * At index = index of interrupt in IDT.
@@ -35,8 +38,42 @@ void unregister_interrupt_handlers(uint32_t idt_index) {
         idt_index);
 }
 
-void isr_common_handler(uint32_t idt_index, struct regs *regs) {
+void dump_regs(regs_t *r)
+{
+    printk("\n=========================================\n");
+    printk("| Register   | Value      |\n");
+    printk("-----------------------------------------\n");
+
+    REG_LINE("EAX", r->eax);
+    REG_LINE("EBX", r->ebx);
+    REG_LINE("ECX", r->ecx);
+    REG_LINE("EDX", r->edx);
+    REG_LINE("ESI", r->esi);
+    REG_LINE("EDI", r->edi);
+    REG_LINE("EBP", r->ebp);
+    REG_LINE("ESP", r->esp);
+
+    printk("-----------------------------------------\n");
+    REG_LINE("INT_NO", r->int_no);
+    REG_LINE("ERRCODE", r->error_code);
+
+    printk("-----------------------------------------\n");
+    REG_LINE("EIP", r->eip);
+    REG_LINE("CS", r->cs);
+    REG_LINE("EFLAGS", r->eflags);
+
+    if (r->cs & 0x3) {
+        printk("-----------------------------------------\n");
+        REG_LINE("USERESP", r->useresp);
+        REG_LINE("SS", r->ss);
+    }
+
+    printk("=========================================\n");
+}
+
+void isr_common_handler(uint32_t idt_index, regs_t *regs) {
     if (interrupt_handlers[idt_index]) {
+        dump_regs(regs);
         interrupt_handlers[idt_index](idt_index, regs);
     } else {
         pr_info("[IDT] Error: Cannot handle interrupt, handeler not "
