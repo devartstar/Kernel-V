@@ -1,9 +1,10 @@
+#include "arch/x86/interrupt.h"
 #include "lib/printk.h"
 
 #define IDT_VECTOR_COUNT 256
 
-#define REG_LINE(name, val) \
-    printk("| %-10s | 0x%08x |\n", name, (uint32_t)(val))
+#define REG_LINE(name, val)                                                    \
+    printk("| %-10s | 0x%08lx |\n", name, (uint32_t)(val))
 
 /**
  * An array of interrupt handlers -
@@ -12,34 +13,34 @@
  */
 static interrupt_handler_t interrupt_handlers[IDT_VECTOR_COUNT] = {0};
 
-void register_interrupt_handlers(uint32_t idt_index,
-                                 interrupt_handler_t handler) {
+void register_interrupt_handler(uint32_t idt_index,
+                                interrupt_handler_t handler) {
     if (idt_index > IDT_VECTOR_COUNT) {
-        pr_info("[IDT] Error: Tried to register invalid interrupt index %u\n",
+        pr_info("[IDT] Error: Tried to register invalid interrupt index %lu\n",
                 idt_index);
         return;
     }
 
     interrupt_handlers[idt_index] = handler;
-    pr_info("[IDT] Success: Registered handle for Interrupt vector index %u\n",
+    pr_info("[IDT] Success: Registered handle for Interrupt vector index %lu\n",
             idt_index);
 }
 
-void unregister_interrupt_handlers(uint32_t idt_index) {
+void unregister_interrupt_handler(uint32_t idt_index) {
     if (idt_index > IDT_VECTOR_COUNT) {
-        pr_info("[IDT] Error: Tried to unregister invalid interrupt index %u\n",
-                idt_index);
+        pr_info(
+            "[IDT] Error: Tried to unregister invalid interrupt index %lu\n",
+            idt_index);
         return;
     }
 
     interrupt_handlers[idt_index] = 0;
     pr_info(
-        "[IDT] Success: Unregistered handle for Interrupt vector index %u\n",
+        "[IDT] Success: Unregistered handle for Interrupt vector index %lu\n",
         idt_index);
 }
 
-void dump_regs(regs_t *r)
-{
+void dump_regs(regs_t *r) {
     printk("\n=========================================\n");
     printk("| Register   | Value      |\n");
     printk("-----------------------------------------\n");
@@ -77,7 +78,7 @@ void isr_common_handler(uint32_t idt_index, regs_t *regs) {
         interrupt_handlers[idt_index](idt_index, regs);
     } else {
         pr_info("[IDT] Error: Cannot handle interrupt, handeler not "
-                "initialized for vector index %u\n",
+                "initialized for vector index %lu\n",
                 idt_index);
     }
 }

@@ -1,8 +1,8 @@
 #ifndef TIMER_H
 #define TIMER_H
 
-#include <stdint.h>
 #include "arch/x86/interrupt.h"
+#include <stdint.h>
 
 /* Base Hardware frequency */
 #define PIT_FREQ 1193182

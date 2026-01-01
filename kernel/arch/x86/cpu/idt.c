@@ -1,7 +1,7 @@
 #include "arch/x86/idt.h"
-#include "arch/x86/tss.h"
-#include "arch/x86/page_fault.h"
 #include "arch/x86/interrupt.h"
+#include "arch/x86/page_fault.h"
+#include "arch/x86/tss.h"
 #include "core/debug.h"
 #include "time/timer.h"
 #include <stdint.h>

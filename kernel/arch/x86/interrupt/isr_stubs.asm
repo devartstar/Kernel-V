@@ -1,6 +1,7 @@
+extern isr_common_handler
+
 %macro ISR_STUB 1
 global isr_stub_%1
-; extern isr_common_handler
 
 isr_stub_%1:
 	pusha						; pushes edi, esi , ebp, esp, ebx, edx, ecx, eax
@@ -20,8 +21,3 @@ isr_stub_%1:
 %assign i i+1
 %endrep
 
-// tooo next:
-// isr_page fault - fix the handler method to be compatible with the common instialization
-// delete the isr_page_fault and isr_timer asm files
-// fix compilation
-// check...

@@ -28,6 +28,10 @@ void pit_init(uint32_t hz) {
 }
 
 void timer_interrupt_handler(uint32_t idt_index, regs_t *regs) {
+
+    (void)idt_index;
+    (void)regs;
+
     static int first_call = 1;
     if (first_call) {
         pr_info("[TIMER] First timer interrupt received!\n");
