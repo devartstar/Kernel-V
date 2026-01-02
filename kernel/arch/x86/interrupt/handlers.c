@@ -3,8 +3,7 @@
 
 #define IDT_VECTOR_COUNT 256
 
-#define REG_LINE(name, val)                                                    \
-    printk("| %-10s | 0x%08lx |\n", name, (uint32_t)(val))
+#define REG_LINE(name, val) printk("| %s | 0x%08lx |\n", name, (uint32_t)(val))
 
 /**
  * An array of interrupt handlers -
@@ -72,7 +71,8 @@ void dump_regs(regs_t *r) {
     printk("=========================================\n");
 }
 
-void isr_common_handler(uint32_t idt_index, regs_t *regs) {
+void isr_common_handler(regs_t *regs) {
+    uint32_t idt_index = regs->int_no;
     if (interrupt_handlers[idt_index]) {
         dump_regs(regs);
         interrupt_handlers[idt_index](idt_index, regs);

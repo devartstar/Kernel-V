@@ -3,6 +3,7 @@
 #include "arch/x86/page_fault.h"
 #include "arch/x86/tss.h"
 #include "core/debug.h"
+#include "core/debug_funcs.h"
 #include "time/timer.h"
 #include <stdint.h>
 #include <string.h>
@@ -73,6 +74,7 @@ void idt_init() {
     //  P=1(Present), DPL=0(Kernel only access), Type=0xE(Interrupt Gate)
     idt_set_gate(14, (uint32_t)isr_stub_14, 0x08, 0x8E);
     debug_module(IDT_GDT, "[IDT] Page Fault Entry Initialized successfully!\n");
+    DEBUG_PAGEFAULT_INTERRUPTS();
 
     /* Set up IDT entry for hardware Timer Interrupts
        IRQ 0 -> entry 32 in IDT

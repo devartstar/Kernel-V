@@ -5,7 +5,7 @@
 
 # --- Project Configuration ---
 PROJECT_NAME := Kernel-V
-VERSION := 0.6.1
+VERSION := 0.7.1
 BUILD_DATE := $(shell date +%Y-%m-%d)
 
 # --- Build Configuration ---

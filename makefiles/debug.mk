@@ -249,7 +249,7 @@ endif
 connect-gdb: gdb-kernel ## Connect GDB to running QEMU (use existing kernel.gdb)
 	@echo "Connecting GDB to running QEMU session..."
 	@echo "Make sure QEMU is running in another terminal!"
-	$(GDB) -x tools/gdb/kernel.gdb
+	$(GDB) -x tools/gdb/kernel_debug.gdb
 
 connect-bootloader: gdb-bootloader ## Connect GDB to running QEMU for bootloader
 	@echo "Connecting GDB to running QEMU session for bootloader..."

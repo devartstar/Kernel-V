@@ -64,6 +64,6 @@ void unregister_interrupt_handler(uint32_t idt_index);
  * @idt_index - index if the interrupt to register the handler in IDT
  * regs - pointer to the snapshot of CPU register states at time of interrupt
  */
-void isr_common_handler(uint32_t idt_index, regs_t *regs);
+void isr_common_handler(regs_t *regs);
 
 #endif
