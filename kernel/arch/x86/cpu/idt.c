@@ -52,6 +52,9 @@ void set_task_gate(uint8_t num, uint16_t sel) {
 Initialize the IDT
 */
 void idt_init() {
+
+    debug_irq_init();
+
     idt_ptr.limit = sizeof(idt_entry_t) * IDT_ENTRIES - 1;
     idt_ptr.base = (uint32_t)&idt;
 

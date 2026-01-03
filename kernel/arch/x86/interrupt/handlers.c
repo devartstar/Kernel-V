@@ -2,9 +2,8 @@
 #include "lib/printk.h"
 #include "time/timer.h"
 
-#define IDT_VECTOR_COUNT 256
-
-#define REG_LINE(name, val) printk("| %s | 0x%08lx |\n", name, (uint32_t)(val))
+#define REG_LINE(name, val)                                                    \
+    printk("| %10s | 0x%08lx |\n", name, (uint32_t)(val))
 
 /**
  * An array of interrupt handlers -
@@ -27,7 +26,7 @@ void register_interrupt_handler(uint32_t idt_index, interrupt_handler_t handler,
     interrupt_handlers[idt_index].last_tick = tick_count;
 
     pr_info("[IDT] Success: Registered handle for Interrupt vector index %lu\n",
-           idt_index);
+            idt_index);
 }
 
 void unregister_interrupt_handler(uint32_t idt_index) {
@@ -51,9 +50,9 @@ void default_interrupt_handler(uint32_t idt_index, regs_t *regs) {
 }
 
 void dump_regs(regs_t *r) {
-    printk("\n=========================================\n");
+    printk("\n===========================\n");
     printk("| Register   | Value      |\n");
-    printk("-----------------------------------------\n");
+    printk("---------------------------\n");
 
     REG_LINE("EAX", r->eax);
     REG_LINE("EBX", r->ebx);
@@ -64,22 +63,22 @@ void dump_regs(regs_t *r) {
     REG_LINE("EBP", r->ebp);
     REG_LINE("ESP", r->esp);
 
-    printk("-----------------------------------------\n");
+    printk("---------------------------\n");
     REG_LINE("INT_NO", r->int_no);
     REG_LINE("ERRCODE", r->error_code);
 
-    printk("-----------------------------------------\n");
+    printk("---------------------------\n");
     REG_LINE("EIP", r->eip);
     REG_LINE("CS", r->cs);
     REG_LINE("EFLAGS", r->eflags);
 
     if (r->cs & 0x3) {
-        printk("-----------------------------------------\n");
+        printk("---------------------------\n");
         REG_LINE("USERESP", r->useresp);
         REG_LINE("SS", r->ss);
     }
 
-    printk("=========================================\n");
+    printk("===========================\n");
 }
 
 void isr_common_handler(regs_t *regs) {
@@ -90,9 +89,9 @@ void isr_common_handler(regs_t *regs) {
     interrupt->hit_count++;
     interrupt->last_tick = tick_count;
 
-    if (interrupt->hit_count == 1) {
+    if (interrupt->hit_count == 1 || is_irq_debug_enabled(idt_index)) {
         pr_info("[IDT] Interrupt %lu (%s) fired: (count=%lu, eip=0x%08lx)\n",
-               idt_index, interrupt->name, interrupt->hit_count, regs->eip);
+                idt_index, interrupt->name, interrupt->hit_count, regs->eip);
     }
 
     if (interrupt->handler) {

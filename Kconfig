@@ -101,6 +101,23 @@ config DEBUG_PROCESS_MGMT
 	tristate "Enable Process Management debugging"
 	default y
 
+menu "Debug Intrrupts"
+
+config DEBUG_IRQ
+	tristate "Enable Debugging IRQs"
+	default n
+
+config DEBUG_IRQ_LIST
+	string "IRQ list to debug"
+	depends on DEBUG_IRQ	
+	default ""
+	help
+		Bitmap of the Interrupt Vectors to debug
+		Eg. 0-255 to enable debugging for all
+			0-30,40,50-100 (no spaces)
+
+endmenu
+
 endmenu
 
 endif

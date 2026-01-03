@@ -1,7 +1,13 @@
 #ifndef INTERRUPT_H
 #define INTERRUPT_H
 
+#include <stdbool.h>
 #include <stdint.h>
+
+#define IDT_VECTOR_COUNT 256
+
+void debug_irq_init(void);
+bool is_irq_debug_enabled(uint32_t idt_index);
 
 /**
  * Unifies context structure for interrupts.

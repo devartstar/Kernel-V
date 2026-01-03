@@ -1,7 +1,7 @@
 #include "core/kernel.h"
 #include "arch/x86/gdt.h"
-#include "arch/x86/tss.h"
 #include "arch/x86/pic.h"
+#include "arch/x86/tss.h"
 #include "core/debug.h"
 #include "core/debug_funcs.h"
 #include "mm/paging.h"
@@ -53,7 +53,7 @@ __attribute__((noreturn)) void high_stack_entry() {
 
     // Verify interrupts are enabled
     uint32_t eflags;
-    __asm__ __volatile__("pushf; pop %0" : "=r" (eflags));
+    __asm__ __volatile__("pushf; pop %0" : "=r"(eflags));
     if (eflags & 0x200) {
         pr_info("Interrupts successfully enabled (EFLAGS IF bit set)\n");
     } else {
