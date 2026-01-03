@@ -68,7 +68,7 @@ void idt_init() {
     set_task_gate(8, 0x18);
     debug_module(TSS, "Task gate initialized successfully in IDT!\n");
 
-    register_interrupt_handler(14, pagefault_interrupt_handler);
+    register_interrupt_handler(14, pagefault_interrupt_handler, "PAGE_FAULT");
     extern void isr_stub_14();
     //  add entry for page fault handler in idt
     //  P=1(Present), DPL=0(Kernel only access), Type=0xE(Interrupt Gate)
@@ -79,7 +79,7 @@ void idt_init() {
     /* Set up IDT entry for hardware Timer Interrupts
        IRQ 0 -> entry 32 in IDT
      */
-    register_interrupt_handler(32, timer_interrupt_handler);
+    register_interrupt_handler(32, timer_interrupt_handler, "TIMER");
     extern void isr_stub_32();
     idt_set_gate(32, (uint32_t)isr_stub_32, 0x08, 0x8E);
     debug_module(IDT_GDT, "[IDT] Timer Entry Initialized successfully!\n");

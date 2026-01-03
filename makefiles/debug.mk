@@ -48,10 +48,32 @@ debug-bootloader: debug-symbols all ## Debug both bootloader stages
 	$(ECHO) "Connect with: $(GDB) -x tools/gdb/bootloader.gdb"
 	$(Q)$(QEMU) -drive format=raw,file=$(DISK_IMG) -s -S -display curses
 
-debug-kernel: debug-symbols all ## Debug kernel only
-	$(ECHO) "Starting QEMU for kernel debugging..."  
-	$(ECHO) "Connect with: $(GDB) -x tools/gdb/kernel.gdb"
+debug-kernel: debug-symbols ## Debug kernel with appropriate test image
+ifeq ($(CONFIG_TESTS_UNIT)$(CONFIG_TESTS_INTEGRATION), yy)
+	@echo "Starting QEMU for kernel debugging (Combined Unit + Integration Tests)..."
+	@echo "Using disk image: $(DISK_TEST_IMG)"
+	@echo "Connect with: $(GDB) -x tools/gdb/kernel.gdb"
+	$(MAKE) $(DISK_TEST_IMG)
+	$(Q)$(QEMU) -drive format=raw,file=$(DISK_TEST_IMG) -s -S -display curses
+else ifeq ($(CONFIG_TESTS_UNIT), y)
+	@echo "Starting QEMU for kernel debugging (Unit Tests Only)..."
+	@echo "Using disk image: $(DISK_UNIT_TEST_IMG)"
+	@echo "Connect with: $(GDB) -x tools/gdb/kernel.gdb"
+	$(MAKE) $(DISK_UNIT_TEST_IMG)
+	$(Q)$(QEMU) -drive format=raw,file=$(DISK_UNIT_TEST_IMG) -s -S -display curses
+else ifeq ($(CONFIG_TESTS_INTEGRATION), y)
+	@echo "Starting QEMU for kernel debugging (Integration Tests Only)..."
+	@echo "Using disk image: $(DISK_INTEGRATION_IMG)"
+	@echo "Connect with: $(GDB) -x tools/gdb/kernel.gdb"
+	$(MAKE) $(DISK_INTEGRATION_IMG)
+	$(Q)$(QEMU) -drive format=raw,file=$(DISK_INTEGRATION_IMG) -s -S -display curses
+else
+	@echo "Starting QEMU for kernel debugging (Production Build)..."
+	@echo "Using disk image: $(DISK_IMG)"
+	@echo "Connect with: $(GDB) -x tools/gdb/kernel.gdb"
+	$(MAKE) $(DISK_IMG)
 	$(Q)$(QEMU) -drive format=raw,file=$(DISK_IMG) -s -S -display curses
+endif
 
 debug-test-integration: $(DISK_INTEGRATION_IMG) gdb-test-integration ## Debug integration tests with proper symbols
 ifeq ($(CONFIG_TESTS_INTEGRATION), y)

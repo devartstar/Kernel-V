@@ -3,28 +3,30 @@
 
 #include <stdint.h>
 
-// todo: standardize register structure for interrupts
+/**
+ * Unifies context structure for interrupts.
+ */
 typedef struct regs {
-    // Pushed by pusha (registers in this order)
-    // EAX -> ECX -> EDX -> EBX -> ESP (original
-    // value before pusha) -> EBP -> ESI -> EDI
-    uint32_t edi; // destination pointer for memory/string
-                  // operation
-    uint32_t esi; // source pointer for memory/string operation
-    uint32_t ebp; // current stack frame
-    uint32_t esp; // current stack position before pusha
+    /* Pushed by pusha (registers in this order)
+     * EAX -> ECX -> EDX -> EBX -> ESP (original value before pusha) -> EBP ->
+     * ESI -> EDI
+     */
+    uint32_t edi; /* destination pointer for memory/string operation */
+    uint32_t esi; /* source pointer for memory/string operation */
+    uint32_t ebp; /* current stack frame */
+    uint32_t esp; /* current stack position before pusha*/
     uint32_t ebx;
     uint32_t edx;
     uint32_t ecx;
     uint32_t eax;
 
-    // Interrupt vector number
+    /* Interrupt vector number */
     uint32_t int_no;
 
-    // Error code (0 if not present)
+    /* Error code (0 if not present) */
     uint32_t error_code;
 
-    // Pushed by CPU automatically
+    /* Pushed by CPU automatically */
     uint32_t eip;
     uint32_t cs;
     uint32_t eflags;
@@ -42,14 +44,24 @@ typedef struct regs {
 typedef void (*interrupt_handler_t)(uint32_t index, regs_t *regs);
 
 /**
+ * interrut_handler_metadata - Contains per interrupt info along with handler
+ */
+typedef struct interrupt_handler_metadata {
+    interrupt_handler_t handler; /* Pointer to the interrupt handler */
+    const char *name;            /* Interrupt name */
+    uint32_t hit_count;          /* Number of times interrupt is triggered */
+    uint32_t last_tick;          /* Last tick before the interrupt */
+} interrupt_handler_metadata_t;
+
+/**
  * Register an interrupt handler to the IDT
  * @idt_index - index of the interrupt to register the handler in the IDT
  * @handler - pointer to the interrupt handler function
  *
  * @return void
  */
-void register_interrupt_handler(uint32_t idt_index,
-                                interrupt_handler_t handler);
+void register_interrupt_handler(uint32_t idt_index, interrupt_handler_t handler,
+                                const char *name);
 
 /*
  * Unregister an interrupt handler from the IDT
