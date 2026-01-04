@@ -1,9 +1,15 @@
 #include "arch/x86/interrupt.h"
 #include "lib/printk.h"
 #include "time/timer.h"
+#include "core/io.h"
 
 #define REG_LINE(name, val)                                                    \
     printk("| %10s | 0x%08lx |\n", name, (uint32_t)(val))
+
+// PIC EOI command
+#define PIC1_COMMAND    0x20
+#define PIC2_COMMAND    0xA0
+#define PIC_EOI         0x20
 
 /**
  * An array of interrupt handlers -
@@ -49,6 +55,15 @@ void default_interrupt_handler(uint32_t idt_index, regs_t *regs) {
     // Todo: Halt or Trigger kernel debugger
 }
 
+void pic_send_eoi(uint8_t irq) {
+    // If IRQ came from slave PIC (IRQ 8-15), send EOI to both PICs
+    if (irq >= 8) {
+        outb(PIC2_COMMAND, PIC_EOI);
+    }
+    // Always send EOI to master PIC for IRQs 0-15
+    outb(PIC1_COMMAND, PIC_EOI);
+}
+
 void dump_regs(regs_t *r) {
     printk("\n===========================\n");
     printk("| Register   | Value      |\n");
@@ -83,7 +98,12 @@ void dump_regs(regs_t *r) {
 
 void isr_common_handler(regs_t *regs) {
     uint32_t idt_index = regs->int_no;
-    dump_regs(regs);
+    
+    // Don't dump registers for timer interrupts (too verbose)
+    if (idt_index != 32) {
+        dump_regs(regs);
+    }
+    
     interrupt_handler_metadata_t *interrupt = &interrupt_handlers[idt_index];
 
     interrupt->hit_count++;
@@ -98,5 +118,12 @@ void isr_common_handler(regs_t *regs) {
         interrupt->handler(idt_index, regs);
     } else {
         default_interrupt_handler(idt_index, regs);
+    }
+
+    // CRITICAL: Send End-of-Interrupt (EOI) to PIC for hardware interrupts
+    if (idt_index >= 32 && idt_index < 48) {
+        // Hardware interrupts (IRQs 0-15 are mapped to interrupts 32-47)
+        uint8_t irq = idt_index - 32;
+        pic_send_eoi(irq);
     }
 }
