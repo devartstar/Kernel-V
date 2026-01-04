@@ -25,10 +25,10 @@ Start:
 LoadKernel:
     mov si, ReadPacket
     mov word[si], 0x10
-    mov word[si+2], 0x30        ; Load 16 sectors from the Disk 
+    mov word[si+2], 0x42            ; Load 16 sectors from the Disk 
     mov word[si+4], 0x00
-    mov word[si+6], 0x1000      ; Segment to Load to Load
-    mov dword[si+8], 0x09        ; Read from the 10th Sector (LBA=9, offset 0x1200)
+    mov word[si+6], 0x1000          ; Segment to Load to Load
+    mov dword[si+8], 0x09           ; Read from the 10th Sector (LBA=9, offset 0x1200)
     mov dword[si+12], 0x00
 
     mov ah, 0x42
