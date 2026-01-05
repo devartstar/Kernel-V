@@ -1,4 +1,5 @@
 #include "time/timer.h"
+#include "arch/x86/interrupt.h"
 #include "core/io.h"
 #include "lib/printk.h"
 #include "proc/proc.h"
@@ -42,7 +43,8 @@ void timer_interrupt_handler(uint32_t idt_index, regs_t *regs) {
 
     // More verbose debugging
     if (tick_count % 1000 == 0) { // Every 5 ticks
-        pr_info("[TIMER] Tick %u\n", PRINT_UINT32(tick_count));
+        pr_info("[TIMER] Tick %u, IF=%d\n", PRINT_UINT32(tick_count),
+                irq_is_enabled());
     }
 
     /* Handle waking up sleeping process on timer interrupt */

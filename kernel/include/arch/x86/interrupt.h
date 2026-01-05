@@ -60,6 +60,45 @@ typedef struct interrupt_handler_metadata {
 } interrupt_handler_metadata_t;
 
 /**
+ * Disable Maskable Interrupts
+ */
+static inline void irq_disable(void) {
+    /* memory clobber is needed below for compiler
+     * compiler doesn't understand code entering a critical section
+     * it may rearrange some instructions for performance
+     * to avoid rearrange of some instructions in/out critical section
+     */
+    __asm__ __volatile__("cli" ::: "memory");
+}
+
+/**
+ * Enable Maskable Interrupts
+ */
+static inline void irq_enable(void) {
+    /* "memory" - prevents the compiler from reordering memory accesses across
+     * interrupt boundaries */
+    __asm__ __volatile__("sti" ::: "memory");
+}
+
+/**
+ * Read the CPU Flags
+ */
+static inline uint32_t read_eflags(void) {
+    uint32_t flags;
+    __asm__ __volatile__("pushf\n"
+                         "pop %0"
+                         : "=r"(flags));
+    return flags;
+}
+
+/**
+ * Check Interrupt Flag (IF) from EFLAG for interrupts enabled or disabled.
+ */
+static inline bool irq_is_enabled(void) {
+    return (read_eflags() & (1 << 9)) != 0;
+}
+
+/**
  * Register an interrupt handler to the IDT
  * @idt_index - index of the interrupt to register the handler in the IDT
  * @handler - pointer to the interrupt handler function
