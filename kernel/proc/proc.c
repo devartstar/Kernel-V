@@ -334,7 +334,28 @@ void yield(void) {
                          proc_next->name, proc_next->context.eflags);
             //  Normal context switch between processes
             switch_to(proc_now, proc_next);
-            __asm__ __volatile__("sti");
+            
+            /* Testing */
+           uint32_t eflags_afterswitch;
+           __asm__ __volatile__("pushf"
+                                "\n"
+                                "pop %0"
+                                : "=r"(eflags_afterswitch));
+           debug_module(PROCESS_MGMT,
+                        "EFLAGS After switch to: 0x%08x (IF=%s)\n",
+                        PRINT_UINT32(eflags_afterswitch), 
+                        (eflags_afterswitch & 0x200) ? "enabled" : "disabled");
+
+            if (!(eflags_afterswitch & 0x200)) {
+                debug_module(PROCESS_MGMT,
+                             "WARNING: Interrupts disabled after context "
+                             "switch! Re-enabling...\n");
+                __asm__ __volatile__("sti");
+            }
+            else {
+                debug_module(PROCESS_MGMT,
+                             "Context switch properly restored IF bit.\n");
+            }
         }
 
         //  Execution resumes from here when switch back

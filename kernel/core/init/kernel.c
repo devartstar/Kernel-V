@@ -1,5 +1,6 @@
 #include "core/kernel.h"
 #include "arch/x86/gdt.h"
+#include "arch/x86/interrupt.h"
 #include "arch/x86/pic.h"
 #include "arch/x86/tss.h"
 #include "core/debug.h"
@@ -51,13 +52,33 @@ __attribute__((noreturn)) void high_stack_entry() {
     // Enable interrupts for timer-based preemption
     __asm__ __volatile__("sti");
 
-    // Verify interrupts are enabled
-    uint32_t eflags;
-    __asm__ __volatile__("pushf; pop %0" : "=r"(eflags));
-    if (eflags & 0x200) {
-        pr_info("Interrupts successfully enabled (EFLAGS IF bit set)\n");
+    /* STEP 1. Show that interrupts are enabled */
+    uint32_t eflags_before;
+    __asm__ __volatile__("pushf; pop %0" : "=r"(eflags_before));
+    if (eflags_before & 0x200) {
+        pr_info("Interrupts successfully enabled (EFLAGS=0x%08x, IF bit set)\n",
+                PRINT_UINT32(eflags_before));
     } else {
-        pr_info("ERROR: Interrupts NOT enabled!\n");
+        pr_info("ERROR: Interrupts NOT enabled! (EFLAGS=0x%08x)\n",
+                PRINT_UINT32(eflags_before));
+    }
+
+    /* STEP 2. Now Disable Interrupts and save state */
+    irq_flags_t saved_flags = irq_save();
+    printk("[KERNEL] IRQs disabled (should see no more timer output). IF=%d\n",
+           irq_is_enabled());
+
+    /* STEP 3. Verify that interrupts are disabled now */
+    uint32_t eflags_after;
+    __asm__ __volatile__("pushf; pop %0" : "=r"(eflags_after));
+    if (eflags_after & 0x200) {
+        pr_info("ERROR: Interrupts still enabled after irq_save()! "
+                "(EFLAGS=0x%08x)\n",
+                PRINT_UINT32(eflags_after));
+    } else {
+        pr_info("Interrupts successfully disabled (EFLAGS=0x%08x, IF bit "
+                "cleared)\n",
+                PRINT_UINT32(eflags_after));
     }
 
     //  Create test processes only if tests are enabled

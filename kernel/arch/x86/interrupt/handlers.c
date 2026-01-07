@@ -1,15 +1,15 @@
 #include "arch/x86/interrupt.h"
+#include "core/io.h"
 #include "lib/printk.h"
 #include "time/timer.h"
-#include "core/io.h"
 
 #define REG_LINE(name, val)                                                    \
     printk("| %10s | 0x%08lx |\n", name, (uint32_t)(val))
 
 // PIC EOI command
-#define PIC1_COMMAND    0x20
-#define PIC2_COMMAND    0xA0
-#define PIC_EOI         0x20
+#define PIC1_COMMAND 0x20
+#define PIC2_COMMAND 0xA0
+#define PIC_EOI 0x20
 
 /**
  * An array of interrupt handlers -
@@ -98,14 +98,14 @@ void dump_regs(regs_t *r) {
 
 void isr_common_handler(regs_t *regs) {
     uint32_t idt_index = regs->int_no;
-    
-    // Don't dump registers for timer interrupts (too verbose)
+
+    /* Prevent form dumping registers for timer interrupts (too verbose) */
     if (idt_index != 32) {
         dump_regs(regs);
     }
-    
-    interrupt_handler_metadata_t *interrupt = &interrupt_handlers[idt_index];
 
+    /* Get the interrupt handler metadata and updare it */
+    interrupt_handler_metadata_t *interrupt = &interrupt_handlers[idt_index];
     interrupt->hit_count++;
     interrupt->last_tick = tick_count;
 
@@ -114,13 +114,17 @@ void isr_common_handler(regs_t *regs) {
                 idt_index, interrupt->name, interrupt->hit_count, regs->eip);
     }
 
+    /* Invoke the interrupt handler registered for the interrupt */
     if (interrupt->handler) {
         interrupt->handler(idt_index, regs);
     } else {
         default_interrupt_handler(idt_index, regs);
     }
 
-    // CRITICAL: Send End-of-Interrupt (EOI) to PIC for hardware interrupts
+    /* CRITICAL: Send End-of-Interrupt (EOI) to PIC for hardware interrupts
+     * Before ISR Entry the CPU clears the interrupt flag, disabling the
+     * interrups. Without EOI further interrupts are disabled.
+     */
     if (idt_index >= 32 && idt_index < 48) {
         // Hardware interrupts (IRQs 0-15 are mapped to interrupts 32-47)
         uint8_t irq = idt_index - 32;

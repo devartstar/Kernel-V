@@ -78,6 +78,9 @@ void create_test_processes(void)
 	{
 		pr_verbose("Test processes created successfully\n");
 		pr_verbose("Starting scheduler with idle process...\n");
+
+        test_processes_remaining = 3;
+
         // Let processes run and wait for them to complete
         yield(); // Start the processes
         

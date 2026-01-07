@@ -6,7 +6,15 @@
 
 #define IDT_VECTOR_COUNT 256
 
+/**
+ * We get a string of ranges of IRQ enabled for debugging.
+ * Set the bitmap for the IRQs enabled for debugging.
+ */
 void debug_irq_init(void);
+
+/**
+ * Check the bitmap if a particular IRQ is enabled for debugging
+ */
 bool is_irq_debug_enabled(uint32_t idt_index);
 
 /**
@@ -59,43 +67,50 @@ typedef struct interrupt_handler_metadata {
     uint32_t last_tick;          /* Last tick before the interrupt */
 } interrupt_handler_metadata_t;
 
+typedef uint32_t irq_flags_t;
+
 /**
+ * Read the Interrupt Flag (IF) from CPUs EFLAGS
  * Disable Maskable Interrupts
  */
-static inline void irq_disable(void) {
-    /* memory clobber is needed below for compiler
-     * compiler doesn't understand code entering a critical section
-     * it may rearrange some instructions for performance
-     * to avoid rearrange of some instructions in/out critical section
-     */
-    __asm__ __volatile__("cli" ::: "memory");
+static inline irq_flags_t irq_save(void) {
+    irq_flags_t flags;
+    __asm__ __volatile__("pushf\n"
+                         "pop %0\n"
+                         "cli"
+                         : "=r"(flags)
+                         :
+                         : "memory");
+    return flags;
 }
 
 /**
- * Enable Maskable Interrupts
+ * Restore the CPU EFLAG state to it was previously
+ * Usage: Enter Kernel Critical Section -> flags = irq_save() -> perform
+ * opertation -> irq_restore(flags) -> Exit Kernel Critical Section
  */
-static inline void irq_enable(void) {
+static inline void irq_restore(irq_flags_t flags) {
     /* "memory" - prevents the compiler from reordering memory accesses across
      * interrupt boundaries */
-    __asm__ __volatile__("sti" ::: "memory");
-}
-
-/**
- * Read the CPU Flags
- */
-static inline uint32_t read_eflags(void) {
-    uint32_t flags;
-    __asm__ __volatile__("pushf\n"
-                         "pop %0"
-                         : "=r"(flags));
-    return flags;
+    __asm__ __volatile__("push %0\n"
+                         "popf"
+                         :
+                         : "r"(flags)
+                         : "memory", "cc");
 }
 
 /**
  * Check Interrupt Flag (IF) from EFLAG for interrupts enabled or disabled.
  */
-static inline bool irq_is_enabled(void) {
-    return (read_eflags() & (1 << 9)) != 0;
+static inline bool irq_is_enabled(void) { return (irq_save() & (1 << 9)) != 0; }
+
+/**
+ * Assert for checking IRQ Diabled in critical sections, else panik.
+ */
+static inline void assert_irqs_disabled(void) {
+    if (irq_is_enabled()) {
+        panik("IRQs enabled in critical section\n");
+    }
 }
 
 /**
