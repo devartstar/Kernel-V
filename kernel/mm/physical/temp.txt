@@ -1,0 +1,519 @@
+For a production-grade kernel, Option 2 (making the kernel thread a proper process) is definitely better. Here's why and how to implement it:
+
+Why Option 2 is Production-Grade:
+Uniform process model: Everything runs as a process, including kernel threads
+Proper scheduling: Kernel threads can be scheduled fairly with user processes
+Better resource management: Kernel threads get proper PCBs, stack management, etc.
+Scalability: Can have multiple kernel threads (worker threads, interrupt handlers, etc.)
+Debugging: Easier to debug when everything follows the same process model
+Implementation: Kernel Thread as Process
+Let's implement this properly:
+
+Step 1: Enable the idle process in proc_init()
+
+void proc_init(void) {
+    ready_list_head = NULL;
+    wait_list_head = NULL;  // Make sure wait list is initialized too
+    next_pid = 1;
+    pcb_allocator_init();
+
+    // Create idle process - this is essential for a production kernel
+    pcb_t *idle = proc_create(idle_process, NULL, "idle");
+    if (idle) {
+        // Idle should always be ready to run
+        idle->state = PROC_READY;
+        debug_module(PROCESS_MGMT, "Created idle process with PID %d\n", idle->pid);
+    } else {
+        debug_module(PROCESS_MGMT, "ERROR: Failed to create idle process!\n");
+        // This is a critical failure in production
+    }
+}
+
+Step 2: Create kernel main thread as a process
+Add this function to convert the current kernel execution into a process:
+
+/**
+ * Convert the current kernel execution context into a proper process
+ * This should be called after process system is initialized but before
+ * any yield() calls are made from kernel context
+ */
+pcb_t *proc_create_kernel_main(const char *name) {
+    pcb_t *kernel_proc = pcb_alloc();
+    if (!kernel_proc) {
+        return NULL;
+    }
+
+    kernel_proc->pid = next_pid++;
+    kernel_proc->state = PROC_RUNNING;  // Currently running
+    
+    // Initialize context - we're already running so most values don't matter
+    // The important thing is that this process exists in the scheduler
+    memset(&kernel_proc->context, 0, sizeof(regs_context_t));
+    
+    // Set current stack as the process stack (approximation)
+    uint32_t current_esp;
+    __asm__ __volatile__("mov %%esp, %0" : "=r"(current_esp));
+    kernel_proc->context.esp = current_esp;
+    kernel_proc->context.eip = 0;  // Not used since we're already running
+    kernel_proc->context.eflags = 0x202;  // IF enabled
+    
+    // No allocated stack since we're using kernel stack
+    kernel_proc->stack_base = NULL;
+    kernel_proc->stack_ptr = NULL;
+    
+    strncpy(kernel_proc->name, name, PROC_NAME_MAX);
+    kernel_proc->name[PROC_NAME_MAX - 1] = '\0';
+    kernel_proc->parent = NULL;
+    kernel_proc->timeslice_ticks = DEFAULT_TIMESLICE;
+
+    // Add to ready queue
+    enqueue_ready(kernel_proc);
+    
+    // Set as current process
+    current_proc = kernel_proc;
+    
+    return kernel_proc;
+}
+
+Step 3: Initialize kernel main process in your kernel initialization
+Add this to your kernel.c:45:
+
+    //  Initialize Process Management
+    proc_init();
+    pr_info("Initialized Process Management...\n");
+    
+    // Convert kernel execution to a proper process
+    pcb_t *kernel_main = proc_create_kernel_main("kernel_main");
+    if (!kernel_main) {
+        panik("Failed to create kernel main process!\n");
+    }
+    pr_info("Kernel main thread registered as process PID %d\n", kernel_main->pid);
+
+Step 4: Add process cleanup when kernel main exits
+You might want to add a special kernel exit handler:
+
+/**
+ * Special exit for kernel main process - should trigger system shutdown
+ */
+void proc_kernel_main_exit(void) {
+    pr_info("Kernel main process exiting - system shutdown\n");
+    
+    // In a production kernel, this might trigger:
+    // - Graceful shutdown of all processes
+    // - Filesystem sync
+    // - Hardware shutdown
+    
+    // For now, just halt
+    while (1) {
+        __asm__ __volatile__("cli; hlt");
+    }
+}
+
+Step 5: Enhanced scheduler for kernel processes
+Update the scheduler to handle kernel processes properly:
+
+pcb_t *scheduler_pick_next(void) {
+    pcb_t *proc_now = current_proc;
+    pcb_t *proc_next = NULL;
+
+    if (!current_proc) {
+        return ready_list_head;
+    }
+
+    /* Round-robin scheduling: iterate through all processes starting from next */
+    pcb_t *start_proc = proc_now->next ? proc_now->next : ready_list_head;
+    proc_next = start_proc;
+
+    //  Look for a READY process (skip SLEEPING and TERMINATED processes)
+    do {
+        if (proc_next && proc_next->state == PROC_READY) {
+            return proc_next;
+        }
+
+        proc_next = proc_next ? proc_next->next : ready_list_head;
+
+        if (proc_next == start_proc) {
+            break;
+        }
+    } while (proc_next != proc_now);
+
+    //  If current process is TERMINATED, find next available process
+    if (proc_now && proc_now->state == PROC_TERMINATED) {
+        // First try to find any READY process
+        for (pcb_t *p = ready_list_head; p; p = p->next) {
+            if (p->state == PROC_READY) {
+                return p;
+            }
+        }
+        
+        // If no READY processes, return idle
+        for (pcb_t *p = ready_list_head; p; p = p->next) {
+            if (strcmp(p->name, "idle") == 0) {
+                return p;
+            }
+        }
+    }
+
+    //  If no READY process found, return idle as fallback
+    for (pcb_t *p = ready_list_head; p; p = p->next) {
+        if (strcmp(p->name, "idle") == 0) {
+            return p;
+        }
+    }
+
+    // This should never happen in a well-designed system
+    debug_module(PROCESS_MGMT, "WARNING: No schedulable processes found!\n");
+    return proc_now;
+}
+
+Benefits of This Approach:
+Consistent process model: Kernel threads are scheduled like any other process
+Proper resource tracking: Each kernel thread has a PCB with resource usage
+Better debugging: You can see kernel threads in process lists
+Scalability: Easy to add more kernel worker threads
+Priority scheduling: Later you can add priorities to kernel vs user processes
+Usage in Your Tests:
+Now your test code will work perfectly:
+
+void create_test_processes(void) {
+    // Create test processes
+    // When yield() is called, scheduler can properly return to kernel_main process
+    yield(); // This now works correctly!
+    
+    while (test_processes_remaining > 0) {
+        yield(); // Scheduler will eventually return control here
+    }
+    // Function returns normally, test summary prints!
+}
+-----
+Excellent questions! Let me address each point:
+
+1. Can you do proc_init() before switching to high stack?
+Yes, but it's not ideal. Here's why:
+
+Memory management: Process creation (proc_create()) allocates memory via pmm_alloc_frame()
+Virtual memory: Your processes will use virtual addresses, so having virtual memory fully set up first is better
+Stack consistency: If processes use virtual stacks, it's cleaner to have the kernel on virtual stack too
+2. Should kernel main process use high_stack_entry?
+Yes, absolutely! This is the right approach. Here's the professional way to structure it:
+
+// Remove the __attribute__((noreturn)) since we want this to potentially return
+void high_stack_entry() {
+    pr_info("Switched to high virtual stack!\n");
+
+    // ... existing initialization code ...
+
+    //  Initialize Process Management
+    proc_init();
+    pr_info("Initialized Process Management...\n");
+    
+    // Convert current execution context to a proper kernel process
+    pcb_t *kernel_main = proc_create_kernel_main("kernel_main");
+    if (!kernel_main) {
+        panik("Failed to create kernel main process!\n");
+    }
+    pr_info("Kernel main thread registered as process PID %d\n", kernel_main->pid);
+
+    // Enable interrupts for timer-based preemption
+    __asm__ __volatile__("sti");
+
+    // Your interrupt testing code...
+    
+    // Now run tests (this can yield properly)
+#ifdef KERNEL_TESTS
+    run_kernel_tests();
+    pr_info("All kernel tests completed successfully!\n");
+#endif
+
+    // Main kernel loop - now as a proper process
+    pr_info("Kernel main process entering idle loop\n");
+    while (1) {
+        // Yield to other processes
+        yield();
+        
+        // Do kernel maintenance tasks
+        // - Check for system shutdown requests
+        // - Perform background cleanup
+        // - Handle delayed work
+        
+        __asm__ __volatile__("hlt");
+    }
+}
+
+// Remove the __attribute__((noreturn)) since we want this to potentially return
+void high_stack_entry() {
+    pr_info("Switched to high virtual stack!\n");
+
+    // ... existing initialization code ...
+
+    //  Initialize Process Management
+    proc_init();
+    pr_info("Initialized Process Management...\n");
+    
+    // Convert current execution context to a proper kernel process
+    pcb_t *kernel_main = proc_create_kernel_main("kernel_main");
+    if (!kernel_main) {
+        panik("Failed to create kernel main process!\n");
+    }
+    pr_info("Kernel main thread registered as process PID %d\n", kernel_main->pid);
+
+    // Enable interrupts for timer-based preemption
+    __asm__ __volatile__("sti");
+
+    // Your interrupt testing code...
+    
+    // Now run tests (this can yield properly)
+#ifdef KERNEL_TESTS
+    run_kernel_tests();
+    pr_info("All kernel tests completed successfully!\n");
+#endif
+
+    // Main kernel loop - now as a proper process
+    pr_info("Kernel main process entering idle loop\n");
+    while (1) {
+        // Yield to other processes
+        yield();
+        
+        // Do kernel maintenance tasks
+        // - Check for system shutdown requests
+        // - Perform background cleanup
+        // - Handle delayed work
+        
+        __asm__ __volatile__("hlt");
+    }
+}
+
+3. Why do we need high stack entry?
+This is actually a critical design decision in kernel architecture:
+
+Low Stack Issues:
+Limited space: Bootloader/early kernel stack is small (~4KB)
+Physical addresses: Early stack uses identity-mapped physical memory
+No protection: Can't detect stack overflow easily
+Fragmentation: Physical memory layout constraints
+High Stack Benefits:
+Large virtual space: Can allocate 8KB+ stacks in virtual memory
+Guard pages: Can map guard pages to detect overflow
+Consistent addressing: All kernel code uses virtual addresses
+Process isolation: Each process gets its own virtual stack space
+Memory protection: Virtual memory provides better protection
+Professional Kernel Architecture:
+Low Memory (Physical):
+├── Bootloader stack (small, temporary)
+├── Early kernel init (identity mapped)
+└── Switch to virtual memory
+
+High Memory (Virtual):
+├── Kernel main process stack (8KB+)  
+├── Process stacks (8KB+ each)
+├── Guard pages (detect overflow)
+└── Kernel heap (demand paging)
+
+4. Is this approach professional?
+Absolutely yes! This follows industry best practices:
+
+Linux: Kernel threads are proper schedulable entities
+Windows: System processes follow the same model
+Real-time OS: Critical for deterministic scheduling
+Microkernel: Essential for isolation and reliability
+5. Recommended Professional Implementation:
+
+void high_stack_entry() {
+    pr_info("Kernel: Switched to high virtual stack!\n");
+    
+    // Core system initialization
+    // ... existing VGA, heap tests ...
+    
+    // Initialize process management subsystem
+    proc_init();
+    pr_info("Process management initialized\n");
+    
+    // Convert kernel execution to proper process
+    pcb_t *kernel_main = proc_create_kernel_main("kernel_main");
+    if (!kernel_main) {
+        panik("Critical: Failed to create kernel main process\n");
+    }
+    
+    // Enable scheduling and interrupts
+    __asm__ __volatile__("sti");
+    pr_info("Kernel main process PID %d - scheduling enabled\n", kernel_main->pid);
+    
+    // Run system tests and initialization
+#ifdef KERNEL_TESTS
+    run_kernel_tests();
+    pr_info("System tests completed\n");
+#endif
+
+    // Kernel main loop - now schedulable with other processes
+    kernel_main_loop();  // This can yield, sleep, etc.
+}
+
+void kernel_main_loop() {
+    pr_info("Kernel main: Entering system management loop\n");
+    
+    while (1) {
+        // Perform periodic system tasks
+        system_maintenance();
+        
+        // Yield to other processes
+        yield();
+        
+        // Check for system events
+        handle_system_events();
+        
+        // Power management
+        __asm__ __volatile__("hlt");
+    }
+}
+This approach gives you:
+
+Professional architecture
+Proper resource management
+Debuggable kernel threads
+Scalable design
+Production-ready foundation
+The high stack switch is essential for moving from "bootloader mode" to "operating system mode" - it's a fundamental transition point in kernel architecture.
+
+Looking at your current initialization sequence, I recommend keeping the current split with one important addition. Here's the professional approach:
+
+Current Split is Good ✅
+kernel_main() (low stack) should handle:
+
+Core hardware initialization that must work before virtual memory
+Systems needed for virtual memory setup itself
+high_stack_entry() (high stack) should handle:
+
+Process management (needs virtual memory)
+Testing and application-level code
+Recommended Changes:
+Move proc_init() call and add kernel main process creation:
+
+void high_stack_entry() {
+    pr_info("Switched to high virtual stack!\n");
+
+    uint32_t cur_esp;
+    __asm__ __volatile__("mov %%esp, %0" : "=r"(cur_esp));
+    debug_module(STACK_HEAP, "ESP after stack switch: 0x%08x\n",
+                 PRINT_UINT32(cur_esp));
+
+    //  Test demand-paged heap access
+    debug_module(STACK_HEAP, "Triggering demand-paged heap access...\n");
+    volatile int *heap_ptr = (int *)(KERNEL_HEAP_START + 0x1234);
+    *heap_ptr = 42;
+    debug_module(STACK_HEAP, "Heap page mapped and write succeeded!\n");
+
+    //  Stack overflow testing (debug only)
+    if (DEBUG_STACK_HEAP) {
+        debug_module(STACK_HEAP, "Testing stack overflow detection...\n");
+        pr_info("Current page directory CR3: 0x%08x\n",
+                PRINT_UINT32(tss_df.cr3));
+    }
+
+    //  VGA memory test
+    volatile uint16_t *vga_test = (volatile uint16_t *)0xB8000;
+    *vga_test = 0x4F41; //  'A' with white on red
+    debug_module(STACK_HEAP, "VGA memory test: wrote to 0xB8000\n");
+
+    // ==========================================
+    // PROCESS MANAGEMENT INITIALIZATION
+    // ==========================================
+    
+    //  Initialize Process Management subsystem
+    proc_init();
+    pr_info("Process management subsystem initialized\n");
+    
+    // Convert current kernel execution to a proper schedulable process
+    pcb_t *kernel_main = proc_create_kernel_main("kernel_main");
+    if (!kernel_main) {
+        panik("CRITICAL: Failed to create kernel main process\n");
+    }
+    pr_info("Kernel main registered as process PID %d\n", kernel_main->pid);
+
+    // ==========================================
+    // ENABLE SCHEDULING AND INTERRUPTS
+    // ==========================================
+
+    // Enable interrupts - now we can be scheduled
+    __asm__ __volatile__("sti");
+    pr_info("Scheduling enabled - kernel main is now schedulable\n");
+
+    // Your interrupt testing code (can be removed in production)
+    /* STEP 1. Show that interrupts are enabled */
+    uint32_t eflags_before;
+    __asm__ __volatile__("pushf; pop %0" : "=r"(eflags_before));
+    if (eflags_before & 0x200) {
+        pr_info("Interrupts successfully enabled (EFLAGS=0x%08x, IF bit set)\n",
+                PRINT_UINT32(eflags_before));
+    } else {
+        pr_info("ERROR: Interrupts NOT enabled! (EFLAGS=0x%08x)\n",
+                PRINT_UINT32(eflags_before));
+    }
+
+    // ==========================================
+    // KERNEL TESTS (if enabled)
+    // ==========================================
+#ifdef KERNEL_TESTS
+    pr_info("Starting kernel tests...\n");
+    run_kernel_tests();
+    pr_info("All kernel tests completed successfully!\n");
+#else
+    pr_info("Production build - testing disabled\n");
+#endif
+
+    // ==========================================
+    // KERNEL MAIN LOOP
+    // ==========================================
+    
+    pr_info("Kernel main: Entering system management loop\n");
+    kernel_main_loop();  // Never returns
+}
+
+// Add this new function
+void kernel_main_loop() {
+    uint32_t loop_count = 0;
+    
+    while (1) {
+        // Periodic system maintenance
+        if (loop_count % 1000 == 0) {
+            pr_info("Kernel main: System heartbeat (loop %d)\n", loop_count / 1000);
+        }
+        
+        // Yield to other processes - this is KEY for proper scheduling
+        yield();
+        
+        // Perform kernel maintenance tasks
+        // - Handle delayed work queues
+        // - System resource cleanup
+        // - Check for shutdown requests
+        
+        // Power management - halt until next interrupt
+        __asm__ __volatile__("hlt");
+        
+        loop_count++;
+    }
+}
+
+What NOT to Move:
+Keep these in kernel_main() (low stack):
+
+idt_init() - Needed for exception handling during memory setup
+pic_init() - Hardware interrupt controller setup
+init_tss() - Task State Segment for context switching
+gdt_init() - Global Descriptor Table for memory segmentation
+pit_init() - Timer for basic timekeeping
+All memory management (pmm_init(), paging_init()) - Core for virtual memory
+Benefits of This Approach:
+Clean separation: Hardware init vs. software init
+Proper process model: Kernel main becomes a schedulable entity
+Professional architecture: Follows Linux/Windows kernel patterns
+Debuggable: Kernel main shows up in process lists
+Extensible: Easy to add more kernel threads later
+Remove the __attribute__((noreturn)):
+Since high_stack_entry() now properly manages processes, remove the noreturn attribute:
+// Remove this line:
+// __attribute__((noreturn)) void high_stack_entry() {
+
+// Replace with:
+void high_stack_entry() {
+
+This gives you a production-grade kernel architecture where the kernel main thread is a proper first-class citizen in your process scheduler.

@@ -72,11 +72,11 @@ __attribute__((noreturn)) void high_stack_entry() {
     uint32_t eflags_after;
     __asm__ __volatile__("pushf; pop %0" : "=r"(eflags_after));
     if (eflags_after & 0x200) {
-        panik("ERROR: Interrupts still enabled after irq_save()! "
+        printk("ERROR: Interrupts still enabled after irq_save()! "
               "(EFLAGS=0x%08x)\n",
               PRINT_UINT32(eflags_after));
     } else {
-        panik("Interrupts successfully disabled (EFLAGS=0x%08x, IF bit "
+        printk("Interrupts successfully disabled (EFLAGS=0x%08x, IF bit "
               "cleared)\n",
               PRINT_UINT32(eflags_after));
     }
