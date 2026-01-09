@@ -68,6 +68,7 @@ void pcb_free(pcb_t *pcb) { pool_free(&pcb_pool, pcb); }
 
 void proc_init(void) {
     ready_list_head = NULL;
+    wait_list_head = NULL;
     next_pid = 1;
     pcb_allocator_init();
 

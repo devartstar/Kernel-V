@@ -4,18 +4,10 @@
 #include "kconfig.h"
 #include "lib/printk.h"
 
+/* If Debug build: Enable debugging */
 #ifdef CONFIG_BUILD_DEBUG
-//  Debug build: Always enable debugging
 #define DEBUG_ENABLED 1
-#elif defined(CONFIG_BUILD_TEST)
-//  Test build: Use Kconfig setting
-#ifdef CONFIG_DEBUG_ENABLED
-#define DEBUG_ENABLED CONFIG_DEBUG_ENABLED
 #else
-#define DEBUG_ENABLED 0
-#endif
-#else
-//  Release build: Debugging disabled
 #define DEBUG_ENABLED 0
 #endif
 

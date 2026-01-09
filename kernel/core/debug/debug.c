@@ -5,6 +5,7 @@
 #include "core/debug_funcs.h"
 #include "mm/paging.h"
 #include "mm/pmm.h"
+#include "mm/memory_map.h"
 
 void check_double_fault_breadcrumbs(void)
 {
@@ -133,4 +134,9 @@ void debug_print_esp_args(uint32_t arg1, uint32_t arg2)
 				 "switch_to_high_stack: [esp+4]=0x%08x [esp+8]=0x%08x\n",
 				 PRINT_UINT32(arg1),
 				 PRINT_UINT32(arg2));
+}
+
+void debug_e820_map(void)
+{
+    print_e820_map();
 }

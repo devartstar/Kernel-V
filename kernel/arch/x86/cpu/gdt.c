@@ -34,9 +34,9 @@ void gdt_init(void)
 	set_gdt_entry(0, 0, 0, 0, 0); //  Null
 	debug_module(IDT_GDT, "Null entry initialized successfully!\n");
 	set_gdt_entry(1, 0, 0xFFFFF, 0x9A, 0xCF); //  Code seg (0x08)
-	debug_module(IDT_GDT, "Code segment initialized successfully!\n");
+	debug_module(IDT_GDT, "Kernel Code segment initialized successfully!\n");
 	set_gdt_entry(2, 0, 0xFFFFF, 0x92, 0xCF); //  Data seg (0x10)
-	debug_module(IDT_GDT, "Data segment initialized successfully!\n");
+	debug_module(IDT_GDT, "Kernel Data segment initialized successfully!\n");
 	set_gdt_entry(3,
 				  (uint32_t)&tss_df,
 				  sizeof(struct tss_entry) - 1,

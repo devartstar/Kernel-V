@@ -3,11 +3,11 @@
 
 #include <stdint.h>
 
-//  Double fault stack (4KB)
+/* Double fault stack (4KB) */
 #define DOUBLE_FAULT_STACK_SIZE 0x1000
 extern uint8_t double_fault_stack[DOUBLE_FAULT_STACK_SIZE];
 
-//  Complete TSS structure for task switching
+/* TSS structure for task switching */
 struct tss_entry
 {
 	uint32_t prev_tss;
@@ -40,8 +40,20 @@ struct tss_entry
 } __attribute__((packed));
 
 extern struct tss_entry tss_df;
-extern void double_fault_handler(void); //  Assembly handler
+
+/**
+ * Entry point for the double fault handler defined in assembly.
+ */
+extern void double_fault_handler(void);
+
+/**
+ * Update the TSS CR3 register 
+ */
 void update_tss_cr3(void);
+
+/**
+ * Initialize the Task State Segment (TSS) for double fault handling.
+ */
 void init_tss();
 
 #endif //  TSS_H

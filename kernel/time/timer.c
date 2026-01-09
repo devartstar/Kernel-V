@@ -10,7 +10,7 @@ volatile uint32_t tick_count = 0;
 void pit_init(uint32_t hz) {
     uint32_t divisor = PIT_FREQ / hz;
 
-    /* Setting value to I/O port 0x43
+    /* Setup PIT by passing instructions via command port 0x43
      0x36 - 0011 0110
      Channel		(bits 6-7) - 00  - channel 0
      Access Mode	(bits 4-5) - 11	 - lobyte/hibyte
@@ -18,7 +18,8 @@ void pit_init(uint32_t hz) {
     */
     outb(0x43, 0x36);
 
-    /* Access mode - 11 Two consecutive writes
+    /* Pass the frequency divisor to PIT via Data Port 0x40
+     Access mode - 11 Two consecutive writes
      First write is low 8 bits
      Next write is high 8 bits
     */

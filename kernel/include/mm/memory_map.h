@@ -46,6 +46,7 @@ typedef struct
 
 #define MAX_MEMORY_REGIONS 32
 
-extern void parse_and_print_e820_map(void);
+extern void parse_e820_map(void);
+extern void print_e820_map(void);
 extern memory_region_t usable_memory_region[MAX_MEMORY_REGIONS];
 extern uint16_t usable_memory_region_count;

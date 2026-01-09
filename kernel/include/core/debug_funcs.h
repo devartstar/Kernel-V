@@ -9,9 +9,21 @@ void debug_idt_entry(int num);
 void debug_gdt_entry(int num);
 void debug_tss_contents(void);
 void test_stack_overflow(int depth);
-void debug_print_esp_args(uint32_t arg1, uint32_t arg2);
+void debug_e820_map(void);
 
 //  Debug helper macros
+#define DEBUG_DOUBLE_FAULT_BREADCRUMBS()                                       \
+    do {                                                                       \
+        if (DEBUG_ENABLED) {                                                   \
+            debug_print(                                                       \
+                "\n==================================================\n");     \
+            debug_print("DEBUG: DOUBLE FAULT BREADCRUMBS\n");                  \
+            check_double_fault_breadcrumbs();                                  \
+            debug_print(                                                       \
+                "\n==================================================\n");     \
+        }                                                                      \
+    } while (0)
+
 #define DEBUG_IDT_GDT_SETUP()                                                  \
     do {                                                                       \
         if (DEBUG_ENABLED && DEBUG_IDT_GDT) {                                  \
@@ -74,5 +86,17 @@ void debug_print_esp_args(uint32_t arg1, uint32_t arg2);
                 "==================================================\n");       \
         }                                                                      \
     } while (0)
+
+#define DEBUG_KERNEL_E820_MAP()                                               \
+    do {                                                                       \
+        if (DEBUG_ENABLED && DEBUG_MEMORY) {                                   \
+            debug_print(                                                       \
+                "\n==================================================\n");     \
+            debug_print("DEBUG: E820 Memory Map:\n");                          \
+            debug_e820_map();                                                 \
+            debug_print(                                                       \
+                "==================================================\n");       \
+        }                                                                      \
+    } while (0) 
 
 #endif /* KERNEL_DEBUG_FUNCS_H */

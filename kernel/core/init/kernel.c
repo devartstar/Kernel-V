@@ -72,13 +72,13 @@ __attribute__((noreturn)) void high_stack_entry() {
     uint32_t eflags_after;
     __asm__ __volatile__("pushf; pop %0" : "=r"(eflags_after));
     if (eflags_after & 0x200) {
-        pr_info("ERROR: Interrupts still enabled after irq_save()! "
-                "(EFLAGS=0x%08x)\n",
-                PRINT_UINT32(eflags_after));
+        panik("ERROR: Interrupts still enabled after irq_save()! "
+              "(EFLAGS=0x%08x)\n",
+              PRINT_UINT32(eflags_after));
     } else {
-        pr_info("Interrupts successfully disabled (EFLAGS=0x%08x, IF bit "
-                "cleared)\n",
-                PRINT_UINT32(eflags_after));
+        panik("Interrupts successfully disabled (EFLAGS=0x%08x, IF bit "
+              "cleared)\n",
+              PRINT_UINT32(eflags_after));
     }
 
     //  Create test processes only if tests are enabled
@@ -95,58 +95,71 @@ __attribute__((noreturn)) void high_stack_entry() {
 }
 
 void kernel_main() {
-    //  Console and Logger Initialization
+    /* Console and Logger Initialization */
     printk_init();
     printk("%s v%s - Hello Devjit!\n", KERNEL_NAME, KERNEL_VERSION);
     printk("Kernel-V is running! Welcome to your custom kernel, Devjit!\n");
 
-    //  Debug breadcrumbs (debug build only)
-    check_double_fault_breadcrumbs();
+    /* Debug breadcrumbs (debug build only) */
+    DEBUG_DOUBLE_FAULT_BREADCRUMBS();
 
-    //  Initialize core systems
+    /***********************************
+     * Initialize core systems modules * 
+     ***********************************/
+
+    /* Interrupt Descriptor Table Initialization */
     idt_init();
 
+    /* Programmable Interrupt Controller Initialization */
     pic_init();
 
+    /* Task State Segment Initialization */
     init_tss();
 
+    /* Global Descriptor Table Initialization */
     gdt_init();
 
-    //  Debug system state
+    /* Debug the Descriptor Tables */
     DEBUG_IDT_GDT_SETUP();
 
-    //  Initialize Timer
+    /* Initialize Hardware Timer */
     pit_init(PIT_DEFAULT_HZ);
 
-    //  Memory Management Setup
-    parse_and_print_e820_map();
+    /* Memory Management Setup */
+    parse_e820_map();
+    DEBUG_KERNEL_E820_MAP();
 
-    //  Physical Memory Manager
+    /* Physical Memory Manager */
     pmm_init();
-
+    
     pmm_reserve_memory_region(RESERVED_TYPE_INIT);
     pmm_reserve_memory_region(RESERVED_TYPE_KERNEL);
     pmm_reserve_memory_region(RESERVED_TYPE_BITMAP);
 
-    //  Virtual Memory & Paging
+    /* Virtual Memory Management & Paging */
     paging_init();
-
-    //  Debug page tables
     DEBUG_PAGE_TABLES();
-
     pmm_reserve_memory_region(RESERVED_TYPE_PAGE_TABLE);
+
+    /* Update the TSS CR3 register post enabling paging 
+       CR3 points to the correct page directory post enabling paging */
     update_tss_cr3();
 
-    //  Debug double fault handler setup
+    /* Debug double fault handler setup */
     DEBUG_DOUBLE_FAULT_SETUP();
 
-    //  Map stack region
+    /* Map physical memory of new stack region into page tables */
     map_high_stack(KERNEL_STACK_BOTTOM_VIRT, KERNEL_STACK_TOP_VIRT);
 
-    //  Switch to high virtual stack
+    /* Switch to high virtual stack 
+       Keep a buffer of 16 bits at the top of the stack for safety 
+       of stack push/pop from calling switch_to_high_stack */
     uint32_t new_stack_ptr = KERNEL_STACK_TOP_VIRT - 16;
     debug_print(
         "About to switch to high virtual stack. New stack pointer: 0x%08x\n",
         PRINT_UINT32(new_stack_ptr));
+
+    /* Update esp to the new high virtual stack top 
+       Resume execution at the high_stack_entry */
     switch_to_high_stack(new_stack_ptr, high_stack_entry);
 }

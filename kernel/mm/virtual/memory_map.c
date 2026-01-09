@@ -24,12 +24,32 @@ static const char* region_type_to_string(uint32_t type)
 	}
 }
 
-void parse_and_print_e820_map(void)
+void parse_e820_map(void)
 {
-	//  stores pointer to the E820 map
+	/* Stores the pointer to the E820 map */
 	e820_entry_t* map = (e820_entry_t*)E820_MAP_ADDRESS;
 
-	//  count of number of entries in the E820 map
+	/* Count of number of entries in the E820 map */
+	uint16_t count = *(uint16_t*)E820_MAP_COUNT_PTR;
+
+	for (uint16_t i = 0; i < count; i++)
+	{
+		const char* current_region_type = region_type_to_string(map[i].type);
+		if (map[i].type == E820_TYPE_AVAILABLE &&
+			usable_memory_region_count < MAX_MEMORY_REGIONS)
+		{
+			usable_memory_region[usable_memory_region_count] =
+				(memory_region_t){ .base = map[i].base,
+								   .length = map[i].length,
+								   .type = map[i].type };
+			usable_memory_region_count++;
+		}
+	}
+}
+
+void print_e820_map(void)
+{
+	e820_entry_t* map = (e820_entry_t*)E820_MAP_ADDRESS;
 	uint16_t count = *(uint16_t*)E820_MAP_COUNT_PTR;
 
 	debug_module(MEMORY, "\n[MEMORY MAP] BIOS provided %u entries:\n", count);
@@ -48,16 +68,6 @@ void parse_and_print_e820_map(void)
 					 PRINT_UINT64_HI(map[i].length >> 32),
 					 PRINT_UINT64_LO(map[i].length & 0xFFFFFFFF),
 					 current_region_type);
-
-		if (map[i].type == E820_TYPE_AVAILABLE &&
-			usable_memory_region_count < MAX_MEMORY_REGIONS)
-		{
-			usable_memory_region[usable_memory_region_count] =
-				(memory_region_t){ .base = map[i].base,
-								   .length = map[i].length,
-								   .type = map[i].type };
-			usable_memory_region_count++;
-		}
 	}
 
 	debug_module(MEMORY,
