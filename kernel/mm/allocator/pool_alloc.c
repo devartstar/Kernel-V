@@ -31,8 +31,16 @@ int pool_init(pool_allocator_t* pool, size_t obj_size)
 	return 0;
 }
 
+/**
+ * pool_alloc - If there is no object in the free list of the pool.
+ * Allocate a new frame to the pool. Each Frame = 4KB, create multiple
+ * pool objects from a frame and add all in the free_list.
+ *
+ * @pool - pointer to the pool struct
+ */
 void* pool_alloc(pool_allocator_t* pool)
 {
+	/* if memory pool not initialized then return */
 	if (!pool)
 	{
 		return NULL;
@@ -49,6 +57,7 @@ void* pool_alloc(pool_allocator_t* pool)
 
 		uint8_t* p = (uint8_t*)page;
 
+		/* number of pool objects that can be created from a frame */
 		size_t n_objs = POOL_PAGE_SIZE / pool->object_size;
 
 		for (size_t obj_idx = 0; obj_idx < n_objs; obj_idx++)

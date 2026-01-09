@@ -1,5 +1,6 @@
 #include "proc/proc.h"
 #include "core/debug.h"
+#include "core/panik.h"
 #include "lib/printk.h"
 #include "lib/string.h"
 #include "mm/pmm.h"
@@ -50,9 +51,9 @@ static void idle_process(void *arg) {
     }
 }
 
-//  -----------------------------------
-//  START: POOL ALLOCATOR for PCB
-//  -----------------------------------
+/**************************************
+ * START: POOL ALLOCATOR for PCB      *
+ * ************************************/
 
 static pool_allocator_t pcb_pool;
 
@@ -62,9 +63,9 @@ pcb_t *pcb_alloc() { return (pcb_t *)pool_alloc(&pcb_pool); }
 
 void pcb_free(pcb_t *pcb) { pool_free(&pcb_pool, pcb); }
 
-//  --------------------------------------
-//  END: POOL ALLOCATOR for PCB
-//  --------------------------------------
+/****************************************
+ * START: PROCESS MANAGEMENT            *
+ * **************************************/
 
 void proc_init(void) {
     ready_list_head = NULL;
@@ -73,16 +74,17 @@ void proc_init(void) {
     next_pid = 1;
     pcb_allocator_init();
 
-    /* IDLE PROCESS LOGIC
-        pcb_t *idle = proc_create(idle_process, NULL, "idle");
-    if (idle) {
-        current_proc = idle;  // Set as current process
-        idle->state = PROC_RUNNING;  // Mark as running
-        debug_module(PROCESS_MGMT, "Created idle process with PID %d\n",
-    idle->pid); } else { debug_module(PROCESS_MGMT, "ERROR: Failed to create
-    idle process!\n");
+    /* Create and IDLE process */
+    pcb_t *idle = proc_create(idle_process, NULL, "idle");
+    if (idle) 
+    {
+        /* IDLE process should always be ready to run */
+        debug_module(PROCESS_MGMT, "Created idle process with PID %d\n", idle->pid); 
+    } 
+    else 
+    { 
+        panik("Failed creating IDLE process");
     }
-    */
 }
 
 pcb_t *proc_alloc(const char *name) {
@@ -133,14 +135,14 @@ pcb_t *proc_find(uint32_t pid) {
 }
 
 pcb_t *proc_create(void (*entry)(void *), void *arg, const char *name) {
-    /* create a pcb for the process */
+    /* create a pcb for the process and fill it */
     pcb_t *proc = proc_alloc(name);
     if (!proc) {
         /* could not allocate memory to pcb */
         return NULL;
     }
 
-    /* allocate stack to process */
+    /* allocate a memory page as stack to process */
     void *stack = pmm_alloc_frame();
     if (!stack) {
         proc_free(proc);
@@ -148,8 +150,7 @@ pcb_t *proc_create(void (*entry)(void *), void *arg, const char *name) {
     }
     proc->stack_base = stack;
 
-    /* since stack grows downwards, stack pointer should point to top of stack
-     */
+    /* since stack grows downwards, stack pointer pointing to top of stack */
     uint32_t *stack_top = (uint32_t *)((uint8_t *)stack + KERNEL_STACK_SIZE);
 
     /*
@@ -222,6 +223,10 @@ void proc_exit(void) {
     }
 }
 
+/*****************************************
+ * START: PROCESS SCHEDULING             *
+ * ***************************************/
+
 pcb_t *scheduler_pick_next(void) {
     pcb_t *proc_now = current_proc;
     pcb_t *proc_next = NULL;
@@ -250,6 +255,12 @@ pcb_t *scheduler_pick_next(void) {
 
     //  If current process is TERMINATED, definitely switch to idle
     if (proc_now && proc_now->state == PROC_TERMINATED) {
+        // First try to find any READY process
+        for (pcb_t *p = ready_list_head; p; p = p->next) {
+            if (p->state == PROC_READY) {
+                return p;
+            }
+        }
         //  Find and return idle process
         for (pcb_t *p = ready_list_head; p; p = p->next) {
             if (strcmp(p->name, "idle") == 0) {
@@ -406,7 +417,67 @@ void timer_interrupt_proc_handler(uint32_t tickcount) {
     }
 }
 
+/******************************************
+ * START: PROCESS ENTRY                   *
+ * ****************************************/ 
+
 void thread_entry_wrapper(void (*entry)(void *), void *arg) {
     entry(arg);
     proc_exit();
+}
+
+/*******************************************
+ * START: KERNEL ENTRY METHIOD             *
+ *******************************************/
+pcb_t *proc_create_kernel_main(const char *name)
+{
+    pcb_t *kernel_proc = pcb_alloc();
+    if(!kernel_proc)
+    {
+        return NULL;
+    }
+
+    kernel_proc->pid = next_pid++;
+    kernel_proc->state = PROC_RUNNING;
+
+    memset(&kernel_proc->context, 0, sizeof(regs_context_t));
+
+    uint32_t current_esp;
+    __asm__ __volatile__("mov %%esp, %0" : "=r"(current_esp));
+
+    kernel_proc->context.esp = current_esp;
+    kernel_proc->context.eip = 0;
+    kernel_proc->context.eflags = 0x202;
+
+    kernel_proc->stack_base = NULL;
+    kernel_proc->stack_ptr = NULL;
+
+    strncpy(kernel_proc->name, name, PROC_NAME_MAX);
+    kernel_proc->name[PROC_NAME_MAX-1] = '\0';
+
+    kernel_proc->parent = NULL;
+    kernel_proc->timeslice_ticks = DEFAULT_TIMESLICE;
+
+    enqueue_ready(kernel_proc);
+
+    current_proc = kernel_proc;
+
+    return kernel_proc;
+}
+
+/**
+ * Special exit for kernel main process - should trigger system shutdown
+ */
+void proc_kernel_main_exit(void) {
+    pr_info("Kernel main process exiting - system shutdown\n");
+    
+    // In a production kernel, this might trigger:
+    // - Graceful shutdown of all processes
+    // - Filesystem sync
+    // - Hardware shutdown
+    
+    // For now, just halt
+    while (1) {
+        __asm__ __volatile__("cli; hlt");
+    }
 }

@@ -4,15 +4,20 @@
 #include "mm/memory_map.h"
 #include "mm/paging.h"
 
+
 static uint8_t* frame_bitmap = NULL;
-;
-static uint32_t total_frames = 0;
-static uint32_t used_frames = 0;
 static uint32_t max_frame_idx = 0;
 
-//  frame_bitmap[x] -> byte entry (8 bits) => array_index = bitmap_index / 8
-//  now within that 8 bits -> need to update the correct bit at (bitmap_index %
-//  8)
+/* Total usable frames */
+static uint32_t total_frames = 0;
+/* Number of used frames */
+static uint32_t used_frames = 0;
+
+/**
+ * 1. memory_address -> frame_index = memory_address / PAGE_SIZE
+ * 2. max_frame_index for the array = max (frame_index)
+ * 3. frame_bitmap[max_frame_index] => each entry = 8 bits => each bit = 1 PAGE
+ */
 #define FRAME_INDEX(addr) ((addr) / PAGE_SIZE)
 #define BITMAP_SET(idx) (frame_bitmap[(idx) / 8] |= (1 << ((idx) % 8)))
 #define BITMAP_CLEAR(idx) (frame_bitmap[(idx) / 8] &= ~(1 << ((idx) % 8)))
@@ -28,37 +33,43 @@ void pmm_init(void)
 	total_frames = 0;
 	used_frames = 0;
 
-	//  Step1: Calculate the maximum frame index based on the usable memory
-	//  regions
+	/* usage_memory_region count is initialized as a part of parse e820 map 
+	 * Calculate the number of allocatable frames from the usable memory */
 	for (uint32_t usable_memory_region_idx = 0;
 		 usable_memory_region_idx < usable_memory_region_count;
 		 usable_memory_region_idx++)
 	{
-		//  base and length of the usable memory region
+		/* get the end address of the usable region */
 		uint32_t region_base =
 			usable_memory_region[usable_memory_region_idx].base;
 		uint32_t region_length =
 			usable_memory_region[usable_memory_region_idx].length;
 		uint32_t region_end = region_base + region_length;
+
+		/* at what index of frame_bitmap can the address of region_end be
+		* represented */
 		uint32_t current_frame_idx = FRAME_INDEX(region_end);
 
+		/* max of all frame index to calculate the size of the frame bitmap array */
 		if (current_frame_idx > max_frame_idx)
 		{
 			max_frame_idx = current_frame_idx;
 		}
 	}
 
-	//  Step2: Allocate address for bitmap array in a safe memory region
+	/* Calculate the max index of the frame bitmap to cover all the usable
+	* regions */
 	frame_bitmap = (uint8_t*)0x90000;
 	uint32_t max_frame_bitmap_idx = (max_frame_idx / 8) + 1;
 
-	//  Step3: Initialize the bitmap to 1 (all frames are used)
+	/* Set all bits in the frame bitmap as 1 (occupied) */
 	for (uint32_t frame = 0; frame < max_frame_bitmap_idx; frame++)
 	{
 		frame_bitmap[frame] = 0xFF;
 	}
 
-	//  Step4: Iterate through the usable memory regions and mark frames as free
+	/* Clear bits for all pages in the usable memory region 
+	* each page = 1 bit of a 8 bit entry of frame bitmap */
 	for (uint32_t usable_memory_region_idx = 0;
 		 usable_memory_region_idx < usable_memory_region_count;
 		 usable_memory_region_idx++)
@@ -71,7 +82,10 @@ void pmm_init(void)
 		for (uint32_t addr = region_base; addr < region_base + region_length;
 			 addr += PAGE_SIZE)
 		{
-			uint32_t frame_index = FRAME_INDEX(addr);
+			/* bitmap index = (address / PAGE_SIZE) / 8, 
+			 * bit position in array index = (address / PAGE_SIZE) % 8 
+			 */
+			uint32_t frame_index = FRAME_INDEX(addr); 
 			if (frame_index < max_frame_idx)
 			{
 				BITMAP_CLEAR(frame_index);
@@ -80,7 +94,7 @@ void pmm_init(void)
 		}
 	}
 
-	//  initially none of the usable frames are used
+	/* initially none of the usable frames are used */
 	used_frames = 0;
 	debug_module(MEMORY, "Total Usable Frames: %u\n", PRINT_UINT32(total_frames));
 	pr_info("[PROCESS_MGMT] Frame Bitmap initialized at address: %p\n",

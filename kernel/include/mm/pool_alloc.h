@@ -31,11 +31,13 @@ typedef struct pool_allocator
  */
 int pool_init(pool_allocator_t* pool, size_t obj_size);
 
-/**
- * pool_aloc - Allocates an object from the pool also refil if needed
- * @pool: structure maintaining the pool
+/** pool_alloc - If there is no object in the free list of the pool.
+ * Allocate a new frame to the pool. Each Frame = 4KB, create multiple
+ * pool objects from a frame and add all in the free_list.
  *
- * Return: pointer to the allocated memory obj
+ * @pool - pointer to the pool struct
+ *
+ * @void* - pointer to the first entry in the pool freelist.
  */
 void* pool_alloc(pool_allocator_t* pool);
 

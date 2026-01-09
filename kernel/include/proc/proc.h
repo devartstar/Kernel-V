@@ -141,6 +141,19 @@ void yield(void);
  */
 void timer_interrupt_proc_handler(uint32_t tickcount);
 
+/**
+ * Create the kernel main process
+ * @name - name of the process
+ *
+ * @return pcb_t* - pointer to the pcb of the process
+ */ 
+pcb_t *proc_create_kernel_main(const char *name);
+
+/**
+ * Exit method for kernel main
+ */ 
+void proc_kernel_main_exit(void);
+
 extern pcb_t* current_proc;
 
 #endif

@@ -16,7 +16,32 @@
 
 extern void switch_to_high_stack(uint32_t new_esp, void (*entry_func)());
 
-__attribute__((noreturn)) void high_stack_entry() {
+/* Kernel Background loop */
+void kernel_main_loop() {
+    uint32_t loop_count = 0;
+    
+    while (1) {
+        // Periodic system maintenance
+        if (loop_count % 1000 == 0) {
+            pr_info("Kernel main: System heartbeat (loop %d)\n", loop_count / 1000);
+        }
+        
+        // Yield to other processes - this is KEY for proper scheduling
+        yield();
+        
+        // Perform kernel maintenance tasks
+        // - Handle delayed work queues
+        // - System resource cleanup
+        // - Check for shutdown requests
+        
+        // Power management - halt until next interrupt
+        __asm__ __volatile__("hlt");
+        
+        loop_count++;
+    }
+}
+
+void high_stack_entry() {
     pr_info("Switched to high virtual stack!\n");
 
     uint32_t cur_esp;
@@ -42,16 +67,30 @@ __attribute__((noreturn)) void high_stack_entry() {
     *vga_test = 0x4F41; //  'A' with white on red
     debug_module(STACK_HEAP, "VGA memory test: wrote to 0xB8000\n");
 
-    //  Initialize Process Management
+    // ==========================================
+    // PROCESS MANAGEMENT INITIALIZATION
+    // ==========================================
+    
+    //  Initialize Process Management subsystem
     proc_init();
-    pr_info("Initialized Process Management...\n");
+    pr_info("Process management subsystem initialized\n");
+    
+    // Convert current kernel execution to a proper schedulable process
+    pcb_t *kernel_main = proc_create_kernel_main("kernel_main");
+    if (!kernel_main) {
+        panik("CRITICAL: Failed to create kernel main process\n");
+    }
+    pr_info("Kernel main registered as process PID %d\n", kernel_main->pid);
 
-    //  Main kernel loop
-    pr_info("Kernel initialization complete. Entering main loop.");
+    // ==========================================
+    // ENABLE SCHEDULING AND INTERRUPTS
+    // ==========================================
 
-    // Enable interrupts for timer-based preemption
+    // Enable interrupts - now we can be scheduled
     __asm__ __volatile__("sti");
+    pr_info("Scheduling enabled - kernel main is now schedulable\n");
 
+    // Your interrupt testing code (can be removed in production)
     /* STEP 1. Show that interrupts are enabled */
     uint32_t eflags_before;
     __asm__ __volatile__("pushf; pop %0" : "=r"(eflags_before));
@@ -63,36 +102,25 @@ __attribute__((noreturn)) void high_stack_entry() {
                 PRINT_UINT32(eflags_before));
     }
 
-    /* STEP 2. Now Disable Interrupts and save state */
-    irq_flags_t saved_flags = irq_save();
-    printk("[KERNEL] IRQs disabled (should see no more timer output). IF=%d\n",
-           irq_is_enabled());
-
-    /* STEP 3. Verify that interrupts are disabled now */
-    uint32_t eflags_after;
-    __asm__ __volatile__("pushf; pop %0" : "=r"(eflags_after));
-    if (eflags_after & 0x200) {
-        printk("ERROR: Interrupts still enabled after irq_save()! "
-              "(EFLAGS=0x%08x)\n",
-              PRINT_UINT32(eflags_after));
-    } else {
-        printk("Interrupts successfully disabled (EFLAGS=0x%08x, IF bit "
-              "cleared)\n",
-              PRINT_UINT32(eflags_after));
-    }
-
-    //  Create test processes only if tests are enabled
+    // ==========================================
+    // KERNEL TESTS (if enabled)
+    // ==========================================
 #ifdef KERNEL_TESTS
-    //  Run kernel tests first
+    pr_info("Starting kernel tests...\n");
     run_kernel_tests();
+    pr_info("All kernel tests completed successfully!\n");
 #else
     pr_info("Production build - testing disabled\n");
 #endif
 
-    while (1) {
-        __asm__ __volatile__("hlt");
-    }
+    // ==========================================
+    // KERNEL MAIN LOOP
+    // ==========================================
+    
+    pr_info("Kernel main: Entering system management loop\n");
+    kernel_main_loop();  // Never returns
 }
+
 
 void kernel_main() {
     /* Console and Logger Initialization */
