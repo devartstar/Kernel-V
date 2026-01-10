@@ -98,4 +98,7 @@ void dequeue_wait(pcb_t* proc)
 		/* Process to be removed is the last entry */
 		wait_list_tail = proc->prev;
 	}
+
+	proc->next = NULL;
+	proc->prev = NULL;
 }

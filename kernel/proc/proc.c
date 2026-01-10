@@ -30,22 +30,17 @@ void cleanup_terminated_processes(void) {
 }
 
 static void idle_process(void *arg) {
-    // Suppress unused parameter warning
     (void)arg;
-    static int idle_count = 0;
+    static uint8_t idle_count = 0;
 
     while (1) {
-        debug_module(PROCESS_MGMT, "IDLE process running (count: %d)\n",
-                     idle_count++);
+        idle_count++;
 
-        //  Every 10 idle cycles, clean up terminated processes
+        /* Every 10 idle process - clean up terminated process */
         if (idle_count % 10 == 0) {
+            pr_info("[CLEANUP] Terminated Process\n");
             cleanup_terminated_processes();
         }
-
-        //  Delay
-        for (volatile int i = 0; i < 1000000; i++)
-            ;
 
         yield();
     }
@@ -204,16 +199,18 @@ void proc_exit(void) {
     pcb_t *proc_now = current_proc;
     pcb_t *proc_next = NULL;
 
-    // Mark as terminated but DON'T free yet
+    /* Mark the process as Terminated */
     proc_now->state = PROC_TERMINATED;
 
-    // Remove from ready queue but keep the PCB alive
+    /* Remove the process from the Ready LIst */
     dequeue_ready(proc_now);
 
+    /* Current proc has exited, pick up a next to run */
     proc_next = scheduler_pick_next();
     current_proc = proc_next;
+    current_proc->state = PROC_RUNNING;
 
-    // Set the next process's timeslice
+    /* Set the next process's timeslice */
     if (proc_next) {
         if (strcmp(proc_next->name, "idle") == 0) {
             proc_next->timeslice_ticks = 1;
@@ -222,8 +219,8 @@ void proc_exit(void) {
         }
     }
 
-    // Context switch away from this process
-    switch_to(proc_now, proc_next); // Pass the process, don't use NULL
+    /* Context switch to the next process */
+    switch_to(proc_now, proc_next);
 
     /* Should never reach here - the cleanup will happen later
        when the idle process calls cleanup_terminated_processes() */
@@ -244,12 +241,11 @@ pcb_t *scheduler_pick_next(void) {
         return ready_list_head;
     }
 
-    /* Round-robin scheduling: iterate through all processes starting from next
-     */
+    /* Round-robin scheduling: iterate through all processes starting from next */
     pcb_t *start_proc = proc_now->next ? proc_now->next : ready_list_head;
     proc_next = start_proc;
 
-    //  Look for a READY process (skip SLEEPING and TERMINATED processes)
+    /* Look for a READY process (skip SLEEPING and TERMINATED processes) */
     do {
         if (proc_next && proc_next->state == PROC_READY) {
             return proc_next;
@@ -263,13 +259,7 @@ pcb_t *scheduler_pick_next(void) {
     } while (proc_next != proc_now);
 
     if (proc_now && proc_now->state == PROC_TERMINATED) {
-        // First try to find any READY process
-        for (pcb_t *p = ready_list_head; p; p = p->next) {
-            if (p->state == PROC_READY) {
-                return p;
-            }
-        }
-        //  Find and return idle process
+        /*  Find and return idle process */
         for (pcb_t *p = ready_list_head; p; p = p->next) {
             if (strcmp(p->name, "idle") == 0) {
                 return p;
@@ -277,7 +267,7 @@ pcb_t *scheduler_pick_next(void) {
         }
     }
 
-    //  If no READY process found, return the idle process
+    /* If no READY process found, return the idle process */
     for (pcb_t *p = ready_list_head; p; p = p->next) {
         if (strcmp(p->name, "idle") == 0) {
             return p;
@@ -291,8 +281,8 @@ void yield(void) {
     pcb_t *proc_now = current_proc;
     pcb_t *proc_next = NULL;
 
-    // Add corruption detection
-    if (!proc_now || proc_now->pid == 0 || proc_now->pid > 1000) {
+    /* If current process is invalid */
+    if (!proc_now || proc_now->pid <= 0) {
         pr_error("CURRENT PROCESS CORRUPTED: pid=%d, name=%s\n", 
                  proc_now ? proc_now->pid : -1,
                  proc_now ? proc_now->name : "NULL");
@@ -301,102 +291,72 @@ void yield(void) {
 
     proc_next = scheduler_pick_next();
 
-    // DEBUG: Print all process contexts and fix obvious corruption
+    /* Debug the new process contexts */
     if (proc_next) {
-        pr_info("DEBUG: Switching to %s: EIP=0x%08x ESP=0x%08x EFLAGS=0x%08x\n",
-                proc_next->name,
-                PRINT_UINT32(proc_next->context.eip),
-                PRINT_UINT32(proc_next->context.esp), 
-                PRINT_UINT32(proc_next->context.eflags));
-                
-        // CRITICAL FIX: Detect and fix corrupted EFLAGS
-        if (proc_next->context.eflags != 0x202 && proc_next->context.eflags != 0x296) {
-            pr_error("FIXING CORRUPTED EFLAGS in %s: was 0x%08x, setting to 0x202\n",
-                    proc_next->name, PRINT_UINT32(proc_next->context.eflags));
-            proc_next->context.eflags = 0x202;
-        }
+        pr_verbose("DEBUG: Switching to %s: EIP=0x%08x ESP=0x%08x EFLAGS=0x%08x\n",
+                    proc_next->name,
+                    PRINT_UINT32(proc_next->context.eip),
+                    PRINT_UINT32(proc_next->context.esp), 
+                    PRINT_UINT32(proc_next->context.eflags));
+
+        /* Todo: Check condition if interrupts disabled and compare with
+         * proc_next->context.eflag */
     }
 
     /* Set timeslice for all processes, including idle (but give idle only 1 tick) */
     if (proc_next) {
         if (strcmp(proc_next->name, "idle") == 0) {
-            proc_next->timeslice_ticks = 1;  // Idle gets only 1 timeslice
+            proc_next->timeslice_ticks = 1;  
         } else {
-            proc_next->timeslice_ticks = DEFAULT_TIMESLICE;  // Other processes get full timeslice
+            proc_next->timeslice_ticks = DEFAULT_TIMESLICE;  
         }
     }
 
-    pr_info("Selected next process: %s\n",
-            proc_next ? proc_next->name : "NULL");
-
     if (proc_next && proc_next != proc_now) {
-        debug_module(PROCESS_MGMT, "Switching from %s to %s\n", proc_now->name,
-                     proc_next->name);
+        /* If the Process is Terminated - Keep it Terminated */
 
-        //  Don't mark TERMINATED processes as READY
+        /* If the Process was Running - Mark it as Ready */
         if (proc_now->state == PROC_RUNNING) {
             proc_now->state = PROC_READY;
         }
-        //  If proc_now is TERMINATED, leave it as TERMINATED
 
-        //  Mark next as running
+        /* Mark the selected Process as Running */ 
         proc_next->state = PROC_RUNNING;
         current_proc = proc_next;
 
-        //  Check if this is the first switch from idle (which was never
-        //  properly started)
-        if (proc_now && strcmp(proc_now->name, "idle") == 0 &&
-            proc_now->context.eip == (uint32_t)idle_process) {
+        debug_module(PROCESS_MGMT,
+                     "About to switch: \n"
+                     "\tPrev Process=%s (eflags=0x%lx) \n"
+                     "\tNew Process=%s  (eflags=0x%lx) \n",
+                     proc_now->name, proc_now->context.eflags,
+                     proc_next->name, proc_next->context.eflags);
 
-            debug_module(PROCESS_MGMT,
-                         "First switch from unstarted idle process - jumping "
-                         "directly\n");
+        /* Context Switch to New Process */
+        switch_to(proc_now, proc_next);
 
-            //  Jump directly to the process without saving idle context
-            __asm__ __volatile__("mov %0, %%esp\n\t" //  Load process stack
-                                 "push $0\n\t"       //  Push argument (NULL)
-                                 "jmp *%1" //  Jump to process entry point
-                                 :
-                                 : "r"((uint32_t)proc_next->context.esp),
-                                   "r"((uint32_t)proc_next->context.eip)
-                                 : "memory");
+        /* Testing interrupt after process switch */
+        uint32_t eflags_afterswitch;
+        __asm__ __volatile__("pushf"
+                             "\n"
+                             "pop %0"
+                             : "=r"(eflags_afterswitch));
 
-            //  Should never reach here
-            debug_module(PROCESS_MGMT, "ERROR: Returned from direct jump!\n");
-        } else {
-            debug_module(PROCESS_MGMT,
-                         "About to switch: prev=%s (eflags=0x%lx) -> next=%s "
-                         "(eflags=0x%lx)\n",
-                         proc_now->name, proc_now->context.eflags,
-                         proc_next->name, proc_next->context.eflags);
-            //  Normal context switch between processes
-            switch_to(proc_now, proc_next);
-            
-            /* Testing */
-           uint32_t eflags_afterswitch;
-           __asm__ __volatile__("pushf"
-                                "\n"
-                                "pop %0"
-                                : "=r"(eflags_afterswitch));
-           debug_module(PROCESS_MGMT,
-                        "EFLAGS After switch to: 0x%08x (IF=%s)\n",
-                        PRINT_UINT32(eflags_afterswitch), 
-                        (eflags_afterswitch & 0x200) ? "enabled" : "disabled");
+        debug_module(PROCESS_MGMT, "Resumed process: %s\n", current_proc->name);
+        debug_module(PROCESS_MGMT,
+                    "EFLAGS After switch to: 0x%08x (IF=%s)\n",
+                    PRINT_UINT32(eflags_afterswitch), 
+                    (eflags_afterswitch & 0x200) ? "enabled" : "disabled");
 
-            if (!(eflags_afterswitch & 0x200)) {
-                debug_module(PROCESS_MGMT,
-                             "WARNING: Interrupts disabled after context "
-                             "switch! Re-enabling...\n");
-                __asm__ __volatile__("sti");
-            }
-            else {
-                debug_module(PROCESS_MGMT,
-                             "Context switch properly restored IF bit.\n");
-            }
+        /* Enable interrupts after context switch */
+        if (!(eflags_afterswitch & 0x200)) {
+            pr_warn(PROCESS_MGMT,
+                    "WARNING: Interrupts disabled after context switch! Re-enabling...\n");
+            __asm__ __volatile__("sti");
+        }
+        else {
+            debug_module(PROCESS_MGMT, "Context switch properly restored IF bit.\n");
         }
 
-        //  Execution resumes from here when switch back
-        debug_module(PROCESS_MGMT, "Resumed process: %s\n", current_proc->name);
     } else {
         debug_module(PROCESS_MGMT, "No context switch needed - staying in %s\n",
                      proc_now ? proc_now->name : "NULL");
@@ -425,17 +385,12 @@ void timer_interrupt_proc_handler(uint32_t tickcount) {
     /* Premption - Kernel to context switch automatically on timer tick */
     if (current_proc != NULL && current_proc->state == PROC_RUNNING) {
         current_proc->timeslice_ticks--;
-        pr_info(
-            "[TICK %u] %s: timeslice ticks = %d\n", // Changed from debug_module
-                                                    // to pr_info
-            PRINT_UINT32(tickcount), current_proc->name,
-            PRINT_UINT32(current_proc->timeslice_ticks));
+        pr_info("[TICK %lu] %s: timeslice ticks = %lu\n", 
+                PRINT_UINT32(tickcount), current_proc->name,
+                PRINT_UINT32(current_proc->timeslice_ticks));
         if (current_proc->timeslice_ticks <= 0) {
             current_proc->timeslice_ticks = DEFAULT_TIMESLICE;
-            pr_info("%s out of timeslice! Switching...\n", // Changed from
-                                                           // debug_module to
-                                                           // pr_info
-                    current_proc->name);
+            pr_info("%s out of timeslice! Switching...\n", current_proc->name);
             yield();
         }
     }
