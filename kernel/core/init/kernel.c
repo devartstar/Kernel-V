@@ -121,7 +121,6 @@ void high_stack_entry() {
     kernel_main_loop();  // Never returns
 }
 
-
 void kernel_main() {
     /* Console and Logger Initialization */
     printk_init();

@@ -253,7 +253,6 @@ pcb_t *scheduler_pick_next(void) {
         }
     } while (proc_next != proc_now);
 
-    //  If current process is TERMINATED, definitely switch to idle
     if (proc_now && proc_now->state == PROC_TERMINATED) {
         // First try to find any READY process
         for (pcb_t *p = ready_list_head; p; p = p->next) {
@@ -297,9 +296,13 @@ void yield(void) {
 
     proc_next = scheduler_pick_next();
 
-    /* If not idle process. Allow the process to run for 10 timer ticks */
-    if (strcmp(proc_next->name, "idle") != 0) {
-        proc_next->timeslice_ticks = DEFAULT_TIMESLICE;
+    /* Set timeslice for all processes, including idle (but give idle only 1 tick) */
+    if (proc_next) {
+        if (strcmp(proc_next->name, "idle") == 0) {
+            proc_next->timeslice_ticks = 1;  // Idle gets only 1 timeslice
+        } else {
+            proc_next->timeslice_ticks = DEFAULT_TIMESLICE;  // Other processes get full timeslice
+        }
     }
 
     pr_info("Selected next process: %s\n",
