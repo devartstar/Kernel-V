@@ -100,9 +100,9 @@ void isr_common_handler(regs_t *regs) {
     uint32_t idt_index = regs->int_no;
 
     /* Prevent form dumping registers for timer interrupts (too verbose) */
-    if (idt_index != 32) {
-        dump_regs(regs);
-    }
+    // if (idt_index != 32) {
+    //     dump_regs(regs);
+    // }
 
     /* Get the interrupt handler metadata and updare it */
     interrupt_handler_metadata_t *interrupt = &interrupt_handlers[idt_index];

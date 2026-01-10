@@ -236,6 +236,9 @@ ifeq ($(CONFIG_TESTS_INTEGRATION), y)
 	@echo "break run_kernel_tests" >> tools/gdb/integration_debug.gdb
 	@echo "break create_test_processes" >> tools/gdb/integration_debug.gdb
 	@echo "break proc_create" >> tools/gdb/integration_debug.gdb
+	@echo "break proc_exit" >> tools/gdb/integration_debug.gdb
+	@echo "break proc_exit" >> tools/gdb/integration_debug.gdb
+	@echo "break cleanup_terminated_processes" >> tools/gdb/integration_debug.gdb
 	@echo "break yield" >> tools/gdb/integration_debug.gdb
 	@echo "break scheduler_pick_next" >> tools/gdb/integration_debug.gdb
 	@echo "break switch_to" >> tools/gdb/integration_debug.gdb

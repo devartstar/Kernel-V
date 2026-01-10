@@ -33,22 +33,21 @@ switch_to:
 	mov [eax + PCBCTX_ESP_OFFSET], ecx
 
 	; Load context from next->context
-	; next pcb pointer
 	mov eax, [esp+8]
 	mov ebx, [eax + PCBCTX_EBX_OFFSET]
-    mov ecx, [eax + PCBCTX_ECX_OFFSET]
-    mov edx, [eax + PCBCTX_EDX_OFFSET]
-    mov esi, [eax + PCBCTX_ESI_OFFSET]
-    mov edi, [eax + PCBCTX_EDI_OFFSET]
-    mov ebp, [eax + PCBCTX_EBP_OFFSET]
-    
-	mov ecx, [eax + PCBCTX_EFLAGS_OFFSET]
-	push ecx
+	mov ecx, [eax + PCBCTX_ECX_OFFSET]
+	mov edx, [eax + PCBCTX_EDX_OFFSET]
+	mov esi, [eax + PCBCTX_ESI_OFFSET]
+	mov edi, [eax + PCBCTX_EDI_OFFSET]
+	mov ebp, [eax + PCBCTX_EBP_OFFSET]
+
+	; Use EDX for EFLAGS (avoid ECX collision)
+	mov edx, [eax + PCBCTX_EFLAGS_OFFSET]
+	push edx
 	popfd
 
 	mov esp, [eax + PCBCTX_ESP_OFFSET]
 
-	; jump to the next process
-	mov ecx, [eax + PCBCTX_EIP_OFFSET]
-	jmp ecx
-
+	; Use EDX for EIP too (ECX is now loaded with process context)
+	mov edx, [eax + PCBCTX_EIP_OFFSET]
+	jmp edx

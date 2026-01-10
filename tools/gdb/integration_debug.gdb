@@ -10,6 +10,9 @@ break kernel_main
 break run_kernel_tests
 break create_test_processes
 break proc_create
+break proc_exit
+break proc_exit
+break cleanup_terminated_processes
 break yield
 break scheduler_pick_next
 break switch_to

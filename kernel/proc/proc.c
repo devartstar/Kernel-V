@@ -213,6 +213,15 @@ void proc_exit(void) {
     proc_next = scheduler_pick_next();
     current_proc = proc_next;
 
+    // Set the next process's timeslice
+    if (proc_next) {
+        if (strcmp(proc_next->name, "idle") == 0) {
+            proc_next->timeslice_ticks = 1;
+        } else {
+            proc_next->timeslice_ticks = DEFAULT_TIMESLICE;
+        }
+    }
+
     // Context switch away from this process
     switch_to(proc_now, proc_next); // Pass the process, don't use NULL
 
@@ -282,19 +291,31 @@ void yield(void) {
     pcb_t *proc_now = current_proc;
     pcb_t *proc_next = NULL;
 
-    debug_module(PROCESS_MGMT, "\n=== YIELD DEBUG ===\n");
-    debug_module(PROCESS_MGMT, "Current process: %s (state: %d)\n",
-                 proc_now ? proc_now->name : "NULL",
-                 proc_now ? (int)proc_now->state : -1);
-
-    //  Print the list of PCB in the process list
-    for (pcb_t *p = ready_list_head; p; p = p->next) {
-        debug_module(PROCESS_MGMT, "PCB[%s]: EIP=0x%08x ESP=0x%08x state=%d\n",
-                     p->name, PRINT_UINT32(p->context.eip),
-                     PRINT_UINT32(p->context.esp), p->state);
+    // Add corruption detection
+    if (!proc_now || proc_now->pid == 0 || proc_now->pid > 1000) {
+        pr_error("CURRENT PROCESS CORRUPTED: pid=%d, name=%s\n", 
+                 proc_now ? proc_now->pid : -1,
+                 proc_now ? proc_now->name : "NULL");
+        while(1) __asm__("hlt");
     }
 
     proc_next = scheduler_pick_next();
+
+    // DEBUG: Print all process contexts and fix obvious corruption
+    if (proc_next) {
+        pr_info("DEBUG: Switching to %s: EIP=0x%08x ESP=0x%08x EFLAGS=0x%08x\n",
+                proc_next->name,
+                PRINT_UINT32(proc_next->context.eip),
+                PRINT_UINT32(proc_next->context.esp), 
+                PRINT_UINT32(proc_next->context.eflags));
+                
+        // CRITICAL FIX: Detect and fix corrupted EFLAGS
+        if (proc_next->context.eflags != 0x202 && proc_next->context.eflags != 0x296) {
+            pr_error("FIXING CORRUPTED EFLAGS in %s: was 0x%08x, setting to 0x202\n",
+                    proc_next->name, PRINT_UINT32(proc_next->context.eflags));
+            proc_next->context.eflags = 0x202;
+        }
+    }
 
     /* Set timeslice for all processes, including idle (but give idle only 1 tick) */
     if (proc_next) {

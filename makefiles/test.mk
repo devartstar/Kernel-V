@@ -100,7 +100,7 @@ else ifeq ($(CONFIG_TESTS_INTEGRATION), y)
 	@echo "==> Running Integration Tests"
 	@echo "    • Testing: process management"
 	@echo ""
-	$(Q)$(QEMU) -drive format=raw,file=$(DISK_INTEGRATION_IMG) -display curses
+	$(Q)$(QEMU) -drive format=raw,file=$(DISK_INTEGRATION_IMG) -display curses -monitor file:monitor.log -serial file:serial.log
 else
 	@echo "==> No tests enabled or built!"
 	@echo "    Run 'make test-build' first"
