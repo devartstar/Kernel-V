@@ -101,6 +101,17 @@ void high_stack_entry() {
     pr_info("Kernel main registered as process PID %d\n", kernel_main->pid);
 
     // ==========================================
+    // KERNEL TESTS (if enabled)
+    // ==========================================
+#ifdef KERNEL_TESTS
+    pr_info("Starting kernel tests...\n");
+    run_kernel_tests();
+    pr_info("All kernel tests completed successfully!\n");
+#else
+    pr_info("Production build - testing disabled\n");
+#endif
+
+    // ==========================================
     // ENABLE SCHEDULING AND INTERRUPTS
     // ==========================================
 
@@ -119,17 +130,6 @@ void high_stack_entry() {
         pr_info("ERROR: Interrupts NOT enabled! (EFLAGS=0x%08x)\n",
                 PRINT_UINT32(eflags_before));
     }
-
-    // ==========================================
-    // KERNEL TESTS (if enabled)
-    // ==========================================
-#ifdef KERNEL_TESTS
-    pr_info("Starting kernel tests...\n");
-    run_kernel_tests();
-    pr_info("All kernel tests completed successfully!\n");
-#else
-    pr_info("Production build - testing disabled\n");
-#endif
 
     // ==========================================
     // KERNEL MAIN LOOP

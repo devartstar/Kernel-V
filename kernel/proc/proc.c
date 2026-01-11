@@ -349,8 +349,7 @@ void yield(void) {
 
         /* Enable interrupts after context switch */
         if (!(eflags_afterswitch & 0x200)) {
-            pr_warn(PROCESS_MGMT,
-                    "WARNING: Interrupts disabled after context switch! Re-enabling...\n");
+            pr_warn("WARNING: Interrupts disabled after context switch! Re-enabling...\n");
             __asm__ __volatile__("sti");
         }
         else {
@@ -389,7 +388,6 @@ void timer_interrupt_proc_handler(uint32_t tickcount) {
                 PRINT_UINT32(tickcount), current_proc->name,
                 PRINT_UINT32(current_proc->timeslice_ticks));
         if (current_proc->timeslice_ticks <= 0) {
-            current_proc->timeslice_ticks = DEFAULT_TIMESLICE;
             pr_info("%s out of timeslice! Switching...\n", current_proc->name);
             yield();
         }

@@ -22,32 +22,20 @@ break preemptive_proc
 break my_sleep_proc
 # Process inspection commands
 define show-processes
-  printf "
-=== PROCESS LIST ===
-"
+  printf "\n=== PROCESS LIST ===\n"
   set $p = ready_list_head
   while $p
-    printf "PID: %d, Name: %s, State: %d
-", $p->pid, $p->name, $p->state
-    printf "  EIP: 0x%08x, ESP: 0x%08x
-", $p->context.eip, $p->context.esp
+    printf "PID: %d, Name: %s, State: %d\n", $p->pid, $p->name, $p->state
+    printf "  EIP: 0x%08x, ESP: 0x%08x\n", $p->context.eip, $p->context.esp
     set $p = $p->next
   end
-  printf "
-"
+  printf "\n"
 end
 # Show breakpoints
 info breakpoints
 # Ready to debug processes
-printf "
-=== INTEGRATION TEST DEBUG SESSION ===
-"
-printf "Available commands:
-"
-printf "  show-processes - List all processes
-"
-printf "  continue       - Run to next breakpoint
-"
-printf "==========================================
-
-"
+printf "\n=== INTEGRATION TEST DEBUG SESSION ===\n"
+printf "Available commands:\n"
+printf "  show-processes - List all processes\n"
+printf "  continue       - Run to next breakpoint\n"
+printf "==========================================\n\n"
