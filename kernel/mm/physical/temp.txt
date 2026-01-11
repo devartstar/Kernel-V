@@ -64,7 +64,7 @@ pcb_t *proc_create_kernel_main(const char *name) {
     strncpy(kernel_proc->name, name, PROC_NAME_MAX);
     kernel_proc->name[PROC_NAME_MAX - 1] = '\0';
     kernel_proc->parent = NULL;
-    kernel_proc->timeslice_ticks = DEFAULT_TIMESLICE;
+    kernel_proc->timeslice_ticks = KERNEL_MAIN_TIMESLICE;
 
     // Add to ready queue
     enqueue_ready(kernel_proc);

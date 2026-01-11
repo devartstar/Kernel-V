@@ -22,26 +22,14 @@ void kernel_main_loop() {
 
     while (1) {
         // Check interrupt status before operations
-        uint32_t eflags_before;
-        __asm__ __volatile__("pushf; pop %0" : "=r"(eflags_before));
+        uint32_t eflags;
+        __asm__ __volatile__("pushf; pop %0" : "=r"(eflags));
         
         // Periodic system maintenance
         if (loop_count % 200 == 0) {
             pr_info("Kernel main: System heartbeat (loop %d) IF=%s\n",
                     loop_count / 1000, 
-                    (eflags_before & 0x200) ? "enabled" : "DISABLED");
-        }
-
-        // Yield to other processes - this is KEY for proper scheduling
-        yield();
-
-        // Check interrupt status after yield
-        uint32_t eflags_after_yield;
-        __asm__ __volatile__("pushf; pop %0" : "=r"(eflags_after_yield));
-        
-        if (!(eflags_after_yield & 0x200)) {
-            pr_info("ERROR: Interrupts disabled after yield! Re-enabling...\n");
-            __asm__ __volatile__("sti");
+                    (eflags & 0x200) ? "enabled" : "DISABLED");
         }
 
         // Perform kernel maintenance tasks
@@ -51,7 +39,7 @@ void kernel_main_loop() {
 
         // Power management - halt until next interrupt
         pr_info("About to hlt with IF=%s\n", 
-                (eflags_after_yield & 0x200) ? "enabled" : "DISABLED");
+                (eflags & 0x200) ? "enabled" : "DISABLED");
         __asm__ __volatile__("hlt");
         pr_info("Woke up from hlt!\n");
 

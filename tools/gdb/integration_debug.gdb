@@ -20,6 +20,7 @@ break switch_to
 break my_test_proc
 break preemptive_proc
 break my_sleep_proc
+break timer.c:46
 # Process inspection commands
 define show-processes
   printf "\n=== PROCESS LIST ===\n"

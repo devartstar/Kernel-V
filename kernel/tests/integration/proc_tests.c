@@ -78,14 +78,14 @@ void create_test_processes(void) {
             pr_verbose("Waiting for test processes to finish: %d remaining (ticks=%u)\n",
                     test_processes_remaining, tick_count);
 
-            // Check if interrupts are enabled
+            /* todo(remove): Check if interrupts are still enabled for TIMER */
             uint32_t eflags;
             __asm__ __volatile__("pushf; pop %0" : "=r"(eflags));
             if (!(eflags & 0x200)) {
-                pr_verbose("ERROR: Interrupts are DISABLED in waiting loop!\n");
+                pr_verbose("ERROR: Interrupts are DISABLED in waiting loop! ENABLING\n");
+                __asm__ __volatile__("sti");
             }
-
-            yield(); 
+            __asm__ volatile("hlt");
         }
     } else {
         pr_verbose("Failed to create test processes!\n");

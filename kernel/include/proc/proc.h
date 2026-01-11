@@ -6,6 +6,7 @@
 #define PROC_NAME_MAX 16
 #define KERNEL_STACK_SIZE 4096
 #define DEFAULT_TIMESLICE 10
+#define KERNEL_MAIN_TIMESLICE 20
 
 //
 //  Process States

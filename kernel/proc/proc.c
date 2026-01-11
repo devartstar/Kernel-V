@@ -205,22 +205,7 @@ void proc_exit(void) {
     /* Remove the process from the Ready LIst */
     dequeue_ready(proc_now);
 
-    /* Current proc has exited, pick up a next to run */
-    proc_next = scheduler_pick_next();
-    current_proc = proc_next;
-    current_proc->state = PROC_RUNNING;
-
-    /* Set the next process's timeslice */
-    if (proc_next) {
-        if (strcmp(proc_next->name, "idle") == 0) {
-            proc_next->timeslice_ticks = 1;
-        } else {
-            proc_next->timeslice_ticks = DEFAULT_TIMESLICE;
-        }
-    }
-
-    /* Context switch to the next process */
-    switch_to(proc_now, proc_next);
+    yield();
 
     /* Should never reach here - the cleanup will happen later
        when the idle process calls cleanup_terminated_processes() */
@@ -277,6 +262,11 @@ pcb_t *scheduler_pick_next(void) {
     return proc_now;
 }
 
+/*
+ * yield is called form multiple places, can be categorized into 2:
+ * Manual - idle after cleanup, sleep, kerne main loop monitoring, tests
+ * TIMER - when the process is out of timeslice
+ */
 void yield(void) {
     pcb_t *proc_now = current_proc;
     pcb_t *proc_next = NULL;

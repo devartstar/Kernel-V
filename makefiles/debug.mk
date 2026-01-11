@@ -246,6 +246,7 @@ ifeq ($(CONFIG_TESTS_INTEGRATION), y)
 	@echo "break my_test_proc" >> tools/gdb/integration_debug.gdb
 	@echo "break preemptive_proc" >> tools/gdb/integration_debug.gdb
 	@echo "break my_sleep_proc" >> tools/gdb/integration_debug.gdb
+	@echo "break timer.c:46" >> tools/gdb/integration_debug.gdb
 	@echo "# Process inspection commands" >> tools/gdb/integration_debug.gdb
 	@echo "define show-processes" >> tools/gdb/integration_debug.gdb
 	@echo "  printf \"\\n=== PROCESS LIST ===\\n\"" >> tools/gdb/integration_debug.gdb
