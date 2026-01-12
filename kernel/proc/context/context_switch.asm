@@ -18,9 +18,11 @@ switch_to:
 	mov [eax + PCBCTX_EDI_OFFSET], edi
 	mov [eax + PCBCTX_EBP_OFFSET], ebp
 
-	; pushfd saves eflags to the top of the stack and pops to ecx
+	; Save current EFLAGS - ensure interrupts are enabled before saving
 	pushfd
 	pop ecx
+	; Force IF bit (bit 9) to be set in saved EFLAGS to ensure proper restoration
+	or ecx, 0x200
 	mov [eax + PCBCTX_EFLAGS_OFFSET], ecx
 
 	; store the eip, after context siwtch back to this proc - execute from here
@@ -33,22 +35,25 @@ switch_to:
 	mov [eax + PCBCTX_ESP_OFFSET], ecx
 
 	; Load context from next->context
-	; next pcb pointer
 	mov eax, [esp+8]
-	mov ebx, [eax + PCBCTX_EBX_OFFSET]
-    mov ecx, [eax + PCBCTX_ECX_OFFSET]
-    mov edx, [eax + PCBCTX_EDX_OFFSET]
-    mov esi, [eax + PCBCTX_ESI_OFFSET]
-    mov edi, [eax + PCBCTX_EDI_OFFSET]
-    mov ebp, [eax + PCBCTX_EBP_OFFSET]
-    
-	mov ecx, [eax + PCBCTX_EFLAGS_OFFSET]
-	push ecx
+	
+	; Restore EFLAGS first (ensure IF bit is set)
+	mov edx, [eax + PCBCTX_EFLAGS_OFFSET]
+	; Force IF bit (bit 9) to be set to ensure interrupts are enabled
+	or edx, 0x200
+	push edx
 	popfd
+	
+	; Now restore all general-purpose registers
+	mov ebx, [eax + PCBCTX_EBX_OFFSET]
+	mov ecx, [eax + PCBCTX_ECX_OFFSET]
+	mov edx, [eax + PCBCTX_EDX_OFFSET]
+	mov esi, [eax + PCBCTX_ESI_OFFSET]
+	mov edi, [eax + PCBCTX_EDI_OFFSET]
+	mov ebp, [eax + PCBCTX_EBP_OFFSET]
 
 	mov esp, [eax + PCBCTX_ESP_OFFSET]
 
-	; jump to the next process
-	mov ecx, [eax + PCBCTX_EIP_OFFSET]
-	jmp ecx
-
+	; Use EDX for EIP too (ECX is now loaded with process context)
+	mov edx, [eax + PCBCTX_EIP_OFFSET]
+	jmp edx
