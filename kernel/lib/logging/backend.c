@@ -19,5 +19,11 @@ void vga_backend(const char *msg, size_t len, char color) {
 }
 
 void ringbuf_backend(const char *msg, size_t len, char color) {
+    (void)color;
     ringbuf_write(msg, len);
+}
+
+void serial_backend(const char *msg, size_t len, char color) {
+    (void)color;
+    serial_write(msg, len);
 }

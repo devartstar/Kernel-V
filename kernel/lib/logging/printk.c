@@ -1,4 +1,5 @@
 #include "lib/printk.h"
+#include "drivers/serial.h"
 #include "drivers/vga.h"
 #include "lib/logbackend.h"
 #include <stdarg.h>
@@ -61,10 +62,12 @@ void printk_init(void) {
     rb_head = 0;
     rb_tail = 0;
     vga_init();
+    serial_init();
 
     num_logs_backend = 0;
     register_log_backend(vga_backend);
     register_log_backend(ringbuf_backend);
+    register_log_backend(serial_backend);
 }
 
 /* TODO: Modify this buffer generation as desired */

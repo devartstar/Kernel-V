@@ -90,17 +90,17 @@ ifeq ($(CONFIG_TESTS_UNIT)$(CONFIG_TESTS_INTEGRATION), yy)
 	@echo "    • Tests will run sequentially in single QEMU session"
 	@echo "    • Exit QEMU (Ctrl+Alt+G, then Ctrl+C) when tests complete"
 	@echo ""
-	$(Q)$(QEMU) -drive format=raw,file=$(DISK_TEST_IMG) -display curses
+	$(Q)$(QEMU) -drive format=raw,file=$(DISK_TEST_IMG) -serial file:serial.log -display curses
 else ifeq ($(CONFIG_TESTS_UNIT), y)
 	@echo "==> Running Unit Tests"
 	@echo "    • Testing: panik, printk functionality" 
 	@echo ""
-	$(Q)$(QEMU) -drive format=raw,file=$(DISK_UNIT_TEST_IMG) -display curses
+	$(Q)$(QEMU) -drive format=raw,file=$(DISK_UNIT_TEST_IMG) -serial file:serial.log -display curses
 else ifeq ($(CONFIG_TESTS_INTEGRATION), y)
 	@echo "==> Running Integration Tests"
 	@echo "    • Testing: process management"
 	@echo ""
-	$(Q)$(QEMU) -drive format=raw,file=$(DISK_INTEGRATION_IMG) -display curses
+	$(Q)$(QEMU) -drive format=raw,file=$(DISK_INTEGRATION_IMG) -serial file:serial.log -display curses
 else
 	@echo "==> No tests enabled or built!"
 	@echo "    Run 'make test-build' first"
