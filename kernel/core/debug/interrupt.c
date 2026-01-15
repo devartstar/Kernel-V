@@ -1,4 +1,5 @@
 #include "arch/x86/interrupt.h"
+#include "arch/x86/pic.h"
 #include "lib/printk.h"
 
 static const char *irq_debug_cfg =
@@ -84,4 +85,34 @@ bool is_irq_debug_enabled(uint32_t idt_index) {
     }
 
     return BIT_TEST(idt_index);
+}
+
+void irq_mask(uint8_t irq) {
+    uint8_t value;
+
+    if (irq < 8) {
+        value = pic_read_mask(1);
+        value |= (1 << irq);
+        pic_write_mask(1, value);
+    } else {
+        value = pic_read_mask(2);
+        irq -= 8;
+        value |= (1 << irq);
+        pic_write_mask(2, value);
+    }
+}
+
+void irq_unmask(uint8_t irq) {
+    uint8_t value;
+
+    if (irq < 8) {
+        value = pic_read_mask(1);
+        value &= ~(1 << irq);
+        pic_write_mask(1, value);
+    } else {
+        value = pic_read_mask(2);
+        irq -= 8;
+        value &= ~(1 << irq);
+        pic_write_mask(2, value);
+    }
 }
