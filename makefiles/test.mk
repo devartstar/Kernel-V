@@ -12,7 +12,8 @@ UNIT_TEST_OBJS 				:=
 endif
 
 ifeq ($(CONFIG_TESTS_INTEGRATION), y)
-INTEGRATION_TEST_SOURCES 	:= $(shell find $(TESTDIR)/integration -type f -name "*.c")
+INTEGRATION_TEST_SOURCES 	:= $(shell find $(TESTDIR)/integration -type f -name "*.c") \
+							   $(shell find $(TESTDIR)/interrupt -type f -name "*.c" 2>/dev/null || true)
 INTEGRATION_TEST_OBJS 		:= $(patsubst $(KERNDIR)/%.c,$(BUILD_TEST)/%.o,$(INTEGRATION_TEST_SOURCES))
 else
 INTEGRATION_TEST_SOURCES 	:=
@@ -180,6 +181,11 @@ endif
 # Only compile integration tests if they're enabled
 ifeq ($(CONFIG_TESTS_INTEGRATION), y)
 $(BUILD_TEST)/%.o: $(KERNDIR)/tests/integration/%.c | $(BUILD_TEST)
+	$(ECHO) "  CC-TEST $@"
+	$(Q)mkdir -p $(dir $@)
+	$(Q)$(CC) $(CFLAGS) -DINTEGRATION_TEST=1 -c $< -o $@
+
+$(BUILD_TEST)/%.o: $(KERNDIR)/tests/interrupt/%.c | $(BUILD_TEST)
 	$(ECHO) "  CC-TEST $@"
 	$(Q)mkdir -p $(dir $@)
 	$(Q)$(CC) $(CFLAGS) -DINTEGRATION_TEST=1 -c $< -o $@

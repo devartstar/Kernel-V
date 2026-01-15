@@ -10,6 +10,7 @@
 #include "mm/stack_map.h"
 #include "proc/context_switch.h"
 #include "proc/proc.h"
+#include "tests/nested_irq.h"
 #include "tests/proc_tests.h"
 #include "tests/test_runner.h"
 #include "time/timer.h"
@@ -19,24 +20,25 @@ extern void switch_to_high_stack(uint32_t new_esp, void (*entry_func)());
 /* Kernel Background loop */
 void kernel_main_loop() {
     uint32_t loop_count = 0;
-    
+
     while (1) {
         // Periodic system maintenance
         if (loop_count % 1000 == 0) {
-            pr_info("Kernel main: System heartbeat (loop %d)\n", loop_count / 1000);
+            pr_info("Kernel main: System heartbeat (loop %d)\n",
+                    loop_count / 1000);
         }
-        
+
         // Yield to other processes - this is KEY for proper scheduling
         yield();
-        
+
         // Perform kernel maintenance tasks
         // - Handle delayed work queues
         // - System resource cleanup
         // - Check for shutdown requests
-        
+
         // Power management - halt until next interrupt
         __asm__ __volatile__("hlt");
-        
+
         loop_count++;
     }
 }
@@ -70,11 +72,11 @@ void high_stack_entry() {
     // ==========================================
     // PROCESS MANAGEMENT INITIALIZATION
     // ==========================================
-    
+
     //  Initialize Process Management subsystem
     proc_init();
     pr_info("Process management subsystem initialized\n");
-    
+
     // Convert current kernel execution to a proper schedulable process
     pcb_t *kernel_main = proc_create_kernel_main("kernel_main");
     if (!kernel_main) {
@@ -106,6 +108,9 @@ void high_stack_entry() {
     // KERNEL TESTS (if enabled)
     // ==========================================
 #ifdef KERNEL_TESTS
+    /* Nested interrupt test */
+    test_nested_irq();
+
     pr_info("Starting kernel tests...\n");
     run_kernel_tests();
     pr_info("All kernel tests completed successfully!\n");
@@ -116,9 +121,9 @@ void high_stack_entry() {
     // ==========================================
     // KERNEL MAIN LOOP
     // ==========================================
-    
+
     pr_info("Kernel main: Entering system management loop\n");
-    kernel_main_loop();  // Never returns
+    kernel_main_loop(); // Never returns
 }
 
 void kernel_main() {
@@ -131,7 +136,7 @@ void kernel_main() {
     DEBUG_DOUBLE_FAULT_BREADCRUMBS();
 
     /***********************************
-     * Initialize core systems modules * 
+     * Initialize core systems modules *
      ***********************************/
 
     /* Interrupt Descriptor Table Initialization */
@@ -158,7 +163,7 @@ void kernel_main() {
 
     /* Physical Memory Manager */
     pmm_init();
-    
+
     pmm_reserve_memory_region(RESERVED_TYPE_INIT);
     pmm_reserve_memory_region(RESERVED_TYPE_KERNEL);
     pmm_reserve_memory_region(RESERVED_TYPE_BITMAP);
@@ -168,7 +173,7 @@ void kernel_main() {
     DEBUG_PAGE_TABLES();
     pmm_reserve_memory_region(RESERVED_TYPE_PAGE_TABLE);
 
-    /* Update the TSS CR3 register post enabling paging 
+    /* Update the TSS CR3 register post enabling paging
        CR3 points to the correct page directory post enabling paging */
     update_tss_cr3();
 
@@ -178,15 +183,15 @@ void kernel_main() {
     /* Map physical memory of new stack region into page tables */
     map_high_stack(KERNEL_STACK_BOTTOM_VIRT, KERNEL_STACK_TOP_VIRT);
 
-    /* Switch to high virtual stack 
-       Keep a buffer of 16 bits at the top of the stack for safety 
+    /* Switch to high virtual stack
+       Keep a buffer of 16 bits at the top of the stack for safety
        of stack push/pop from calling switch_to_high_stack */
     uint32_t new_stack_ptr = KERNEL_STACK_TOP_VIRT - 16;
     debug_print(
         "About to switch to high virtual stack. New stack pointer: 0x%08x\n",
         PRINT_UINT32(new_stack_ptr));
 
-    /* Update esp to the new high virtual stack top 
+    /* Update esp to the new high virtual stack top
        Resume execution at the high_stack_entry */
     switch_to_high_stack(new_stack_ptr, high_stack_entry);
 }
