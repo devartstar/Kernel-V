@@ -10,7 +10,6 @@
 #include "mm/stack_map.h"
 #include "proc/context_switch.h"
 #include "proc/proc.h"
-#include "tests/nested_irq.h"
 #include "tests/proc_tests.h"
 #include "tests/test_runner.h"
 #include "time/timer.h"

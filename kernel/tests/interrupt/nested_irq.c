@@ -19,4 +19,9 @@ void test_interrupt_handler(uint32_t idt_index, regs_t *regs) {
 
     // Restore to the state before handler was entered
     irq_restore(old);
+
+    printk("[IRQ%u] Test low peiority interrupt exiting, nesting count: %u\n",
+           idt_index, nested_test_count);
+
+    nested_test_count--;
 }
