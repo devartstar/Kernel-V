@@ -2,7 +2,7 @@
 
 /* Pointer to a function which takes input - log string and length and returns
  * void */
-typedef void (*log_backend_t)(const *msg, size_t len, char color);
+typedef void (*log_backend_t)(const char *msg, size_t len, char color);
 
 #define MAX_LOG_BACKENDS 4
 

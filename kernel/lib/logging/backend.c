@@ -1,4 +1,5 @@
 #include "drivers/vga.h"
+#include "drivers/serial.h"
 #include "lib/logbackend.h"
 #include "lib/printk.h"
 

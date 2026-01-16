@@ -22,7 +22,7 @@ switch_to:
 	pushfd
 	pop ecx
 	; Force IF bit (bit 9) to be set in saved EFLAGS to ensure proper restoration
-	or ecx, 0x200
+	; or ecx, 0x200
 	mov [eax + PCBCTX_EFLAGS_OFFSET], ecx
 
 	; store the eip, after context siwtch back to this proc - execute from here
@@ -40,7 +40,7 @@ switch_to:
 	; Restore EFLAGS first (ensure IF bit is set)
 	mov edx, [eax + PCBCTX_EFLAGS_OFFSET]
 	; Force IF bit (bit 9) to be set to ensure interrupts are enabled
-	or edx, 0x200
+	; or edx, 0x200
 	push edx
 	popfd
 	
@@ -59,9 +59,6 @@ switch_to:
 
 	mov esp, [eax + PCBCTX_ESP_OFFSET]
 
-	; Use EDX for EIP too (ECX is now loaded with process context)
-	mov edx, [eax + PCBCTX_EIP_OFFSET]
-	jmp edx
 	; Use EDX for EIP too (ECX is now loaded with process context)
 	mov edx, [eax + PCBCTX_EIP_OFFSET]
 	jmp edx
