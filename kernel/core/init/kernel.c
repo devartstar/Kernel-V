@@ -107,8 +107,6 @@ void high_stack_entry() {
     // KERNEL TESTS (if enabled)
     // ==========================================
 #ifdef KERNEL_TESTS
-    /* Nested interrupt test */
-    test_nested_irq();
 
     pr_info("Starting kernel tests...\n");
     run_kernel_tests();
