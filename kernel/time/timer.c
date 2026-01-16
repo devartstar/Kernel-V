@@ -2,6 +2,7 @@
 #include "arch/x86/interrupt.h"
 #include "core/io.h"
 #include "lib/printk.h"
+#include "nested_irq.h"
 #include "proc/proc.h"
 #include <stdint.h>
 
@@ -33,6 +34,9 @@ void timer_interrupt_handler(uint32_t idt_index, regs_t *regs) {
 
     (void)idt_index;
     (void)regs;
+
+    printk("[IRQ%u] Timer IRQ fired, nested count=%u\n", idt_index,
+           nested_test_count);
 
     static int first_call = 1;
     if (first_call) {

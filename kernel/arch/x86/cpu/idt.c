@@ -4,6 +4,7 @@
 #include "arch/x86/tss.h"
 #include "core/debug.h"
 #include "core/debug_funcs.h"
+#include "tests/nested_irq.h"
 #include "time/timer.h"
 #include <stdint.h>
 #include <string.h>
@@ -11,6 +12,7 @@
 extern void idt_flush(uint32_t);
 extern void timer_interrupt_handler(uint32_t idt_index, regs_t *regs);
 extern void pagefault_interrupt_handler(uint32_t idt_index, regs_t *regs);
+extern void test_interrupt_handler(uint32_t idt_index, regs_t *regs);
 
 //  IDT (Interrupt Descriptor Table) Declaration
 idt_entry_t idt[IDT_ENTRIES];
@@ -85,7 +87,17 @@ void idt_init() {
     register_interrupt_handler(32, timer_interrupt_handler, "TIMER");
     extern void isr_stub_32();
     idt_set_gate(32, (uint32_t)isr_stub_32, 0x08, 0x8E);
+    irq_unmask(0);
     debug_module(IDT_GDT, "[IDT] Timer Entry Initialized successfully!\n");
+
+#ifdef KERNEL_TESTS
+    /* Registering a test interrupt handler */
+    register_interrupt_handler(35, test_interrupt_handler, "TEST");
+    extern void isr_stub_35();
+    idt_set_gate(35, (uint32_t)isr_stub_35, 0x08, 0x8E);
+    irq_unmask(3);
+    debug_module(IDT_GDT, "[IDT] Test Entry Initialized successfully!\n");
+#endif
 
     idt_flush((uint32_t)&idt_ptr);
     pr_info("[IDT] Loaded successfully!\n");

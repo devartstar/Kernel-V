@@ -1,9 +1,9 @@
 #ifndef INTERRUPT_H
 #define INTERRUPT_H
 
+#include "core/panik.h"
 #include <stdbool.h>
 #include <stdint.h>
-#include "core/panik.h"
 
 #define IDT_VECTOR_COUNT 256
 
@@ -113,6 +113,24 @@ static inline void assert_irqs_disabled(void) {
         panik("IRQs enabled in critical section\n");
     }
 }
+
+/**
+ * Disable a specific irq by setting bit in IMR (Interrupt Mask Register)
+ *
+ * @irq - Interrupt number to mask
+ *
+ * @return void
+ */
+void irq_mask(uint8_t irq);
+
+/**
+ * Enable a specific irq by clearing bit in IMR
+ *
+ * @irq - Interrupt number to unmask
+ *
+ * @return void
+ */
+void irq_unmask(uint8_t irq);
 
 /**
  * Register an interrupt handler to the IDT
