@@ -3,6 +3,7 @@
 
 #include "kconfig.h"
 #include "lib/print_macros.h"
+#include "lib/string.h"
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -58,9 +59,13 @@ int printk(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 #define pr_info(fmt, ...) printk(KERN_INFO fmt, ##__VA_ARGS__)
 #define pr_verbose(fmt, ...) printk(KERN_VERBOSE fmt, ##__VA_ARGS__)
 
+/* Updating the File to just print the filename and not entire path */
+#define __FILENAME__                                                           \
+    (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+
 /* Macro for structuring the Logs */
 #define KLOG(level, tag, fmt, ...)                                             \
-    printk_structured(level, tag, __FILE__, __func__, __LINE__, fmt,           \
+    printk_structured(level, tag, __FILENAME__, __func__, __LINE__, fmt,       \
                       ##__VA_ARGS__)
 #define KLOG_EMERG(tag, fmt, ...) KLOG(KERN_EMERG, tag, fmt, ##__VA_ARGS__);
 #define KLOG_ERROR(tag, fmt, ...) KLOG(KERN_ERROR, tag, fmt, ##__VA_ARGS__);
