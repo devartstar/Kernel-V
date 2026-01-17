@@ -2,9 +2,13 @@
 #include "drivers/serial.h"
 #include "drivers/vga.h"
 #include "lib/logbackend.h"
+#include "proc/proc.h"
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
+
+extern volatile uint32_t tick_count;
+extern pcb_t *current_proc;
 
 /* Circular log buffer for storing kernel messages */
 static char log_buffer[LOG_BUF_SIZE];
@@ -414,6 +418,14 @@ int my_vsnprintf(char *buf, size_t size, const char *fmt, va_list args) {
     return p - buf;
 }
 
+int my_snprintf(char *buf, size_t size, const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    int ret = my_vsnprintf(buf, size, fmt, args);
+    va_end(args);
+    return ret;
+}
+
 /**
  * vprintk - Internal printk function handling arguments va_list.
  * @fmt - format string to be printed.
@@ -478,4 +490,47 @@ int printk(const char *fmt, ...) {
 
     total_len += msg_len;
     return total_len;
+}
+
+int printk_structured(const char *level, const char *tag, const char *file,
+                      const char *func, int line, const char *fmt, ...) {
+    char logbuf[512];
+    int log_level_idx = -1;
+
+    const char *level_str = level;
+    if (level_str[0] == '\001' && level_str[1] >= '0' && level_str[1] <= '7') {
+        int idx = find_loglevel(level_str[1]);
+        if (idx >= 0)
+            log_level_idx = idx;
+        level_str += 2; // skip for user output, not needed in prefix
+    }
+
+    /* Invalid log level or log level more than config threshold set to print*/
+    if (log_level_idx < 0 && log_level_idx > CONFIG_TRACE_LEVEL) {
+        return 0;
+    }
+
+    const char *level_name = loglevels[log_level_idx].name;
+    uint32_t tick = tick_count;
+    int pid = current_proc ? current_proc->pid : -1;
+    const char *pname = current_proc ? current_proc->name : "?";
+    int cpu = 0;
+
+    /* Structuring the log prefix */
+    int prefix_len = my_snprintf(logbuf, sizeof(logbuf),
+                                 "[%s][%lu][pid=%lu:%s][cpu=%d][%s:%s:%d][%s] ",
+                                 loglevels[log_level_idx].name, tick, pid,
+                                 pname, cpu, file, func, line, tag);
+
+    /* Structuring the user log message */
+    va_list ap;
+    va_start(ap, fmt);
+    int message_len =
+        my_vsnprintf(logbuf + prefix_len, sizeof(logbuf) - prefix_len, fmt, ap);
+    va_end(ap);
+
+    log_dispatch_to_backends(logbuf, prefix_len + message_len,
+                             loglevels[log_level_idx].color);
+
+    return prefix_len + message_len;
 }

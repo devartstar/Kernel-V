@@ -24,24 +24,24 @@ void kernel_main_loop() {
         // Check interrupt status before operations
         uint32_t eflags;
         __asm__ __volatile__("pushf; pop %0" : "=r"(eflags));
-        
+
         // Periodic system maintenance
         if (loop_count % 200 == 0) {
-            pr_info("Kernel main: System heartbeat (loop %d) IF=%s\n",
-                    loop_count / 1000, 
-                    (eflags & 0x200) ? "enabled" : "DISABLED");
+            KLOG_INFO("kernel", "System heartbeat (loop %d) IF=%s\n",
+                      loop_count / 1000,
+                      (eflags & 0x200) ? "enabled" : "DISABLED");
         }
 
-        // Perform kernel maintenance tasks
+        // Perform kerneltenance tasks
         // - Handle delayed work queues
         // - System resource cleanup
         // - Check for shutdown requests
 
         // Power management - halt until next interrupt
-        pr_info("About to hlt with IF=%s\n", 
-                (eflags & 0x200) ? "enabled" : "DISABLED");
+        KLOG_INFO("kernel", "About to hlt with IF=%s\n",
+                  (eflags & 0x200) ? "enabled" : "DISABLED");
         __asm__ __volatile__("hlt");
-        pr_info("Woke up from hlt!\n");
+        KLOG_INFO("kernel", "Woke up from hlt!\n");
 
         loop_count++;
     }

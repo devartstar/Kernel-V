@@ -28,6 +28,11 @@
 #define CONFIG_TRACE_LEVEL 3
 #endif
 
+// Log Format
+#define KLOG(level, tag, fmt, ...)                                             \
+    printk_structured(level, tag, __FILE__, __func__, __LINE__, fmt,           \
+                      ##__VA_ARGS__)
+
 //  Log level structure definition
 struct loglevel {
     char level_char;
@@ -52,6 +57,16 @@ int printk(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 #define pr_warn(fmt, ...) printk(KERN_WARN fmt, ##__VA_ARGS__)
 #define pr_info(fmt, ...) printk(KERN_INFO fmt, ##__VA_ARGS__)
 #define pr_verbose(fmt, ...) printk(KERN_VERBOSE fmt, ##__VA_ARGS__)
+
+/* Macro for structuring the Logs */
+#define KLOG(level, tag, fmt, ...)                                             \
+    printk_structured(level, tag, __FILE__, __func__, __LINE__, fmt,           \
+                      ##__VA_ARGS__)
+#define KLOG_EMERG(tag, fmt, ...) KLOG(KERN_EMERG, tag, fmt, ##__VA_ARGS__);
+#define KLOG_ERROR(tag, fmt, ...) KLOG(KERN_ERROR, tag, fmt, ##__VA_ARGS__);
+#define KLOG_WARN(tag, fmt, ...) KLOG(KERN_WARN, tag, fmt, ##__VA_ARGS__);
+#define KLOG_INFO(tag, fmt, ...) KLOG(KERN_INFO, tag, fmt, ##__VA_ARGS__);
+#define KLOG_VERBOSE(tag, fmt, ...) KLOG(KERN_VERBOSE, tag, fmt, ##__VA_ARGS__);
 
 /**
  * printk_init - Initialize printk subsystem.
