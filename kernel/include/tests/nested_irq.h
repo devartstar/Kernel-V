@@ -4,8 +4,6 @@
 #include "arch/x86/interrupt.h"
 #include "lib/printk.h"
 
-extern volatile uint8_t nested_test_count;
-
 /**
  * Handler for a low priority interrupt
  *

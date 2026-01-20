@@ -4,6 +4,9 @@
 #include "kconfig.h"
 #include "lib/printk.h"
 
+#define _STR(x) #x
+#define STR(x) _STR(x)
+
 /* If Debug build: Enable debugging */
 #ifdef CONFIG_BUILD_DEBUG
 #define DEBUG_ENABLED 1
@@ -49,21 +52,17 @@
 
 //  Debug macros
 #define debug_print(fmt, ...)                                                  \
-	do                                                                         \
-	{                                                                          \
-		if (DEBUG_ENABLED)                                                     \
-		{                                                                      \
-			pr_verbose(fmt, ##__VA_ARGS__);                                    \
-		}                                                                      \
-	} while (0)
+    do {                                                                       \
+        if (DEBUG_ENABLED) {                                                   \
+            KLOG_VERBOSE(STR(sub_sys), fmt, ##__VA_ARGS__);                    \
+        }                                                                      \
+    } while (0)
 
 #define debug_module(sub_sys, fmt, ...)                                        \
-	do                                                                         \
-	{                                                                          \
-		if (DEBUG_ENABLED && (DEBUG_##sub_sys))                                \
-		{                                                                      \
-			pr_verbose(fmt, ##__VA_ARGS__);                                    \
-		}                                                                      \
-	} while (0)
+    do {                                                                       \
+        if (DEBUG_ENABLED && (DEBUG_##sub_sys)) {                              \
+            KLOG_VERBOSE(STR(sub_sys), fmt, ##__VA_ARGS__);                    \
+        }                                                                      \
+    } while (0)
 
 #endif /* KERNEL_DEBUG_H */

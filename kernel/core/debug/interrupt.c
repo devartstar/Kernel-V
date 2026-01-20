@@ -2,6 +2,8 @@
 #include "arch/x86/pic.h"
 #include "lib/printk.h"
 
+volatile uint8_t nested_interrupt_count = 0;
+
 static const char *irq_debug_cfg =
 #ifdef CONFIG_DEBUG_IRQ_LIST
     CONFIG_DEBUG_IRQ_LIST;

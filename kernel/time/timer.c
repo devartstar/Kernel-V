@@ -36,7 +36,7 @@ void timer_interrupt_handler(uint32_t idt_index, regs_t *regs) {
     (void)regs;
 
     printk("[IRQ%u] Timer IRQ fired, nested count=%u\n", idt_index,
-           nested_test_count);
+           nested_interrupt_count);
 
     static int first_call = 1;
     if (first_call) {

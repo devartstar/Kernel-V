@@ -18,6 +18,11 @@ void debug_irq_init(void);
  */
 bool is_irq_debug_enabled(uint32_t idt_index);
 
+/*
+ * Depth of the nested interrupts
+ */
+extern volatile uint8_t nested_interrupt_count;
+
 /**
  * Unifies context structure for interrupts.
  */
