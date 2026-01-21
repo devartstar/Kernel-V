@@ -93,14 +93,18 @@ void irq_mask(uint8_t irq) {
     uint8_t value;
 
     if (irq < 8) {
-        value = pic_read_mask(1);
-        value |= (1 << irq);
-        pic_write_mask(1, value);
+        value = current_pic1_mask | (1 << irq);
+        if (value != current_pic1_mask) {
+            current_pic1_mask = value;
+            pic_write_mask(1, value);
+        }
     } else {
-        value = pic_read_mask(2);
         irq -= 8;
-        value |= (1 << irq);
-        pic_write_mask(2, value);
+        value = current_pic2_mask | (1 << irq);
+        if (value != current_pic2_mask) {
+            current_pic2_mask = value;
+            pic_write_mask(2, value);
+        }
     }
 }
 
@@ -108,13 +112,66 @@ void irq_unmask(uint8_t irq) {
     uint8_t value;
 
     if (irq < 8) {
-        value = pic_read_mask(1);
-        value &= ~(1 << irq);
-        pic_write_mask(1, value);
+        value = current_pic1_mask & ~(1 << irq);
+        if (value != current_pic1_mask) {
+            current_pic1_mask = value;
+            pic_write_mask(1, current_pic1_mask);
+        }
     } else {
-        value = pic_read_mask(2);
         irq -= 8;
-        value &= ~(1 << irq);
-        pic_write_mask(2, value);
+        value = current_pic2_mask & ~(1 << irq);
+        if (value != current_pic2_mask) {
+            current_pic2_mask = value;
+            pic_write_mask(2, current_pic2_mask);
+        }
     }
+}
+
+void irq_mask_all(void) {
+    current_pic1_mask = 0xFF;
+    current_pic2_mask = 0xFF;
+
+    outb(PIC1_DATA, current_pic1_mask);
+    outb(PIC2_DATA, current_pic2_mask);
+}
+
+void irq_unmask_all(void) {
+    current_pic1_mask = 0x00;
+    current_pic2_mask = 0x00;
+
+    outb(PIC1_DATA, current_pic1_mask);
+    outb(PIC2_DATA, current_pic2_mask);
+}
+
+void irq_mask_all_but(const uint8_t *whitelist, uint8_t n) {
+    uint8_t mask1 = 0xFF, mask2 = 0xFF;
+    for (size_t i = 0; i < n; ++i) {
+        uint8_t irq = whitelist[i];
+        if (irq < 8)
+            mask1 &= ~(1 << irq);
+        else
+            mask2 &= ~(1 << (irq - 8));
+    }
+    if (mask1 != current_pic1_mask) {
+        current_pic1_mask = mask1;
+        outb(PIC1_DATA, mask1);
+    }
+    if (mask2 != current_pic2_mask) {
+        current_pic2_mask = mask2;
+        outb(PIC2_DATA, mask2);
+    }
+}
+
+int irq_is_masked(uint8_t irq) {
+    if (irq < 8)
+        return (current_pic1_mask & (1 << irq)) != 0;
+    else
+        return (current_pic2_mask & (1 << (irq - 8))) != 0;
+}
+
+void print_irq_masks(void) {
+    KLOG_INFO("PIC", "PIC1 IMR=0x%02x, PIC2 IMR=0x%02x (sw tracked)\n",
+              current_pic1_mask, current_pic2_mask);
+    KLOG_INFO("PIC", "HW  PIC1 IMR=0x%02x, PIC2 IMR=0x%02x (actual)\n",
+              inb(PIC1_DATA), inb(PIC2_DATA));
 }

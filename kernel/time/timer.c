@@ -37,9 +37,6 @@ void timer_interrupt_handler(uint32_t idt_index, regs_t *regs) {
 
     tick_count++;
 
-    KLOG_VERBOSE("TIMER", "[IRQ%u] Timer IRQ fired, nested count=%u\n",
-                 idt_index, nested_interrupt_count);
-
     if (is_irq_debug_enabled(idt_index)) {
         KLOG_VERBOSE("TIMER", "[IRQ%u] Timer IRQ fired, nested count=%u\n",
                      idt_index, nested_interrupt_count);

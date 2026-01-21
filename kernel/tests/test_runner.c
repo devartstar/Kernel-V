@@ -19,9 +19,11 @@
 #endif
 
 void run_kernel_tests(void) {
-    pr_verbose("==================================================\n");
-    pr_verbose("Running Kernel Tests...\n");
-    pr_verbose("==================================================\n");
+    KLOG_VERBOSE("TEST",
+                 "==================================================\n");
+    KLOG_VERBOSE("TEST", "Running Kernel Tests...\n");
+    KLOG_VERBOSE("TEST",
+                 "==================================================\n");
 
     bool tests_run = false;
 
@@ -35,29 +37,32 @@ void run_kernel_tests(void) {
     run_printk_tests();
     run_printk_scrolling_test();
     run_panik_unit_tests();
-    pr_verbose("Unit Tests Complete.\n");
+    KLOG_VERBOSE("TEST", "Unit Tests Complete.\n");
     tests_run = true;
 #endif
 
     //  Check if process test functions are available and run them
 #ifdef INTEGRATION_TEST
-    pr_verbose("Running Process/Integration Tests...\n");
+    KLOG_VERBOSE("TEST", "Running Process/Integration Tests...\n");
     create_test_processes();
-    pr_verbose("Process Tests Complete.\n");
+    KLOG_VERBOSE("TEST", "Process Tests Complete.\n");
     tests_run = true;
 #endif
 
     if (!tests_run) {
-        pr_verbose("No test functions found - check linking configuration\n");
+        KLOG_VERBOSE("TEST",
+                     "No test functions found - check linking configuration\n");
     }
 
-    pr_verbose("==================================================\n");
-    pr_verbose("All Available Tests Completed\n");
-    pr_verbose("==================================================\n");
+    KLOG_VERBOSE("TEST",
+                 "==================================================\n");
+    KLOG_VERBOSE("TEST", "All Available Tests Completed\n");
+    KLOG_VERBOSE("TEST",
+                 "==================================================\n");
 }
 
 #else
 void run_kernel_tests(void) {
-    pr_verbose("Tests disabled in this build configuration\n");
+    KLOG_VERBOSE("TEST", "Tests disabled in this build configuration\n");
 }
 #endif

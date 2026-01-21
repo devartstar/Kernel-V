@@ -7,6 +7,9 @@
 
 #define IDT_VECTOR_COUNT 256
 
+static uint8_t current_pic1_mask = 0xFF;
+static uint8_t current_pic2_mask = 0xFF;
+
 /**
  * We get a string of ranges of IRQ enabled for debugging.
  * Set the bitmap for the IRQs enabled for debugging.
@@ -136,6 +139,40 @@ void irq_mask(uint8_t irq);
  * @return void
  */
 void irq_unmask(uint8_t irq);
+
+/**
+ * Mask all IRQs
+ */
+void irq_mask_all(void);
+
+/**
+ * Unmask all IRQs
+ */
+void irq_unmask_all(void);
+
+/**
+ * Mask all IRQs except the whitelisted entries
+ *
+ * @whitelist - pointer to the array of whitelisted IRQs
+ * @n - number of whitelisted entries.
+ *
+ * @return void
+ */
+void irq_mask_all_but(const uint8_t *whitelist, uint8_t n);
+
+/**
+ * Check if a particular entry is masked or not
+ *
+ * @irq - the entry to check
+ *
+ * @return - 1 if irq is masked else 0
+ */
+int irq_is_masked(uint8_t irq);
+
+/**
+ * Print and Compare the Kernel maintained and Hardware masked IRQ values
+ */
+void print_irq_masked(void);
 
 /**
  * Register an interrupt handler to the IDT
