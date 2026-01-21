@@ -70,7 +70,7 @@ endif
 
 clean: clean-bootloader clean-kernel $(CLEAN_TESTS) ## Clean all build artifacts
 	$(Q)rm -f $(DISK_IMG)
-	$(Q)rm -f $(BUILDDIR)/*.o $(BUILDDIR)/*.bin $(BUILDDIR)/*.elf
+	$(Q)rm -f $(BUILDDIR)/*.o $(BUILDDIR)/*.bin $(BUILDDIR)/*.elf *.log
 
 distclean: clean ## Complete clean including generated files
 	$(Q)rm -rf $(BUILDDIR)

@@ -1,3 +1,0 @@
-QEMU 6.2.0 monitor - type 'help' for more information
-(qemu) qemu-system-i386: cannot use stdio by multiple character devices
-qemu-system-i386: could not connect serial device to character backend 'stdio'

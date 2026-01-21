@@ -30,7 +30,7 @@ void run_kernel_tests(void) {
     KLOG_VERBOSE("TEST", "Running Unit Tests...\n");
 
     /* Nested interrupt test */
-    test_nested_irq();
+    test_masking_irq();
 
     run_printk_tests();
     run_printk_scrolling_test();
