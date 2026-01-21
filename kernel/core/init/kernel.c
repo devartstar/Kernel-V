@@ -86,7 +86,8 @@ void high_stack_entry() {
     if (!kernel_main) {
         panik("CRITICAL: Failed to create kernel main process\n");
     }
-    pr_info("Kernel main registered as process PID %d\n", kernel_main->pid);
+    KLOG_INFO("KERNEL", "Kernel main registered as process PID %d\n",
+              kernel_main->pid);
 
     // ==========================================
     // KERNEL TESTS (if enabled)

@@ -456,7 +456,7 @@ int printk(const char *fmt, ...) {
         actual_fmt = fmt + 2;
     }
 
-    if (log_level_idx != -1 && log_level_idx > CONFIG_TRACE_LEVEL) {
+    if (log_level_idx != -1 || log_level_idx > CONFIG_TRACE_LEVEL) {
         return 0;
     }
 
@@ -506,7 +506,7 @@ int printk_structured(const char *level, const char *tag, const char *file,
     }
 
     /* Invalid log level or log level more than config threshold set to print*/
-    if (log_level_idx < 0 && log_level_idx > CONFIG_TRACE_LEVEL) {
+    if (log_level_idx < 0 || log_level_idx > CONFIG_TRACE_LEVEL) {
         return 0;
     }
 
@@ -518,7 +518,7 @@ int printk_structured(const char *level, const char *tag, const char *file,
 
     /* Structuring the log prefix */
     int prefix_len = my_snprintf(logbuf, sizeof(logbuf),
-                                 "[%s][%lu][pid=%lu:%s][cpu=%d][%s:%s:%d][%s] ",
+                                 "[%s][%lu][pid=%d:%s][cpu=%d][%s:%s:%d][%s] ",
                                  loglevels[log_level_idx].name, tick, pid,
                                  pname, cpu, file, func, line, tag);
 

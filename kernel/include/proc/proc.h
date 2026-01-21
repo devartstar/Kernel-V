@@ -11,23 +11,21 @@
 //
 //  Process States
 //
-typedef enum
-{
-	PROC_NEW = 0,
-	PROC_READY,
-	PROC_RUNNING,
-	PROC_WAITING,
-	PROC_TERMINATED
+typedef enum {
+    PROC_NEW = 0,
+    PROC_READY,
+    PROC_RUNNING,
+    PROC_WAITING,
+    PROC_TERMINATED
 } proc_state_t;
 
 //
 //  Store the context of the registers here.
 //
-typedef struct regs_context
-{
-	uint32_t eip, esp, ebp;
-	uint32_t eax, ebx, ecx, edx, esi, edi;
-	uint32_t eflags;
+typedef struct regs_context {
+    uint32_t eip, esp, ebp;
+    uint32_t eax, ebx, ecx, edx, esi, edi;
+    uint32_t eflags;
 } regs_context_t;
 
 /**
@@ -46,30 +44,29 @@ typedef struct regs_context
  * @next Pointer to the next PCB struct in the linked list
  * @prev Pointer to the previous PCB struct in the linked list
  */
-typedef struct pcb
-{
-	uint32_t pid;
-	proc_state_t state;
-	regs_context_t context;
-	uint8_t* stack_base;
-	uint8_t* stack_ptr;
-	uint32_t sleep_ticks;
-	uint32_t timeslice_ticks;
-	char name[PROC_NAME_MAX];
+typedef struct pcb {
+    uint32_t pid;
+    proc_state_t state;
+    regs_context_t context;
+    uint8_t *stack_base;
+    uint8_t *stack_ptr;
+    uint32_t sleep_ticks;
+    uint32_t timeslice_ticks;
+    char name[PROC_NAME_MAX];
 
-	//  for linked list
-	struct pcb* parent;
-	struct pcb* next;
-	struct pcb* prev;
+    //  for linked list
+    struct pcb *parent;
+    struct pcb *next;
+    struct pcb *prev;
 } pcb_t;
 
 void proc_init(void);
 
-pcb_t* proc_alloc(const char* name);
+pcb_t *proc_alloc(const char *name);
 
-void proc_free(pcb_t* proc);
+void proc_free(pcb_t *proc);
 
-pcb_t* proc_find(uint32_t pid);
+pcb_t *proc_find(uint32_t pid);
 
 /**
  * proc_create - Create a new process that runs a function.
@@ -78,7 +75,7 @@ pcb_t* proc_find(uint32_t pid);
  * @args arguments passed to the thread
  * @name string for debuging
  */
-pcb_t* proc_create(void (*entry)(void*), void* args, const char* name);
+pcb_t *proc_create(void (*entry)(void *), void *args, const char *name);
 
 /**
  * proc_sleep - Puts the current running process to sleep till next tick.
@@ -94,7 +91,7 @@ void proc_sleep(uint32_t ticks);
  *
  * @return - void
  */
-void proc_wakeup(pcb_t* proc);
+void proc_wakeup(pcb_t *proc);
 
 /**
  * proc_exit - Exits and cleanup the process
@@ -113,7 +110,7 @@ void proc_exit(void);
  *
  * @return - void
  */
-void thread_entry_wrapper(void (*entry)(void*), void* arg);
+void thread_entry_wrapper(void (*entry)(void *), void *arg);
 
 /**
  * scheduler_pick_next - Picks a process ready to execute from the process list
@@ -125,7 +122,7 @@ void thread_entry_wrapper(void (*entry)(void*), void* arg);
  *
  * @returns the pointer to the pcb memory block
  */
-pcb_t* scheduler_pick_next(void);
+pcb_t *scheduler_pick_next(void);
 
 /**
  * yeild - Find the next process ready to run from scheduler
@@ -147,14 +144,14 @@ void timer_interrupt_proc_handler(uint32_t tickcount);
  * @name - name of the process
  *
  * @return pcb_t* - pointer to the pcb of the process
- */ 
+ */
 pcb_t *proc_create_kernel_main(const char *name);
 
 /**
  * Exit method for kernel main
- */ 
+ */
 void proc_kernel_main_exit(void);
 
-extern pcb_t* current_proc;
+extern pcb_t *current_proc;
 
 #endif

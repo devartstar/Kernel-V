@@ -35,21 +35,14 @@ void timer_interrupt_handler(uint32_t idt_index, regs_t *regs) {
     (void)idt_index;
     (void)regs;
 
-    printk("[IRQ%u] Timer IRQ fired, nested count=%u\n", idt_index,
-           nested_interrupt_count);
-
-    static int first_call = 1;
-    if (first_call) {
-        pr_info("[TIMER] First timer interrupt received!\n");
-        first_call = 0;
-    }
-
     tick_count++;
 
-    // More verbose debugging
-    if (tick_count % 1000 == 0) { // Every 5 ticks
-        pr_info("[TIMER] Tick %u, IF=%d\n", PRINT_UINT32(tick_count),
-                irq_is_enabled());
+    KLOG_VERBOSE("TIMER", "[IRQ%u] Timer IRQ fired, nested count=%u\n",
+                 idt_index, nested_interrupt_count);
+
+    if (is_irq_debug_enabled(idt_index)) {
+        KLOG_VERBOSE("TIMER", "[IRQ%u] Timer IRQ fired, nested count=%u\n",
+                     idt_index, nested_interrupt_count);
     }
 
     /* Handle waking up sleeping process on timer interrupt */

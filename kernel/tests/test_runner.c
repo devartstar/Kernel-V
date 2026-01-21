@@ -27,7 +27,7 @@ void run_kernel_tests(void) {
 
     //  Check if unit test functions are available and run them
 #ifdef UNIT_TESTS
-    pr_verbose("Running Unit Tests...\n");
+    KLOG_VERBOSE("TEST", "Running Unit Tests...\n");
 
     /* Nested interrupt test */
     test_nested_irq();
