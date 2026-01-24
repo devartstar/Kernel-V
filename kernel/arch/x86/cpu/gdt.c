@@ -3,7 +3,7 @@
 #include "core/debug.h"
 #include <stdint.h>
 
-#define GDT_ENTRIES 4
+#define GDT_ENTRIES 6
 struct gdt_entry gdt[GDT_ENTRIES];
 struct gdt_ptr gdtp;
 
@@ -26,7 +26,8 @@ static void set_gdt_entry(int num, uint32_t base, uint32_t limit,
 }
 
 void gdt_init(void) {
-    set_gdt_entry(0, 0, 0, 0, 0); //  Null
+    /* Null Entry - First entry is always null */
+    set_gdt_entry(0, 0, 0, 0, 0);
     KLOG_VERBOSE("IDT_GDT", "Null entry initialized successfully!\n");
 
     /*
@@ -35,20 +36,27 @@ void gdt_init(void) {
      * DPL = 0 for Kernel and DPL = 3 for User
      */
 
-    set_gdt_entry(1, 0, 0xFFFFF, 0x9A, 0xCF); //  Code seg (0x08)
+    /* Kernel Code segment (0x08) */
+    set_gdt_entry(1, 0, 0xFFFFF, 0x9A, 0xCF);
     KLOG_VERBOSE("IDT_GDT", "Kernel Code segment initialized successfully!\n");
 
+    /* Kernel data segment (0x10) */
     set_gdt_entry(2, 0, 0xFFFFF, 0x92, 0xCF); //  Data seg (0x10)
     KLOG_VERBOSE("IDT_GDT", "Kernel Data segment initialized successfully!\n");
 
+    /* User code segment (0x18) */
     set_gdt_entry(3, 0, 0xFFFFF, 0xFA, 0xCF);
     KLOG_VERBOSE("IDT_GDT", "User Code segment initialized successfully!\n");
 
+    /* User data segment (0x20) */
     set_gdt_entry(4, 0, 0xFFFFF, 0xF2, 0xCF);
     KLOG_VERBOSE("IDT_GDT", "User Data segment initialized successfully!\n");
 
+    /* Task Stack segment (0x28)
+     * Access Bits: 0x89 -> P(1)DPL(00)S(0)E(1)DC(0)RW(0)A(1)
+     * [4 Falg Bits][4 Limit Bits] -> 11110000*/
     set_gdt_entry(5, (uint32_t)&tss_df, sizeof(struct tss_entry) - 1, 0x89,
-                  0x40); //  TSS (0x28)
+                  0x40);
     KLOG_VERBOSE("TSS", "TSS segment initialized successfully!\n");
 
     gdtp.limit = sizeof(gdt) - 1;
@@ -56,12 +64,15 @@ void gdt_init(void) {
     gdt_flush((uint32_t)&gdtp);
     KLOG_VERBOSE("GDT", "GDT initialized and loaded\n");
 
-    //  Load TSS selector (0x18, 3rd entry)
-    __asm__ volatile("ltr %%ax" : : "a"(0x18));
+    KLOG_VERBOSE("GDT", "ptr: base=0x%08x limit=0x%04x", gdtp.base, gdtp.limit);
+    KLOG_VERBOSE("TSS", "df addr: 0x%08x", (uint32_t)&tss_df);
+
+    //  Load TSS selector (0x28, 5rd entry)
+    uint16_t current_tr = 0x28;
+    __asm__ volatile("ltr %0" : : "r"(current_tr));
 
     //  VERIFY TSS IS LOADED
-    uint16_t current_tr;
     __asm__ volatile("str %0" : "=r"(current_tr));
-    KLOG_VERBOSE("TSS", "Current Task Register: 0x%04x (should be 0x18)\n",
+    KLOG_VERBOSE("TSS", "Current Task Register: 0x%04x (should be 0x28)\n",
                  PRINT_UINT16(current_tr));
 }

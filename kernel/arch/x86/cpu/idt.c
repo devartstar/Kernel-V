@@ -41,7 +41,7 @@ void idt_set_gate(int num, uint32_t base, uint16_t sel, uint8_t flags) {
 void set_task_gate(uint8_t num, uint16_t sel) {
     idt[num].base_low = 0;  //  Task gates don't use base addresses
     idt[num].base_high = 0; //  They use TSS selector instead
-    idt[num].sel = sel;     //  TSS selector (0x18)
+    idt[num].sel = sel;     //  TSS selector (0x28)
     idt[num].always0 = 0;
     idt[num].flags = 0x85; //  Present(1) + DPL(00) + Type(0101 = Task Gate)
 
@@ -68,9 +68,9 @@ void idt_init() {
         idt[i].flags = 0;
     }
 
-    //  Set up double fault as task gate (TSS selector is 0x18 - 3rd entry in
+    //  Set up double fault as task gate (TSS selector is 0x28 - 5rd entry in
     //  GDT)
-    set_task_gate(8, 0x18);
+    set_task_gate(8, 0x28);
     debug_module(TSS, "Task gate initialized successfully in IDT!\n");
 
     register_interrupt_handler(14, pagefault_interrupt_handler, "PAGE_FAULT");
