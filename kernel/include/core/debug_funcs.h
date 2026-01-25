@@ -7,6 +7,7 @@
 void check_double_fault_breadcrumbs(void);
 void debug_idt_entry(int num);
 void debug_gdt_entry(int num);
+void debug_gdt_table(void);
 void debug_tss_contents(void);
 void test_stack_overflow(int depth);
 void debug_e820_map(void);
@@ -31,7 +32,7 @@ void debug_e820_map(void);
                 "\n==================================================\n");     \
             debug_print("DEBUG: IDT and GDT Setup\n");                         \
             debug_idt_entry(8);                                                \
-            debug_gdt_entry(3);                                                \
+            debug_gdt_table();                                                 \
             debug_tss_contents();                                              \
             debug_print(                                                       \
                 "==================================================\n");       \
@@ -87,16 +88,16 @@ void debug_e820_map(void);
         }                                                                      \
     } while (0)
 
-#define DEBUG_KERNEL_E820_MAP()                                               \
+#define DEBUG_KERNEL_E820_MAP()                                                \
     do {                                                                       \
         if (DEBUG_ENABLED && DEBUG_MEMORY) {                                   \
             debug_print(                                                       \
                 "\n==================================================\n");     \
             debug_print("DEBUG: E820 Memory Map:\n");                          \
-            debug_e820_map();                                                 \
+            debug_e820_map();                                                  \
             debug_print(                                                       \
                 "==================================================\n");       \
         }                                                                      \
-    } while (0) 
+    } while (0)
 
 #endif /* KERNEL_DEBUG_FUNCS_H */

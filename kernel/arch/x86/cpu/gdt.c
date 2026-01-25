@@ -3,7 +3,6 @@
 #include "core/debug.h"
 #include <stdint.h>
 
-#define GDT_ENTRIES 6
 struct gdt_entry gdt[GDT_ENTRIES];
 struct gdt_ptr gdtp;
 

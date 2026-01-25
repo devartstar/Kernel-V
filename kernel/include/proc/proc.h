@@ -54,6 +54,10 @@ typedef struct pcb {
     uint32_t timeslice_ticks;
     char name[PROC_NAME_MAX];
 
+    /* user level process */
+    uint32_t user_stack_top;
+    uint32_t user_stack_size;
+
     //  for linked list
     struct pcb *parent;
     struct pcb *next;

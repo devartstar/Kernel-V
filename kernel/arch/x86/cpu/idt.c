@@ -4,6 +4,7 @@
 #include "arch/x86/tss.h"
 #include "core/debug.h"
 #include "core/debug_funcs.h"
+#include "proc/user.h"
 #include "tests/nested_irq.h"
 #include "time/timer.h"
 #include <stdint.h>
@@ -13,6 +14,7 @@ extern void idt_flush(uint32_t);
 extern void timer_interrupt_handler(uint32_t idt_index, regs_t *regs);
 extern void pagefault_interrupt_handler(uint32_t idt_index, regs_t *regs);
 extern void test_interrupt_handler(uint32_t idt_index, regs_t *regs);
+extern void syscall_interrupt_handler(uint32_t idt_index, regs_t *regs);
 
 //  IDT (Interrupt Descriptor Table) Declaration
 idt_entry_t idt[IDT_ENTRIES];
@@ -98,6 +100,12 @@ void idt_init() {
     irq_unmask(3);
     debug_module(IDT_GDT, "[IDT] Test Entry Initialized successfully!\n");
 #endif
+
+    /* Set up IDT entry for syscalls */
+    register_interrupt_handler(128, syscall_interrupt_handler, "SYSCALL");
+    extern void isr_stub_128();
+    idt_set_gate(128, (uint32_t)isr_stub_128, 0x08, 0xEE);
+    debug_module(IDT_GDT, "[IDT] Syscall Entry Initialized successfully!\n");
 
     idt_flush((uint32_t)&idt_ptr);
     pr_info("[IDT] Loaded successfully!\n");

@@ -6,19 +6,24 @@
            GDTR.base
               │
               ▼
-┌─────────────────────┬───────────┐
-│       Address       │  Content  │
-├─────────────────────┼───────────┤
-│ GDTR Offset + 0     │   NULL    │
-├─────────────────────┼───────────┤
-│ GDTR Offset + 8     │ KernelCode│
-├─────────────────────┼───────────┤
-│ GDTR Offset + 16    │ KerenlData│
-├─────────────────────┼───────────┤
-│ GDTR Offset + 24    │ User Code │
-├─────────────────────┼───────────┤
-│ GDTR Offset + 32    │ User Data │
-└─────────────────────┴───────────┘
++---------------------------+
+| Offset |   Address        | Content
++---------------------------+
+|  +0    | GDTR + 0x00      | NULL Descriptor
+|        |                  | (mandatory, selector 0)
++---------------------------+
+|  +8    | GDTR + 0x08      | Segment 1 Descriptor
+|        |                  | (e.g. Kernel Code)
++---------------------------+
+| +16    | GDTR + 0x10      | Segment 2 Descriptor
+|        |                  | (e.g. Kernel Data)
++---------------------------+
+| +24    | GDTR + 0x18      | Segment 3 Descriptor
+|        |                  | (optional: User Code)
++---------------------------+
+|  ...   | ...              | ...
++---------------------------+
+
 
 * GDT ENTRY:
    64                    56      52      48           40           32
@@ -32,6 +37,8 @@
    32                                   16                         0
 
 **************************************************/
+
+#define GDT_ENTRIES 6
 
 struct gdt_entry {
     uint16_t limit_low;

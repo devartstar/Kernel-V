@@ -44,6 +44,10 @@ void kernel_main_loop() {
         KLOG_INFO("kernel", "Woke up from hlt!\n");
 
         loop_count++;
+
+        if (loop_count == 10) {
+            __asm__ __volatile__("int $0x80");
+        }
     }
 }
 
@@ -183,7 +187,8 @@ void kernel_main() {
     DEBUG_DOUBLE_FAULT_SETUP();
 
     /* Map physical memory of new stack region into page tables */
-    map_high_stack(KERNEL_STACK_BOTTOM_VIRT, KERNEL_STACK_TOP_VIRT);
+    map_high_stack(KERNEL_STACK_BOTTOM_VIRT, KERNEL_STACK_TOP_VIRT,
+                   PAGE_PRESENT | PAGE_WRITE);
 
     /* Switch to high virtual stack
        Keep a buffer of 16 bits at the top of the stack for safety
