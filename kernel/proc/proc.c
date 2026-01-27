@@ -65,17 +65,19 @@ void pcb_free(pcb_t *pcb) { pool_free(&pcb_pool, pcb); }
 void proc_init(void) {
     ready_list_head = NULL;
     wait_list_head = NULL;
-
+    
     next_pid = 1;
     pcb_allocator_init();
 
     /* Create and IDLE process */
     pcb_t *idle = proc_create(idle_process, NULL, "idle");
-    if (idle) {
+    if (idle) 
+    {
         /* IDLE process should always be ready to run */
-        debug_module(PROCESS_MGMT, "Created idle process with PID %d\n",
-                     idle->pid);
-    } else {
+        debug_module(PROCESS_MGMT, "Created idle process with PID %d\n", idle->pid); 
+    } 
+    else 
+    { 
         panik("Failed creating IDLE process");
     }
 }
@@ -224,8 +226,7 @@ pcb_t *scheduler_pick_next(void) {
         return ready_list_head;
     }
 
-    /* Round-robin scheduling: iterate through all processes starting from next
-     */
+    /* Round-robin scheduling: iterate through all processes starting from next */
     pcb_t *start_proc = proc_now->next ? proc_now->next : ready_list_head;
     proc_next = start_proc;
 
@@ -272,34 +273,32 @@ void yield(void) {
 
     /* If current process is invalid */
     if (!proc_now || proc_now->pid <= 0) {
-        pr_error("CURRENT PROCESS CORRUPTED: pid=%d, name=%s\n",
+        pr_error("CURRENT PROCESS CORRUPTED: pid=%d, name=%s\n", 
                  proc_now ? proc_now->pid : -1,
                  proc_now ? proc_now->name : "NULL");
-        while (1)
-            __asm__("hlt");
+        while(1) __asm__("hlt");
     }
 
     proc_next = scheduler_pick_next();
 
     /* Debug the new process contexts */
     if (proc_next) {
-        pr_verbose(
-            "DEBUG: Switching to %s: EIP=0x%08x ESP=0x%08x EFLAGS=0x%08x\n",
-            proc_next->name, PRINT_UINT32(proc_next->context.eip),
-            PRINT_UINT32(proc_next->context.esp),
-            PRINT_UINT32(proc_next->context.eflags));
+        pr_verbose("DEBUG: Switching to %s: EIP=0x%08x ESP=0x%08x EFLAGS=0x%08x\n",
+                    proc_next->name,
+                    PRINT_UINT32(proc_next->context.eip),
+                    PRINT_UINT32(proc_next->context.esp), 
+                    PRINT_UINT32(proc_next->context.eflags));
 
         /* Todo: Check condition if interrupts disabled and compare with
          * proc_next->context.eflag */
     }
 
-    /* Set timeslice for all processes, including idle (but give idle only 1
-     * tick) */
+    /* Set timeslice for all processes, including idle (but give idle only 1 tick) */
     if (proc_next) {
         if (strcmp(proc_next->name, "idle") == 0) {
-            proc_next->timeslice_ticks = 1;
+            proc_next->timeslice_ticks = 1;  
         } else {
-            proc_next->timeslice_ticks = DEFAULT_TIMESLICE;
+            proc_next->timeslice_ticks = DEFAULT_TIMESLICE;  
         }
     }
 
@@ -311,7 +310,7 @@ void yield(void) {
             proc_now->state = PROC_READY;
         }
 
-        /* Mark the selected Process as Running */
+        /* Mark the selected Process as Running */ 
         proc_next->state = PROC_RUNNING;
         current_proc = proc_next;
 
@@ -319,8 +318,8 @@ void yield(void) {
                      "About to switch: \n"
                      "\tPrev Process=%s (eflags=0x%lx) \n"
                      "\tNew Process=%s  (eflags=0x%lx) \n",
-                     proc_now->name, proc_now->context.eflags, proc_next->name,
-                     proc_next->context.eflags);
+                     proc_now->name, proc_now->context.eflags,
+                     proc_next->name, proc_next->context.eflags);
 
         /* Context Switch to New Process */
         switch_to(proc_now, proc_next);
@@ -333,18 +332,18 @@ void yield(void) {
                              : "=r"(eflags_afterswitch));
 
         debug_module(PROCESS_MGMT, "Resumed process: %s\n", current_proc->name);
-        debug_module(PROCESS_MGMT, "EFLAGS After switch to: 0x%08x (IF=%s)\n",
-                     PRINT_UINT32(eflags_afterswitch),
-                     (eflags_afterswitch & 0x200) ? "enabled" : "disabled");
+        debug_module(PROCESS_MGMT,
+                    "EFLAGS After switch to: 0x%08x (IF=%s)\n",
+                    PRINT_UINT32(eflags_afterswitch), 
+                    (eflags_afterswitch & 0x200) ? "enabled" : "disabled");
 
         /* Enable interrupts after context switch */
         if (!(eflags_afterswitch & 0x200)) {
-            pr_warn("WARNING: Interrupts disabled after context switch! "
-                    "Re-enabling...\n");
+            pr_warn("WARNING: Interrupts disabled after context switch! Re-enabling...\n");
             __asm__ __volatile__("sti");
-        } else {
-            debug_module(PROCESS_MGMT,
-                         "Context switch properly restored IF bit.\n");
+        }
+        else {
+            debug_module(PROCESS_MGMT, "Context switch properly restored IF bit.\n");
         }
 
     } else {
@@ -375,7 +374,7 @@ void timer_interrupt_proc_handler(uint32_t tickcount) {
     /* Premption - Kernel to context switch automatically on timer tick */
     if (current_proc != NULL && current_proc->state == PROC_RUNNING) {
         current_proc->timeslice_ticks--;
-        pr_info("[TICK %lu] %s: timeslice ticks = %lu\n",
+        pr_info("[TICK %lu] %s: timeslice ticks = %lu\n", 
                 PRINT_UINT32(tickcount), current_proc->name,
                 PRINT_UINT32(current_proc->timeslice_ticks));
         if (current_proc->timeslice_ticks <= 0) {
@@ -387,7 +386,7 @@ void timer_interrupt_proc_handler(uint32_t tickcount) {
 
 /******************************************
  * START: PROCESS ENTRY                   *
- * ****************************************/
+ * ****************************************/ 
 
 void thread_entry_wrapper(void (*entry)(void *), void *arg) {
     entry(arg);
@@ -397,9 +396,11 @@ void thread_entry_wrapper(void (*entry)(void *), void *arg) {
 /*******************************************
  * START: KERNEL ENTRY METHIOD             *
  *******************************************/
-pcb_t *proc_create_kernel_main(const char *name) {
+pcb_t *proc_create_kernel_main(const char *name)
+{
     pcb_t *kernel_proc = pcb_alloc();
-    if (!kernel_proc) {
+    if(!kernel_proc)
+    {
         return NULL;
     }
 
@@ -419,7 +420,7 @@ pcb_t *proc_create_kernel_main(const char *name) {
     kernel_proc->stack_ptr = NULL;
 
     strncpy(kernel_proc->name, name, PROC_NAME_MAX);
-    kernel_proc->name[PROC_NAME_MAX - 1] = '\0';
+    kernel_proc->name[PROC_NAME_MAX-1] = '\0';
 
     kernel_proc->parent = NULL;
     kernel_proc->timeslice_ticks = DEFAULT_TIMESLICE;
@@ -427,11 +428,6 @@ pcb_t *proc_create_kernel_main(const char *name) {
     enqueue_ready(kernel_proc);
 
     current_proc = kernel_proc;
-
-    KLOG_VERBOSE(
-        "KENREL",
-        "Created and Switched to Process\n\tProcess Name=%s (PID=%lu)\n",
-        kernel_proc->name, kernel_proc->pid);
 
     return kernel_proc;
 }
@@ -441,12 +437,12 @@ pcb_t *proc_create_kernel_main(const char *name) {
  */
 void proc_kernel_main_exit(void) {
     pr_info("Kernel main process exiting - system shutdown\n");
-
+    
     // In a production kernel, this might trigger:
     // - Graceful shutdown of all processes
     // - Filesystem sync
     // - Hardware shutdown
-
+    
     // For now, just halt
     while (1) {
         __asm__ __volatile__("cli; hlt");

@@ -7,6 +7,10 @@
 
 void map_high_stack(uint32_t stack_bottom, uint32_t stack_top, uint32_t flags) {
     uint32_t stack_size = stack_top - stack_bottom;
+    debug_module(MEMORY,
+                 "Stack Bottom=0x%08x,\tStack Top=0x%08x\t(Size=0x%08x)\n",
+                 PRINT_UINT32(stack_bottom), PRINT_UINT32(stack_top),
+                 PRINT_UINT32(stack_size));
     debug_module(MEMORY, "Mapping stack pages...\n");
 
     for (uint32_t off = PAGE_SIZE; off < stack_size; off += PAGE_SIZE) {
