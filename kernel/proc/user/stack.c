@@ -12,7 +12,7 @@ int user_stack_init(pcb_t *proc) {
                    PAGE_PRESENT | PAGE_WRITE | PAGE_USER);
 
     proc->user_stack_top = USER_STACK_TOP_VIRT;
-    proc->user_stack_size = USER_SPACE_STACK_SIZE;
+    proc->user_stack_size = USER_STACK_SIZE;
 
     return 0;
 }

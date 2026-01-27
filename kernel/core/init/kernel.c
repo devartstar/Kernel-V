@@ -45,7 +45,7 @@ void kernel_main_loop() {
 
         loop_count++;
 
-        if (loop_count == 10) {
+        if (loop_count == 1) {
             test_usermode_process();
         }
     }

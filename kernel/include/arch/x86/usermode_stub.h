@@ -1,6 +1,6 @@
-#ifndef USERMODE_STUB_H
-#define USERMODE_STUB_H
+// arch/x86/usermode_stub.h
+#pragma once
+#include <stdint.h>
 
-extern void usermode_stub(void);
-
-#endif
+extern uint8_t usermode_stub[];
+extern uint8_t usermode_stub_end[];

@@ -1,3 +1,4 @@
+#include "lib/string.h"
 #include <stddef.h>
 
 void *memset(void *s, int c, size_t n) {
@@ -32,4 +33,12 @@ char *strrchr(const char *s, int c) {
         s++;
     }
     return (char *)(c == 0 ? s : last);
+}
+
+void *memcpy(void *dst, const void *src, size_t n) {
+    uint8_t *d = dst;
+    const uint8_t *s = src;
+    while (n--)
+        *d++ = *s++;
+    return dst;
 }

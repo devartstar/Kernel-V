@@ -1,31 +1,64 @@
 #include "arch/x86/usermode_stub.h"
+#include "core/panik.h"
 #include "lib/printk.h"
 #include "lib/string.h"
 #include "mm/paging.h"
+#include "mm/pmm.h"
 #include "proc/user.h"
-#include <string.h>
+
+static void map_user_range(uint32_t start, uint32_t end, uint32_t flags) {
+    for (uint32_t va = start; va < end; va += PAGE_SIZE) {
+        void *phys = pmm_alloc_frame();
+        if (!phys) {
+            panik("Failed to alloc frame for user range");
+        }
+
+        paging_map_page(va, (uint32_t)phys, flags | PAGE_PRESENT | PAGE_USER);
+    }
+}
 
 void test_usermode_process(void) {
-    /* Allocate stack for the process */
+    KLOG_VERBOSE("TEST", "RUNNING usermode process test\n");
 
-    KLOG_VERBOSE("TEST", "Inside Usermode Process Test\n");
+    /* ---------------------------
+     * 1. Map USER STACK
+     * --------------------------- */
+    map_high_stack(USER_STACK_BOTTOM_VIRT, USER_STACK_TOP_VIRT,
+                   PAGE_PRESENT | PAGE_WRITE | PAGE_USER);
 
-    int stack_allocatable =
-        map_high_stack(USER_STACK_BOTTOM_VIRT, USER_STACK_TOP_VIRT,
-                       PAGE_PRESENT | PAGE_WRITE | PAGE_USER);
+    memset((void *)USER_STACK_BOTTOM_VIRT, 0xCC, USER_STACK_SIZE);
 
-    if (stack_allocatable == -1) {
-        KLOG_VERBOSE("TEST", "Failed to allocate user stack.\n");
-        return;
-    }
+    debug_dump_pte(USER_STACK_TOP_VIRT - 4);
 
-    memset((void *)USER_STACK_BOTTOM_VIRT, 0xCC, USER_SPACE_STACK_SIZE);
+    /* ---------------------------
+     * 2. Map USER CODE page
+     * --------------------------- */
+    uint32_t stub_size = (uint32_t)(usermode_stub_end - usermode_stub);
+    uint32_t code_pages = ALIGN_UP(stub_size, PAGE_SIZE);
 
-    uint32_t user_stack_top = USER_STACK_TOP_VIRT;
+    map_high_stack(USER_CODE_VIRT, USER_CODE_VIRT + PAGE_SIZE,
+                   PAGE_PRESENT | PAGE_WRITE);
 
-    KLOG_VERBOSE("TEST",
-                 "Launching user mode test stub at 0x%08x with stack 0x%08x\n",
-                 (uint32_t)&usermode_stub, USER_STACK_TOP_VIRT);
+    /* ---------------------------
+     * 3. Copy stub into USER memory
+     * --------------------------- */
+    memcpy((void *)USER_CODE_VIRT, usermode_stub, stub_size);
 
-    switch_to_usermode((uint32_t)&usermode_stub, USER_STACK_TOP_VIRT);
+    debug_dump_pte(USER_CODE_VIRT);
+
+    /* Verify bytes */
+    uint8_t *code = (uint8_t *)USER_CODE_VIRT;
+    printk("User stub bytes: %02x %02x %02x %02x %02x %02x %02x %02x\n",
+           code[0], code[1], code[2], code[3], code[4], code[5], code[6],
+           code[7]);
+
+    /* ---------------------------
+     * 4. Enter user mode
+     * --------------------------- */
+    KLOG_VERBOSE("TEST", "Switching to user mode: entry=0x%08x stack=0x%08x\n",
+                 USER_CODE_VIRT, USER_STACK_TOP_VIRT);
+
+    switch_to_usermode(USER_CODE_VIRT, USER_STACK_TOP_VIRT);
+
+    panik("Returned from usermode (should never happen)");
 }

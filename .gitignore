@@ -7,3 +7,5 @@ kernel/lib/proc_offset_generator
 build.log
 errors.log
 warnings.log
+.cache/
+serial.log

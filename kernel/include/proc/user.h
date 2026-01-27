@@ -5,12 +5,11 @@
 #include <stdint.h>
 
 /* 64Kb of user space stack */
-#define USER_SPACE_STACK_SIZE 0x10000
-
-/* High end and Low end of the user space stack */
 #define USER_STACK_TOP_VIRT 0xBFFFF000
-#define USER_STACK_BOTTOM_VIRT                                                 \
-    (USER_STACK_TOP_VIRT - USER_SPACE_STACK_SIZE) //  0xBFFE0000
+#define USER_STACK_SIZE 0x10000 // 64 KB
+#define USER_STACK_BOTTOM_VIRT (USER_STACK_TOP_VIRT - USER_STACK_SIZE)
+
+#define USER_CODE_VIRT 0x00018000 // simple low user VA
 
 int user_stack_init(pcb_t *proc);
 

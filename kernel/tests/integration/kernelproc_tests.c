@@ -1,7 +1,7 @@
-#include "tests/proc_tests.h"
 #include "core/panik.h"
 #include "lib/printk.h"
 #include "proc/proc.h"
+#include "tests/proc_tests.h"
 
 extern pcb_t *current_proc;
 
@@ -49,7 +49,7 @@ void my_sleep_proc(void *arg) {
 void preemptive_proc(void *args) {
     (void)args;
     int i = 0;
-    int max_iterations = 100000;
+    int max_iterations = 1000;
 
     while (i < max_iterations) {
         if (i % 100 == 0) {
