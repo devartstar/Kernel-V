@@ -110,7 +110,9 @@ void debug_dump_pte(uint32_t virtual_addr) {
 
     /* check if page directory entry present */
     if (!(page_directory[pdir_index] & PAGE_PRESENT)) {
-        printk("Page directory entry for 0x%08x not presnet.\n", virtual_addr);
+        KLOG_VERBOSE("PAGE_TABLE",
+                     "Page directory entry for 0x%08x not presnet.\n",
+                     virtual_addr);
         return;
     }
 
@@ -118,12 +120,16 @@ void debug_dump_pte(uint32_t virtual_addr) {
     uint32_t *page_table =
         (uint32_t *)(page_directory[pdir_index] & 0xFFFFF000);
     uint32_t pte = page_table[ptable_index];
-    printk("PTE for 0x%08x: 0x%08x [", virtual_addr, pte);
+
+    char flags[64];
     if (pte & PAGE_PRESENT)
-        printk("PRESENT ");
+        strappend(flags, "PRESENT ");
     if (pte & PAGE_USER)
-        printk("USER ");
+        strappend(flags, "USER ");
     if (pte & PAGE_WRITE)
-        printk("WRITE ");
-    printk("physical=0x%08x]\n", pte & 0xFFFFF000);
+        strappend(flags, "WRITE ");
+
+    KLOG_VERBOSE("PAGE_TABLE",
+                 "PTE for 0x%08x: 0x%08x [physical=0x%08x]\tflags=%s\n",
+                 virtual_addr, pte, pte & 0xFFFFF000, flags);
 }

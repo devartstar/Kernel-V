@@ -31,6 +31,10 @@ void init_tss()
 	uint32_t current_cr3;
 	__asm__ volatile("mov %%cr3, %0" : "=r"(current_cr3));
 
+	/* CRITICAL: Set up kernel stack for privilege level transitions */
+	tss_df.ss0 = 0x10;  // Kernel data segment
+	tss_df.esp0 = (uint32_t)(double_fault_stack + DOUBLE_FAULT_STACK_SIZE - 16);  // Use same stack as DF handler
+
 	/* Use kernel data segment - as a valid stack segment on double fault */
 	tss_df.ss = 0x10;
 
@@ -63,6 +67,8 @@ void init_tss()
 				 PRINT_UINT32(tss_df.cs),
 				 PRINT_UINT32(tss_df.eip),
 				 PRINT_UINT32(tss_df.eflags));
+	debug_module(TSS, "CRITICAL: ESP0=0x%08x SS0=0x%04x for privilege transitions\n",
+				 PRINT_UINT32(tss_df.esp0), PRINT_UINT32(tss_df.ss0));
 	debug_module(TSS, "Initialized successfully!\n");
 }
 

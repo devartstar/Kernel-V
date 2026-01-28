@@ -9,7 +9,7 @@
 #define USER_STACK_SIZE 0x10000 // 64 KB
 #define USER_STACK_BOTTOM_VIRT (USER_STACK_TOP_VIRT - USER_STACK_SIZE)
 
-#define USER_CODE_VIRT 0x00018000 // simple low user VA
+#define USER_CODE_VIRT 0x00400000 // Standard user code start (4MB) instead of 0x18000
 
 int user_stack_init(pcb_t *proc);
 

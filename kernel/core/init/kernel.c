@@ -46,7 +46,9 @@ void kernel_main_loop() {
         loop_count++;
 
         if (loop_count == 1) {
+            irq_mask(0);
             test_usermode_process();
+            irq_unmask(0);
         }
     }
 }

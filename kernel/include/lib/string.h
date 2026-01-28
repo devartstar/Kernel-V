@@ -21,4 +21,5 @@ int strcmp(const char *s1, const char *s2);
  */
 char *strrchr(const char *s, int c);
 void *memcpy(void *dst, const void *src, size_t n);
+void strappend(char *dest, char *src);
 #endif /* LIB_STRING_H */

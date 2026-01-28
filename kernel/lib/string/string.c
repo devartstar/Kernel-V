@@ -42,3 +42,10 @@ void *memcpy(void *dst, const void *src, size_t n) {
         *d++ = *s++;
     return dst;
 }
+
+void strappend(char *dest, char *src) {
+    while (*dest)
+        dest++;
+    while ((*dest++ = *src++))
+        ;
+}
