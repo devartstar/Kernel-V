@@ -58,18 +58,8 @@ void init_tss()
 	/* Set all data segment registers to kernel data segment */
 	tss_df.ds = tss_df.es = tss_df.fs = tss_df.gs = 0x10;
 
-	debug_module(TSS,
-				 "Initialized double fault TSS at %p: ss=0x%04x, esp=0x%08x, "
-				 "cs=0x%04x, eip=0x%08x, eflags=0x%08x\n",
-				 (void*)&tss_df,
-				 PRINT_UINT32(tss_df.ss),
-				 PRINT_UINT32(tss_df.esp),
-				 PRINT_UINT32(tss_df.cs),
-				 PRINT_UINT32(tss_df.eip),
-				 PRINT_UINT32(tss_df.eflags));
-	debug_module(TSS, "CRITICAL: ESP0=0x%08x SS0=0x%04x for privilege transitions\n",
+	debug_module(TSS, "Initialized double fault TSS with ESP0=0x%08x SS0=0x%04x\n",
 				 PRINT_UINT32(tss_df.esp0), PRINT_UINT32(tss_df.ss0));
-	debug_module(TSS, "Initialized successfully!\n");
 }
 
 void update_tss_cr3(void)
