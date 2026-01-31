@@ -11,6 +11,8 @@
  */
 
 void test_interrupt_handler(uint32_t idt_index, regs_t *regs) {
+    (void)regs;
+
     nested_interrupt_count++;
     KLOG_VERBOSE(
         "TEST",

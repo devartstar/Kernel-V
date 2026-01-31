@@ -43,6 +43,12 @@ typedef struct regs {
     uint32_t ecx;
     uint32_t eax;
 
+    /* Segment registers */
+    uint32_t ds;
+    uint32_t es;
+    uint32_t fs;
+    uint32_t gs;
+
     /* Interrupt vector number */
     uint32_t int_no;
 

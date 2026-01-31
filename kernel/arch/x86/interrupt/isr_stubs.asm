@@ -10,10 +10,23 @@ isr_stub_%1:
     
     ; Push interrupt number
     push %1
-    
+
+    ; Save segment registers
+    push ds
+    push es
+    push fs
+    push gs
+
     ; Save all registers (pusha pushes: EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI)
     pusha
-    
+
+    ; Load kernel data segment into srgs for C code
+    mov ax, 0x10
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+
     ; Pass pointer to register structure as argument
     mov eax, esp
     push eax
@@ -26,7 +39,13 @@ isr_stub_%1:
     
     ; Restore all registers
     popa
-    
+
+    ; Restore segment registers
+    pop gs
+    pop fs
+    pop es
+    pop ds
+
     ; Remove interrupt number and error code from stack
     add esp, 8
     
@@ -41,26 +60,45 @@ global isr_stub_%1
 isr_stub_%1:
     ; CPU already pushed error code, just push interrupt number
     push %1
-    
+
+    ; Save segment registers
+    push ds
+    push es
+    push fs
+    push gs
+
     ; Save all registers (pusha pushes: EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI)
     pusha
-    
+
+    ; Load kernel data segment into srgs for C code
+    mov ax, 0x10
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+
     ; Pass pointer to register structure as argument
     mov eax, esp
     push eax
-    
+
     ; Call the common handler
     call isr_common_handler
-    
+
     ; Clean up the stack (remove the pointer argument)
     add esp, 4
-    
+
     ; Restore all registers
     popa
-    
+
+    ; Restore segment registers
+    pop gs
+    pop fs
+    pop es
+    pop ds
+
     ; Remove interrupt number and error code from stack
     add esp, 8
-    
+
     ; Return from interrupt
     iretd
 %endmacro

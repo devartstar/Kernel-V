@@ -104,7 +104,7 @@ void idt_init() {
     /* Set up IDT entry for syscalls */
     register_interrupt_handler(128, syscall_interrupt_handler, "SYSCALL");
     extern void isr_stub_128();
-    idt_set_gate(128, (uint32_t)isr_stub_128, 0x08, 0xEE);
+    idt_set_gate(128, (uint32_t)isr_stub_128, 0x08, 0xEF);
     debug_module(IDT_GDT, "[IDT] Syscall Entry Initialized successfully!\n");
 
     idt_flush((uint32_t)&idt_ptr);
