@@ -1,4 +1,5 @@
 #include "proc/proc.h"
+#include "arch/x86/tss.h"
 #include "core/debug.h"
 #include "core/panik.h"
 #include "lib/printk.h"
@@ -338,6 +339,11 @@ void yield(void) {
         /* Context Switch to New Process */
         switch_to(proc_now, proc_next);
 
+        /* [todo] We have 1 TSS, its a good practice to have 1 per CPU */
+        /* Update the TSS entry so if the process privilege switch from
+         * user->kernel it can switch to that process kerel stack */
+        tss_df.esp0 = (uint32_t)current_proc->kernel_stack_top;
+
         /* Testing interrupt after process switch */
         uint32_t eflags_afterswitch;
         __asm__ __volatile__("pushf"
@@ -359,6 +365,8 @@ void yield(void) {
             debug_module(PROCESS_MGMT,
                          "Context switch properly restored IF bit.\n");
         }
+
+        debug_module(PROCESS_MGMT, "TSS ESP0 value is 0x%08x\n", tss_df.esp0);
 
     } else {
         debug_module(PROCESS_MGMT, "No context switch needed - staying in %s\n",
@@ -428,9 +436,10 @@ pcb_t *proc_create_kernel_main(const char *name) {
     kernel_proc->context.eip = 0;
     kernel_proc->context.eflags = 0x202;
 
-    kernel_proc->kernel_stack_base = NULL;
-    kernel_proc->kernel_stack_top = NULL;
-    kernel_proc->kernel_stack_size = NULL;
+    kernel_proc->kernel_stack_base = (uint8_t *)KERNEL_STACK_BOTTOM_VIRT;
+    kernel_proc->kernel_stack_top = (uint8_t *)KERNEL_STACK_TOP_VIRT;
+    kernel_proc->kernel_stack_size =
+        KERNEL_STACK_TOP_VIRT - KERNEL_STACK_BOTTOM_VIRT;
 
     strncpy(kernel_proc->name, name, PROC_NAME_MAX);
     kernel_proc->name[PROC_NAME_MAX - 1] = '\0';
