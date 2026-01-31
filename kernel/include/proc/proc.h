@@ -34,12 +34,14 @@ typedef struct regs_context {
  * @pid Process Id
  * @state Current state of the process
  * @context Register value to store for context switch
- * @stack_base Allocated stack base address for cleanup
- * @stack_ptr Current stack pointer
+ * @name Name of the process
+ * @kernel_stack_base Kernel stack bottom address for the process
+ * @kernel_stack_top Kernel stack top address for the process
+ * @kernel_stack_size Kernel stack size for the process
  * @sleep_ticks Cycles for the process to sleep
  * @timeslice_ticks Cycles for the process to execute before switch
- * @name Name of the process
- *
+ * @user_stack_top User stack top address for the process
+ * @user_stack_size User stack size for the process
  * @parent Pointer to the parent process PCB struct
  * @next Pointer to the next PCB struct in the linked list
  * @prev Pointer to the previous PCB struct in the linked list
@@ -48,17 +50,22 @@ typedef struct pcb {
     uint32_t pid;
     proc_state_t state;
     regs_context_t context;
-    uint8_t *stack_base;
-    uint8_t *stack_ptr;
-    uint32_t sleep_ticks;
-    uint32_t timeslice_ticks;
     char name[PROC_NAME_MAX];
 
-    /* user level process */
+    /* Kernel Stack */
+    uint8_t *kernel_stack_base;
+    uint8_t *kernel_stack_top;
+    uint32_t kernel_stack_size;
+
+    /* Scheduling */
+    uint32_t sleep_ticks;
+    uint32_t timeslice_ticks;
+
+    /* User Space */
     uint32_t user_stack_top;
     uint32_t user_stack_size;
 
-    //  for linked list
+    /* Process tree */
     struct pcb *parent;
     struct pcb *next;
     struct pcb *prev;

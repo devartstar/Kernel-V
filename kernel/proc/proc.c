@@ -65,19 +65,17 @@ void pcb_free(pcb_t *pcb) { pool_free(&pcb_pool, pcb); }
 void proc_init(void) {
     ready_list_head = NULL;
     wait_list_head = NULL;
-    
+
     next_pid = 1;
     pcb_allocator_init();
 
     /* Create and IDLE process */
     pcb_t *idle = proc_create(idle_process, NULL, "idle");
-    if (idle) 
-    {
+    if (idle) {
         /* IDLE process should always be ready to run */
-        debug_module(PROCESS_MGMT, "Created idle process with PID %d\n", idle->pid); 
-    } 
-    else 
-    { 
+        debug_module(PROCESS_MGMT, "Created idle process with PID %d\n",
+                     idle->pid);
+    } else {
         panik("Failed creating IDLE process");
     }
 }
@@ -91,8 +89,9 @@ pcb_t *proc_alloc(const char *name) {
     new_proc->pid = next_pid++;
     new_proc->state = PROC_NEW;
     memset(&new_proc->context, 0, sizeof(regs_context_t));
-    new_proc->stack_base = NULL;
-    new_proc->stack_ptr = NULL;
+    new_proc->kernel_stack_base = NULL;
+    new_proc->kernel_stack_top = NULL;
+    new_proc->kernel_stack_size = NULL;
     strncpy(new_proc->name, name, PROC_NAME_MAX);
     new_proc->name[PROC_NAME_MAX - 1] = '\0';
     new_proc->parent = NULL;
@@ -111,9 +110,13 @@ void proc_free(pcb_t *proc) {
     // Don't set state here - should already be TERMINATED
     // Don't dequeue here - should already be dequeued
 
-    /* Free up the process stack memory */
-    if (proc->stack_base) {
-        pmm_free_frame(proc->stack_base);
+    /* Free up the process kernel stack memory */
+    if (proc->kernel_stack_base && proc->kernel_stack_size) {
+        for (uint32_t offset = 0; offset < proc->kernel_stack_size;
+             offset += PAGE_SIZE) {
+            pmm_free_frame(
+                (void *)((uint8_t *)proc->kernel_stack_base + offset));
+        }
     }
 
     /* Free PCB */
@@ -137,16 +140,18 @@ pcb_t *proc_create(void (*entry)(void *), void *arg, const char *name) {
         return NULL;
     }
 
-    /* allocate a memory page as stack to process */
-    void *stack = pmm_alloc_frame();
-    if (!stack) {
+    /* allocate a memory page as kernel stack to process */
+    void *kernel_stack_block = pmm_alloc_frame();
+    if (!kernel_stack_block) {
         proc_free(proc);
         return NULL;
     }
-    proc->stack_base = stack;
+    proc->kernel_stack_base = kernel_stack_block;
+    proc->kernel_stack_size = KERNEL_STACK_SIZE;
+    proc->kernel_stack_top = proc->kernel_stack_base + proc->kernel_stack_size;
 
     /* since stack grows downwards, stack pointer pointing to top of stack */
-    uint32_t *stack_top = (uint32_t *)((uint8_t *)stack + KERNEL_STACK_SIZE);
+    uint32_t *stack_top = proc->kernel_stack_top;
 
     /*
      Update the stack to call the thread_entry_wrapper (entry, arg)
@@ -171,6 +176,12 @@ pcb_t *proc_create(void (*entry)(void *), void *arg, const char *name) {
         0x202; // IF (Interrupt Enable) bit set + reserved bit 1
 
     proc->state = PROC_READY;
+
+    KLOG_VERBOSE("PROC",
+                 "Process %s Created with kernel stack (top = 0x%08x, bottom = "
+                 "0x%08x, size = 0x%08x)\n",
+                 proc->name, proc->kernel_stack_top, proc->kernel_stack_base,
+                 proc->kernel_stack_size);
 
     return proc;
 }
@@ -226,7 +237,8 @@ pcb_t *scheduler_pick_next(void) {
         return ready_list_head;
     }
 
-    /* Round-robin scheduling: iterate through all processes starting from next */
+    /* Round-robin scheduling: iterate through all processes starting from next
+     */
     pcb_t *start_proc = proc_now->next ? proc_now->next : ready_list_head;
     proc_next = start_proc;
 
@@ -273,32 +285,34 @@ void yield(void) {
 
     /* If current process is invalid */
     if (!proc_now || proc_now->pid <= 0) {
-        pr_error("CURRENT PROCESS CORRUPTED: pid=%d, name=%s\n", 
+        pr_error("CURRENT PROCESS CORRUPTED: pid=%d, name=%s\n",
                  proc_now ? proc_now->pid : -1,
                  proc_now ? proc_now->name : "NULL");
-        while(1) __asm__("hlt");
+        while (1)
+            __asm__("hlt");
     }
 
     proc_next = scheduler_pick_next();
 
     /* Debug the new process contexts */
     if (proc_next) {
-        pr_verbose("DEBUG: Switching to %s: EIP=0x%08x ESP=0x%08x EFLAGS=0x%08x\n",
-                    proc_next->name,
-                    PRINT_UINT32(proc_next->context.eip),
-                    PRINT_UINT32(proc_next->context.esp), 
-                    PRINT_UINT32(proc_next->context.eflags));
+        pr_verbose(
+            "DEBUG: Switching to %s: EIP=0x%08x ESP=0x%08x EFLAGS=0x%08x\n",
+            proc_next->name, PRINT_UINT32(proc_next->context.eip),
+            PRINT_UINT32(proc_next->context.esp),
+            PRINT_UINT32(proc_next->context.eflags));
 
         /* Todo: Check condition if interrupts disabled and compare with
          * proc_next->context.eflag */
     }
 
-    /* Set timeslice for all processes, including idle (but give idle only 1 tick) */
+    /* Set timeslice for all processes, including idle (but give idle only 1
+     * tick) */
     if (proc_next) {
         if (strcmp(proc_next->name, "idle") == 0) {
-            proc_next->timeslice_ticks = 1;  
+            proc_next->timeslice_ticks = 1;
         } else {
-            proc_next->timeslice_ticks = DEFAULT_TIMESLICE;  
+            proc_next->timeslice_ticks = DEFAULT_TIMESLICE;
         }
     }
 
@@ -310,7 +324,7 @@ void yield(void) {
             proc_now->state = PROC_READY;
         }
 
-        /* Mark the selected Process as Running */ 
+        /* Mark the selected Process as Running */
         proc_next->state = PROC_RUNNING;
         current_proc = proc_next;
 
@@ -318,8 +332,8 @@ void yield(void) {
                      "About to switch: \n"
                      "\tPrev Process=%s (eflags=0x%lx) \n"
                      "\tNew Process=%s  (eflags=0x%lx) \n",
-                     proc_now->name, proc_now->context.eflags,
-                     proc_next->name, proc_next->context.eflags);
+                     proc_now->name, proc_now->context.eflags, proc_next->name,
+                     proc_next->context.eflags);
 
         /* Context Switch to New Process */
         switch_to(proc_now, proc_next);
@@ -332,18 +346,18 @@ void yield(void) {
                              : "=r"(eflags_afterswitch));
 
         debug_module(PROCESS_MGMT, "Resumed process: %s\n", current_proc->name);
-        debug_module(PROCESS_MGMT,
-                    "EFLAGS After switch to: 0x%08x (IF=%s)\n",
-                    PRINT_UINT32(eflags_afterswitch), 
-                    (eflags_afterswitch & 0x200) ? "enabled" : "disabled");
+        debug_module(PROCESS_MGMT, "EFLAGS After switch to: 0x%08x (IF=%s)\n",
+                     PRINT_UINT32(eflags_afterswitch),
+                     (eflags_afterswitch & 0x200) ? "enabled" : "disabled");
 
         /* Enable interrupts after context switch */
         if (!(eflags_afterswitch & 0x200)) {
-            pr_warn("WARNING: Interrupts disabled after context switch! Re-enabling...\n");
+            pr_warn("WARNING: Interrupts disabled after context switch! "
+                    "Re-enabling...\n");
             __asm__ __volatile__("sti");
-        }
-        else {
-            debug_module(PROCESS_MGMT, "Context switch properly restored IF bit.\n");
+        } else {
+            debug_module(PROCESS_MGMT,
+                         "Context switch properly restored IF bit.\n");
         }
 
     } else {
@@ -374,7 +388,7 @@ void timer_interrupt_proc_handler(uint32_t tickcount) {
     /* Premption - Kernel to context switch automatically on timer tick */
     if (current_proc != NULL && current_proc->state == PROC_RUNNING) {
         current_proc->timeslice_ticks--;
-        pr_info("[TICK %lu] %s: timeslice ticks = %lu\n", 
+        pr_info("[TICK %lu] %s: timeslice ticks = %lu\n",
                 PRINT_UINT32(tickcount), current_proc->name,
                 PRINT_UINT32(current_proc->timeslice_ticks));
         if (current_proc->timeslice_ticks <= 0) {
@@ -386,7 +400,7 @@ void timer_interrupt_proc_handler(uint32_t tickcount) {
 
 /******************************************
  * START: PROCESS ENTRY                   *
- * ****************************************/ 
+ * ****************************************/
 
 void thread_entry_wrapper(void (*entry)(void *), void *arg) {
     entry(arg);
@@ -396,11 +410,9 @@ void thread_entry_wrapper(void (*entry)(void *), void *arg) {
 /*******************************************
  * START: KERNEL ENTRY METHIOD             *
  *******************************************/
-pcb_t *proc_create_kernel_main(const char *name)
-{
+pcb_t *proc_create_kernel_main(const char *name) {
     pcb_t *kernel_proc = pcb_alloc();
-    if(!kernel_proc)
-    {
+    if (!kernel_proc) {
         return NULL;
     }
 
@@ -416,11 +428,12 @@ pcb_t *proc_create_kernel_main(const char *name)
     kernel_proc->context.eip = 0;
     kernel_proc->context.eflags = 0x202;
 
-    kernel_proc->stack_base = NULL;
-    kernel_proc->stack_ptr = NULL;
+    kernel_proc->kernel_stack_base = NULL;
+    kernel_proc->kernel_stack_top = NULL;
+    kernel_proc->kernel_stack_size = NULL;
 
     strncpy(kernel_proc->name, name, PROC_NAME_MAX);
-    kernel_proc->name[PROC_NAME_MAX-1] = '\0';
+    kernel_proc->name[PROC_NAME_MAX - 1] = '\0';
 
     kernel_proc->parent = NULL;
     kernel_proc->timeslice_ticks = DEFAULT_TIMESLICE;
@@ -437,12 +450,12 @@ pcb_t *proc_create_kernel_main(const char *name)
  */
 void proc_kernel_main_exit(void) {
     pr_info("Kernel main process exiting - system shutdown\n");
-    
+
     // In a production kernel, this might trigger:
     // - Graceful shutdown of all processes
     // - Filesystem sync
     // - Hardware shutdown
-    
+
     // For now, just halt
     while (1) {
         __asm__ __volatile__("cli; hlt");
