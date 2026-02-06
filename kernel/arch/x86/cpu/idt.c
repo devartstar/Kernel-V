@@ -4,7 +4,7 @@
 #include "arch/x86/tss.h"
 #include "core/debug.h"
 #include "core/debug_funcs.h"
-#include "proc/user.h"
+#include "proc/syscall.h"
 #include "tests/nested_irq.h"
 #include "time/timer.h"
 #include <stdint.h>

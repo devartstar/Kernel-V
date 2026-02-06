@@ -10,6 +10,7 @@
 #include "mm/stack_map.h"
 #include "proc/context_switch.h"
 #include "proc/proc.h"
+#include "proc/syscall.h"
 #include "tests/proc_tests.h"
 #include "tests/test_runner.h"
 #include "time/timer.h"
@@ -19,6 +20,8 @@ extern void switch_to_high_stack(uint32_t new_esp, void (*entry_func)());
 /* Kernel Background loop */
 void kernel_main_loop() {
     uint32_t loop_count = 0;
+
+    syscall_table_init();
 
     while (1) {
         // Check interrupt status before operations

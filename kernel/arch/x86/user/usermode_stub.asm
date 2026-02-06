@@ -6,9 +6,10 @@ global usermode_stub_end
 
 usermode_stub:
 .loop:
-    mov eax, 0x12345678    ; Test syscall number
-    int 0x80               ; Syscall interrupt
-    jmp .loop              ; Infinite loop of syscalls
+    mov eax, 0              ; Test syscall number
+    mov ebx, 0x12345678     ; test args
+    int 0x80                ; Syscall interrupt
+    jmp .loop               ; Infinite loop of syscalls
 
 usermode_stub_end:
 
