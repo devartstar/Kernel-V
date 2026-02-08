@@ -36,20 +36,20 @@ void test_usermode_process(void) {
      * 2. Map USER CODE page with execute permissions
      * --------------------------- */
     uint32_t stub_size = (uint32_t)(usermode_stub_end - usermode_stub);
-    
+
     // Map code page as WRITABLE for copying
     void *phys_code = pmm_alloc_frame();
     if (!phys_code) {
         panik("Failed to alloc frame for user code");
     }
-    paging_map_page(USER_CODE_VIRT, (uint32_t)phys_code, 
+    paging_map_page(USER_CODE_VIRT, (uint32_t)phys_code,
                     PAGE_PRESENT | PAGE_WRITE | PAGE_USER);
-    
-    KLOG_INFO("TEST", "Copying usermode stub (%d bytes) to 0x%08x\n",
-              stub_size, USER_CODE_VIRT);
+
+    KLOG_INFO("TEST", "Copying usermode stub (%d bytes) to 0x%08x\n", stub_size,
+              USER_CODE_VIRT);
 
     /* ---------------------------
-     * 3. Copy stub into USER memory  
+     * 3. Copy stub into USER memory
      * --------------------------- */
     memcpy((void *)USER_CODE_VIRT, (void *)usermode_stub, stub_size);
 
@@ -57,10 +57,10 @@ void test_usermode_process(void) {
      * 4. Enter user mode
      * --------------------------- */
     uint32_t user_stack = USER_STACK_TOP_VIRT - 4;
-    
+
     KLOG_INFO("TEST", "Entering user mode: code=0x%08x stack=0x%08x\n",
               USER_CODE_VIRT, user_stack);
-    
+
     switch_to_usermode(USER_CODE_VIRT, user_stack);
 
     panik("Returned from usermode (should never happen)");
