@@ -2,6 +2,11 @@
 # Test Build Configuration
 # ==============================================================================
 
+# User program for integration tests
+USERPROG_ASM 				:= $(KERN_ARCH_DIR)/user/userprog.asm
+USERPROG_BIN 				:= $(BUILD_TEST)/userprog.bin
+USERPROG_OBJ 				:= $(BUILD_TEST)/userprog.o
+
 # Test-specific sources
 ifeq ($(CONFIG_TESTS_UNIT), y)
 UNIT_TEST_SOURCES 			:= $(shell find $(TESTDIR)/unit -type f -name "*.c")
@@ -14,7 +19,7 @@ endif
 ifeq ($(CONFIG_TESTS_INTEGRATION), y)
 INTEGRATION_TEST_SOURCES 	:= $(shell find $(TESTDIR)/integration -type f -name "*.c") \
 							   $(shell find $(TESTDIR)/interrupt -type f -name "*.c" 2>/dev/null || true)
-INTEGRATION_TEST_OBJS 		:= $(patsubst $(KERNDIR)/%.c,$(BUILD_TEST)/%.o,$(INTEGRATION_TEST_SOURCES))
+INTEGRATION_TEST_OBJS 		:= $(patsubst $(KERNDIR)/%.c,$(BUILD_TEST)/%.o,$(INTEGRATION_TEST_SOURCES)) $(USERPROG_OBJ)
 else
 INTEGRATION_TEST_SOURCES 	:=
 INTEGRATION_TEST_OBJS 		:=
@@ -189,6 +194,20 @@ $(BUILD_TEST)/%.o: $(KERNDIR)/tests/interrupt/%.c | $(BUILD_TEST)
 	$(ECHO) "  CC-TEST $@"
 	$(Q)mkdir -p $(dir $@)
 	$(Q)$(CC) $(CFLAGS) -DINTEGRATION_TEST=1 -c $< -o $@
+
+# User program build rules
+$(USERPROG_BIN): $(USERPROG_ASM) | $(BUILD_TEST)
+	$(ECHO) "  ASM-USER $@"
+	$(Q)$(NASM) -f bin $< -o $@
+
+$(USERPROG_OBJ): $(USERPROG_BIN) | $(BUILD_TEST)
+	$(ECHO) "  OBJCOPY $@"
+	$(Q)(cd $(BUILD_TEST) && \
+	 $(OBJCOPY) -I binary -O elf32-i386 -B i386 \
+		--rename-section .data=.rodata,contents,alloc,load,readonly,data \
+		--redefine-sym _binary_userprog_bin_start=_binary_userprog_start \
+		--redefine-sym _binary_userprog_bin_end=_binary_userprog_end \
+		userprog.bin userprog.o)
 endif
 
 endif

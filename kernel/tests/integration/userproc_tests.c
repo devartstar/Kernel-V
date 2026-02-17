@@ -32,10 +32,14 @@ void test_usermode_process(void) {
     /* Initialize stack memory */
     memset((void *)USER_STACK_BOTTOM_VIRT, 0xCC, USER_STACK_SIZE);
 
+    extern uint8_t _binary_userprog_start[];
+    extern uint8_t _binary_userprog_end[];
+    uint32_t prog_size = _binary_userprog_end - _binary_userprog_start;
+
     /* ---------------------------
      * 2. Map USER CODE page with execute permissions
      * --------------------------- */
-    uint32_t stub_size = (uint32_t)(usermode_stub_end - usermode_stub);
+    uint32_t stub_size = (uint32_t)prog_size;
 
     // Map code page as WRITABLE for copying
     void *phys_code = pmm_alloc_frame();
@@ -51,7 +55,7 @@ void test_usermode_process(void) {
     /* ---------------------------
      * 3. Copy stub into USER memory
      * --------------------------- */
-    memcpy((void *)USER_CODE_VIRT, (void *)usermode_stub, stub_size);
+    memcpy((void *)USER_CODE_VIRT, (void *)_binary_userprog_start, stub_size);
 
     /* ---------------------------
      * 4. Enter user mode

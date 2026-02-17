@@ -64,6 +64,8 @@ static int32_t syscall_getpid(uint32_t _1, uint32_t _2, uint32_t _3,
     (void)_5;
     (void)_6;
 
+    KLOG_INFO("SYSCALL", "syscall_getpid: %d\n", current_proc->pid);
+
     return current_proc->pid;
 }
 
