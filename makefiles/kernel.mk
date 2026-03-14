@@ -21,11 +21,22 @@ KERNEL_ASM_SOURCES := $(shell find $(KERNDIR) -name "*.asm" -not -path "$(BOOTDI
 KERNEL_C_OBJECTS := $(patsubst $(KERNDIR)/%.c,$(BUILD_KERN)/%.o,$(KERNEL_C_SOURCES))
 KERNEL_ASM_OBJECTS := $(patsubst $(KERNDIR)/%.asm,$(BUILD_KERN)/%.o,$(KERNEL_ASM_SOURCES))
 
+# --- User Program for Integration Tests (when needed) ---
+ifeq ($(CONFIG_TESTS_INTEGRATION), y)
+    USERPROG_ASM_MAIN := $(KERN_ARCH_DIR)/user/userprog.asm
+    USERPROG_BIN_MAIN := $(BUILD_KERN)/userprog.bin
+    USERPROG_OBJ_MAIN := $(BUILD_KERN)/userprog.o
+endif
+
 # --- Test Sources (conditional) ---
 ifeq ($(CONFIG_BUILD_TEST), y)
     TEST_C_SOURCES := $(shell find $(TESTDIR) -name "*.c")
     TEST_C_OBJECTS := $(patsubst $(KERNDIR)/%.c,$(BUILD_KERN)/%.o,$(TEST_C_SOURCES))
-    KERNEL_OBJECTS := $(KERNEL_ENTRY_OBJ) $(KERNEL_C_OBJECTS) $(KERNEL_ASM_OBJECTS) $(TEST_C_OBJECTS)
+    ifeq ($(CONFIG_TESTS_INTEGRATION), y)
+        KERNEL_OBJECTS := $(KERNEL_ENTRY_OBJ) $(KERNEL_C_OBJECTS) $(KERNEL_ASM_OBJECTS) $(TEST_C_OBJECTS) $(USERPROG_OBJ_MAIN)
+    else
+        KERNEL_OBJECTS := $(KERNEL_ENTRY_OBJ) $(KERNEL_C_OBJECTS) $(KERNEL_ASM_OBJECTS) $(TEST_C_OBJECTS)
+    endif
 else
     KERNEL_OBJECTS := $(KERNEL_ENTRY_OBJ) $(KERNEL_C_OBJECTS) $(KERNEL_ASM_OBJECTS)
 endif
@@ -64,6 +75,22 @@ $(BUILD_KERN)/%.o: $(KERNDIR)/%.asm $(PROC_OFFSET_HDR) | $(BUILD_KERN)
 	$(ECHO) "  ASM     $@"
 	$(Q)mkdir -p $(dir $@)
 	$(Q)$(NASM) $(NASMFLAGS) $< -o $@
+
+# --- User Program Build Rules ---
+ifeq ($(CONFIG_TESTS_INTEGRATION), y)
+$(USERPROG_BIN_MAIN): $(USERPROG_ASM_MAIN) | $(BUILD_KERN)
+	$(ECHO) "  ASM-USER $@"
+	$(Q)$(NASM) -f bin $< -o $@
+
+$(USERPROG_OBJ_MAIN): $(USERPROG_BIN_MAIN) | $(BUILD_KERN)
+	$(ECHO) "  OBJCOPY $@"
+	$(Q)(cd $(BUILD_KERN) && \
+	$(OBJCOPY) -I binary -O elf32-i386 -B i386 \
+		--rename-section .data=.rodata,contents,alloc,load,readonly,data \
+		--redefine-sym _binary_userprog_bin_start=_binary_userprog_start \
+		--redefine-sym _binary_userprog_bin_end=_binary_userprog_end \
+		userprog.bin userprog.o)
+endif
 
 # --- Kernel Linking ---
 $(KERNEL_ELF): $(KERNEL_OBJECTS) $(KERNEL_LD) | $(BUILD_KERN)

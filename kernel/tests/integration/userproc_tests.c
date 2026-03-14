@@ -29,9 +29,13 @@ void test_usermode_process(void) {
     map_high_stack(USER_STACK_BOTTOM_VIRT, USER_STACK_TOP_VIRT,
                    PAGE_PRESENT | PAGE_WRITE | PAGE_USER);
 
-    /* Initialize stack memory */
+    /* Initialize stack memory
+     * Value of each byte 0xCC is a machine opcode for INT 3
+     * INT 3 - is a software breakpoint interrupt used by debuggers */
     memset((void *)USER_STACK_BOTTOM_VIRT, 0xCC, USER_STACK_SIZE);
 
+    /* _binary_userprog_start and _binary_userprog_end are address of the first
+     * and last byte of the userprog provided by the linker. */
     extern uint8_t _binary_userprog_start[];
     extern uint8_t _binary_userprog_end[];
     uint32_t prog_size = _binary_userprog_end - _binary_userprog_start;
