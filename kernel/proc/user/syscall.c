@@ -48,8 +48,20 @@ static int32_t syscall_write(uint32_t fd, uint32_t buf_ptr, uint32_t len,
 
     const char *buf = (const char *)buf_ptr;
 
-    KLOG_INFO("SYSCALL", "sycall_write: '%.*s' from pid=%d\n", len, buf,
-              current_proc->pid);
+    char kbuf[256];
+
+    if (len > sizeof(kbuf) - 1)
+        len = sizeof(kbuf) - 1;
+
+    for (uint32_t i = 0; i < len; i++) {
+        kbuf[i] = buf[i];
+    }
+
+    kbuf[len] = '\0';
+
+    KLOG_INFO("SYSCALL",
+              "sycall_write: buf=0x%08x (msg: %s) len=%u from pid=%d\n", buf,
+              kbuf, len, current_proc->pid);
 
     return len;
 }
@@ -100,7 +112,7 @@ void syscall_interrupt_handler(uint32_t idt_index, regs_t *regs) {
     int32_t retval = ENOSYS;
 
     if (num < NUM_SYSCALLS && syscall_table[num]) {
-        KLOG_VERBOSE("SYSCALL", "Invoking syscall handler at address 0x%08x",
+        KLOG_VERBOSE("SYSCALL", "Invoking syscall handler at address 0x%08x\n",
                      syscall_table[num]);
         retval = syscall_table[num](arg1, arg2, arg3, arg4, arg5, arg6);
     } else {
