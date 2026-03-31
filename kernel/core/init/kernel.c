@@ -17,6 +17,8 @@
 
 extern void switch_to_high_stack(uint32_t new_esp, void (*entry_func)());
 
+static int user_test_spawned = 0;
+
 /* Kernel Background loop */
 void kernel_main_loop() {
     uint32_t loop_count = 0;
@@ -35,6 +37,18 @@ void kernel_main_loop() {
                       (eflags & 0x200) ? "enabled" : "DISABLED");
         }
 
+        if (!user_test_spawned) {
+            pcb_t *user_proc_test =
+                proc_create(my_usermode_test_proc, NULL, "user_proc_test");
+            if (!user_proc_test) {
+                KLOG_ERROR("TEST", "Failed to create user_proc_test process\n");
+            }
+
+            KLOG_INFO("TEST", "Spawned user_proc_test process pid=%d\n",
+                      user_proc_test->pid);
+            user_test_spawned = 1;
+        }
+
         // Perform kerneltenance tasks
         // - Handle delayed work queues
         // - System resource cleanup
@@ -48,11 +62,13 @@ void kernel_main_loop() {
 
         loop_count++;
 
+        /*
         if (loop_count == 1) {
             irq_mask(0);
             test_usermode_process();
             irq_unmask(0);
         }
+        */
     }
 }
 

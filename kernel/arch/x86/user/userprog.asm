@@ -22,8 +22,8 @@ user_entry:
 	int 0x80	; pid returned in eax
 
 	; exit()
-	; mov eax, 1	; SYS_EXIT
-	; mov ebx, 0
-	; int 0x80
+	mov eax, 1	; SYS_EXIT
+	mov ebx, 0
+	int 0x80
 
 	jmp .loop

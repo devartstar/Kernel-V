@@ -46,6 +46,18 @@ void my_sleep_proc(void *arg) {
     test_process_finished();
 }
 
+void my_usermode_test_proc(void *arg) {
+    (void)arg;
+
+    KLOG_INFO("TEST", "usermode test process running in pid=%d\n",
+              current_proc->pid);
+
+    test_usermode_process();
+
+    panik("usermode test process returned, but should have exited process if "
+          "EXIT syscall made\n");
+}
+
 void preemptive_proc(void *args) {
     (void)args;
     int i = 0;

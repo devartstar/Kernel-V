@@ -63,8 +63,9 @@ void gdt_init(void) {
     gdt_flush((uint32_t)&gdtp);
     KLOG_VERBOSE("GDT", "GDT initialized and loaded\n");
 
-    KLOG_VERBOSE("GDT", "ptr: base=0x%08x limit=0x%04x", gdtp.base, gdtp.limit);
-    KLOG_VERBOSE("TSS", "df addr: 0x%08x", (uint32_t)&tss_df);
+    KLOG_VERBOSE("GDT", "ptr: base=0x%08x limit=0x%04x\n", gdtp.base,
+                 gdtp.limit);
+    KLOG_VERBOSE("TSS", "df addr: 0x%08x\n", (uint32_t)&tss_df);
 
     //  Load TSS selector (0x28, 5rd entry)
     uint16_t current_tr = 0x28;
