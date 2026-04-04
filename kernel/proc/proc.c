@@ -337,7 +337,9 @@ void yield(void) {
                      proc_next->context.eflags);
 
         /* Context Switch to New Process */
+        __asm__ __volatile__("cli");
         switch_to(proc_now, proc_next);
+        __asm__ __volatile__("sti");
 
         /* [todo] We have 1 TSS, its a good practice to have 1 per CPU */
         /* Update the TSS entry so if the process privilege switch from
@@ -358,9 +360,10 @@ void yield(void) {
 
         /* Enable interrupts after context switch */
         if (!(eflags_afterswitch & 0x200)) {
-            pr_warn("WARNING: Interrupts disabled after context switch! "
-                    "Re-enabling...\n");
-            __asm__ __volatile__("sti");
+            pr_warn("WARNING: Interrupts disabled after context switch "
+                    "(process: %s). This should not happen.\n",
+                    current_proc->name);
+            // __asm__ __volatile__("sti");
         } else {
             debug_module(PROCESS_MGMT,
                          "Context switch properly restored IF bit.\n");
@@ -411,6 +414,8 @@ void timer_interrupt_proc_handler(uint32_t tickcount) {
  * ****************************************/
 
 void thread_entry_wrapper(void (*entry)(void *), void *arg) {
+    tss_df.esp0 = (uint32_t)current_proc->kernel_stack_top;
+    __asm__ __volatile__("sti");
     entry(arg);
     proc_exit();
 }

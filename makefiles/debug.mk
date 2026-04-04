@@ -236,6 +236,7 @@ ifeq ($(CONFIG_TESTS_INTEGRATION), y)
 	@echo "break run_kernel_tests" >> tools/gdb/integration_debug.gdb
 	@echo "break create_test_processes" >> tools/gdb/integration_debug.gdb
 	@echo "break proc_create" >> tools/gdb/integration_debug.gdb
+	@echo "break proc_create_kernel_main" >> tools/gdb/integration_debug.gdb
 	@echo "break proc_exit" >> tools/gdb/integration_debug.gdb
 	@echo "break proc_exit" >> tools/gdb/integration_debug.gdb
 	@echo "break cleanup_terminated_processes" >> tools/gdb/integration_debug.gdb
@@ -247,25 +248,25 @@ ifeq ($(CONFIG_TESTS_INTEGRATION), y)
 	@echo "break preemptive_proc" >> tools/gdb/integration_debug.gdb
 	@echo "break my_sleep_proc" >> tools/gdb/integration_debug.gdb
 	@echo "break timer.c:46" >> tools/gdb/integration_debug.gdb
-	@echo "# Process inspection commands" >> tools/gdb/integration_debug.gdb
-	@echo "define show-processes" >> tools/gdb/integration_debug.gdb
-	@echo "  printf \"\\n=== PROCESS LIST ===\\n\"" >> tools/gdb/integration_debug.gdb
-	@echo "  set \$$p = ready_list_head" >> tools/gdb/integration_debug.gdb
-	@echo "  while \$$p" >> tools/gdb/integration_debug.gdb
-	@echo "    printf \"PID: %d, Name: %s, State: %d\\n\", \$$p->pid, \$$p->name, \$$p->state" >> tools/gdb/integration_debug.gdb
-	@echo "    printf \"  EIP: 0x%08x, ESP: 0x%08x\\n\", \$$p->context.eip, \$$p->context.esp" >> tools/gdb/integration_debug.gdb
-	@echo "    set \$$p = \$$p->next" >> tools/gdb/integration_debug.gdb
-	@echo "  end" >> tools/gdb/integration_debug.gdb
-	@echo "  printf \"\\n\"" >> tools/gdb/integration_debug.gdb
-	@echo "end" >> tools/gdb/integration_debug.gdb
-	@echo "# Show breakpoints" >> tools/gdb/integration_debug.gdb
-	@echo "info breakpoints" >> tools/gdb/integration_debug.gdb
-	@echo "# Ready to debug processes" >> tools/gdb/integration_debug.gdb
-	@echo "printf \"\\n=== INTEGRATION TEST DEBUG SESSION ===\\n\"" >> tools/gdb/integration_debug.gdb
-	@echo "printf \"Available commands:\\n\"" >> tools/gdb/integration_debug.gdb
-	@echo "printf \"  show-processes - List all processes\\n\"" >> tools/gdb/integration_debug.gdb
-	@echo "printf \"  continue       - Run to next breakpoint\\n\"" >> tools/gdb/integration_debug.gdb
-	@echo "printf \"==========================================\\n\\n\"" >> tools/gdb/integration_debug.gdb
+	@echo '# Process inspection commands' >> tools/gdb/integration_debug.gdb
+	@echo 'define show-processes' >> tools/gdb/integration_debug.gdb
+	@echo '  printf "\n=== PROCESS LIST ===\n"' >> tools/gdb/integration_debug.gdb
+	@echo '  set $$p = ready_list_head' >> tools/gdb/integration_debug.gdb
+	@echo '  while $$p' >> tools/gdb/integration_debug.gdb
+	@echo '    printf "PID: %d, Name: %s, State: %d\n", $$p->pid, $$p->name, $$p->state' >> tools/gdb/integration_debug.gdb
+	@echo '    printf "  EIP: 0x%08x, ESP: 0x%08x\n", $$p->context.eip, $$p->context.esp' >> tools/gdb/integration_debug.gdb
+	@echo '    set $$p = $$p->next' >> tools/gdb/integration_debug.gdb
+	@echo '  end' >> tools/gdb/integration_debug.gdb
+	@echo '  printf "\n"' >> tools/gdb/integration_debug.gdb
+	@echo 'end' >> tools/gdb/integration_debug.gdb
+	@echo '# Show breakpoints' >> tools/gdb/integration_debug.gdb
+	@echo 'info breakpoints' >> tools/gdb/integration_debug.gdb
+	@echo '# Ready to debug processes' >> tools/gdb/integration_debug.gdb
+	@echo 'printf "\n=== INTEGRATION TEST DEBUG SESSION ===\n"' >> tools/gdb/integration_debug.gdb
+	@echo 'printf "Available commands:\n"' >> tools/gdb/integration_debug.gdb
+	@echo 'printf "  show-processes - List all processes\n"' >> tools/gdb/integration_debug.gdb
+	@echo 'printf "  continue       - Run to next breakpoint\n"' >> tools/gdb/integration_debug.gdb
+	@echo 'printf "==========================================\n\n"' >> tools/gdb/integration_debug.gdb
 	@echo "GDB integration test script created: tools/gdb/integration_debug.gdb"
 else
 	@echo "Integration tests not enabled. Run 'make menuconfig' and enable CONFIG_TESTS_INTEGRATION"

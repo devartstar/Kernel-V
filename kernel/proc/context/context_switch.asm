@@ -18,33 +18,26 @@ switch_to:
 	mov [eax + PCBCTX_EDI_OFFSET], edi
 	mov [eax + PCBCTX_EBP_OFFSET], ebp
 
-	; Save current EFLAGS - ensure interrupts are enabled before saving
-	pushfd
-	pop ecx
-	; Force IF bit (bit 9) to be set in saved EFLAGS to ensure proper restoration
+	; Save EFLAGS - force IF=1 so process always resumes with interrupts enabled
+	; When called from a timer ISR, CPU has cleared IF. We must NOT save IF=0
+	; because restoring it would disable interrupts and cause re-entrant timer nesting.
+	; pushfd
+	; pop ecx
 	; or ecx, 0x200
-	mov [eax + PCBCTX_EFLAGS_OFFSET], ecx
+	; mov [eax + PCBCTX_EFLAGS_OFFSET], ecx
 
-	; store the eip, after context siwtch back to this proc - execute from here
-	; [esp] pointer to return address
+	; Save EIP (return address on stack)
 	mov ecx, [esp]
 	mov [eax + PCBCTX_EIP_OFFSET], ecx
 
-	; store the esp offset after return
+	; Save ESP (caller's stack pointer, above return address)
 	lea ecx, [esp+4]
 	mov [eax + PCBCTX_ESP_OFFSET], ecx
 
-	; Load context from next->context
+	; ---- Restore next process context ----
 	mov eax, [esp+8]
-	
-	; Restore EFLAGS first (ensure IF bit is set)
-	mov edx, [eax + PCBCTX_EFLAGS_OFFSET]
-	; Force IF bit (bit 9) to be set to ensure interrupts are enabled
-	; or edx, 0x200
-	push edx
-	popfd
-	
-	; Now restore all general-purpose registers
+
+	; Restore general-purpose registers
 	mov ebx, [eax + PCBCTX_EBX_OFFSET]
 	mov ecx, [eax + PCBCTX_ECX_OFFSET]
 	mov edx, [eax + PCBCTX_EDX_OFFSET]
@@ -52,13 +45,13 @@ switch_to:
 	mov edi, [eax + PCBCTX_EDI_OFFSET]
 	mov ebp, [eax + PCBCTX_EBP_OFFSET]
 
-	; Use EDX for EFLAGS (avoid ECX collision)
-	mov edx, [eax + PCBCTX_EFLAGS_OFFSET]
-	push edx
-	popfd
-
+	; Switch to next process's stack
 	mov esp, [eax + PCBCTX_ESP_OFFSET]
 
-	; Use EDX for EIP too (ECX is now loaded with process context)
-	mov edx, [eax + PCBCTX_EIP_OFFSET]
-	jmp edx
+	; Restore EFLAGS on the NEW stack (balanced push/popfd)
+	; push dword [eax + PCBCTX_EFLAGS_OFFSET]
+	; popfd
+
+	; Load EIP into eax (last use of PCB pointer) and jump
+	mov eax, [eax + PCBCTX_EIP_OFFSET]
+	jmp eax

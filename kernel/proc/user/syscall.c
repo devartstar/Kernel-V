@@ -27,8 +27,9 @@ static int32_t syscall_exit(uint32_t code, uint32_t _2, uint32_t _3,
     KLOG_INFO("SYSCALL", "syscall_exit called: code=%d, pid=%d\n", code,
               current_proc->pid);
 
-    /* Mark the process as terminated and yeild */
+    /* Mark the process as terminated and yield */
     current_proc->state = PROC_TERMINATED;
+    dequeue_ready(current_proc);
     yield();
 
     /* should not reach here */

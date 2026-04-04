@@ -23,6 +23,18 @@ static int user_test_spawned = 0;
 void kernel_main_loop() {
     uint32_t loop_count = 0;
 
+    // ==========================================
+    // KERNEL TESTS (if enabled)
+    // ==========================================
+#ifdef KERNEL_TESTS
+    pr_info("Starting kernel tests...\n");
+    run_kernel_tests();
+    pr_info("All kernel tests completed successfully!\n");
+#else
+    pr_info("Production build - testing disabled\n");
+#endif
+
+
     syscall_table_init();
 
     while (1) {
@@ -113,17 +125,6 @@ void high_stack_entry() {
     }
     KLOG_INFO("KERNEL", "Kernel main registered as process PID %d\n",
               kernel_main->pid);
-
-    // ==========================================
-    // KERNEL TESTS (if enabled)
-    // ==========================================
-#ifdef KERNEL_TESTS
-    pr_info("Starting kernel tests...\n");
-    run_kernel_tests();
-    pr_info("All kernel tests completed successfully!\n");
-#else
-    pr_info("Production build - testing disabled\n");
-#endif
 
     // ==========================================
     // ENABLE SCHEDULING AND INTERRUPTS
