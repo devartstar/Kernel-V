@@ -9,6 +9,17 @@
 #define KERNEL_MAIN_TIMESLICE 20
 
 //
+// Process Types
+//
+typedef enum {
+    PROC_TYPE_UNASSIGNED = 0,
+    PROC_TYPE_BOOTSTRAP,
+    PROC_TYPE_IDLE,
+    PROC_TYPE_KERNEL,
+    PROC_TYPE_USER
+} proc_type_t;
+
+//
 //  Process States
 //
 typedef enum {
@@ -49,8 +60,13 @@ typedef struct regs_context {
 typedef struct pcb {
     uint32_t pid;
     proc_state_t state;
+    proc_type_t type;
     regs_context_t context;
     char name[PROC_NAME_MAX];
+
+    /* Lifecycle */
+    uint8_t has_exited;
+    int32_t exit_code;
 
     /* Kernel Stack */
     uint8_t *kernel_stack_base;
@@ -62,8 +78,10 @@ typedef struct pcb {
     uint32_t timeslice_ticks;
 
     /* User Space */
+    uint32_t user_entry;
     uint32_t user_stack_top;
     uint32_t user_stack_size;
+    uint32_t user_code_size;
 
     /* Process tree */
     struct pcb *parent;
@@ -87,6 +105,25 @@ pcb_t *proc_find(uint32_t pid);
  * @name string for debuging
  */
 pcb_t *proc_create(void (*entry)(void *), void *args, const char *name);
+
+/**
+ * proc_set_type - Set the process type for the newly created process
+ * @proc pointer to the pcb struc to set the type
+ * @type of the process, below are the different types:
+ * PROC_TYPE_BOOTSTAP = only for kernel main process
+ * PROC_TYPE_IDLE = only for idle task
+ * PROC_TYPE_KERNEL = for normal kernel threads
+ * PROC_TYPE_USER = any process that will execute usermode code
+ */
+void proc_set_type(pcb_t *proc, proc_type_t type);
+
+/*
+ * proc_type_to_string - enum to string conversion for the given process type
+ * @type of process
+ *
+ * @returns the string format for the current proc type
+ */
+const char *proc_type_to_string(proc_type_t type);
 
 /**
  * proc_sleep - Puts the current running process to sleep till next tick.

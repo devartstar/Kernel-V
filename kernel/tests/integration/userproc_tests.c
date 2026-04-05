@@ -64,12 +64,20 @@ void test_usermode_process(void) {
     /* ---------------------------
      * 4. Enter user mode
      * --------------------------- */
+
     uint32_t user_stack = USER_STACK_TOP_VIRT - 4;
+    // Align user stack to 16-byte boundary
+    uint32_t user_stack_top = (user_stack & ~0xF) - 4;
+
+    current_proc->user_entry = USER_CODE_VIRT;
+    current_proc->user_code_size = stub_size;
+    current_proc->user_stack_top = user_stack_top;
+    current_proc->user_stack_size = USER_STACK_SIZE;
 
     KLOG_INFO("TEST", "Entering user mode: code=0x%08x stack=0x%08x\n",
               USER_CODE_VIRT, user_stack);
 
-    switch_to_usermode(USER_CODE_VIRT, user_stack);
+    switch_to_usermode(current_proc->user_entry, current_proc->user_stack_top);
 
     panik("Returned from usermode (should never happen)");
 }

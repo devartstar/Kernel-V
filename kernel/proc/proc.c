@@ -72,6 +72,7 @@ void proc_init(void) {
 
     /* Create and IDLE process */
     pcb_t *idle = proc_create(idle_process, NULL, "idle");
+    proc_set_type(idle, PROC_TYPE_IDLE);
     if (idle) {
         /* IDLE process should always be ready to run */
         debug_module(PROCESS_MGMT, "Created idle process with PID %d\n",
@@ -87,14 +88,26 @@ pcb_t *proc_alloc(const char *name) {
         return NULL;
     }
 
+    memset(new_proc, 0, sizeof(pcb_t));
+
     new_proc->pid = next_pid++;
     new_proc->state = PROC_NEW;
-    memset(&new_proc->context, 0, sizeof(regs_context_t));
+    new_proc->type = PROC_TYPE_UNASSIGNED;
+    new_proc->exit_code = 0;
+    new_proc->has_exited = 0;
+
     new_proc->kernel_stack_base = NULL;
     new_proc->kernel_stack_top = NULL;
-    new_proc->kernel_stack_size = NULL;
+    new_proc->kernel_stack_size = 0;
+
     strncpy(new_proc->name, name, PROC_NAME_MAX);
     new_proc->name[PROC_NAME_MAX - 1] = '\0';
+
+    new_proc->user_entry = 0;
+    new_proc->user_code_size = 0;
+    new_proc->user_stack_size = 0;
+    new_proc->user_stack_top = 0;
+
     new_proc->parent = NULL;
 
     /* Add the new created proc to the ready queue */
@@ -178,13 +191,42 @@ pcb_t *proc_create(void (*entry)(void *), void *arg, const char *name) {
 
     proc->state = PROC_READY;
 
-    KLOG_VERBOSE("PROC",
-                 "Process %s Created with kernel stack (top = 0x%08x, bottom = "
-                 "0x%08x, size = 0x%08x)\n",
-                 proc->name, proc->kernel_stack_top, proc->kernel_stack_base,
-                 proc->kernel_stack_size);
+    KLOG_VERBOSE(
+        "PROC",
+        "Process %s Created:\n\t"
+        "kernel stack (top = 0x%08x, bottom = 0x%08x, size = 0x%08x)\n\t"
+        "user stack (top = 0x%08x, size = 0x%08x)\n\t"
+        "user code (size = 0x%08x) -> entry = 0x%08x\n",
+        proc->name, proc->kernel_stack_top, proc->kernel_stack_base,
+        proc->kernel_stack_size, proc->user_stack_top, proc->user_stack_size,
+        proc->user_code_size, proc->user_entry);
 
     return proc;
+}
+
+void proc_set_type(pcb_t *proc, proc_type_t type) {
+    if (!proc) {
+        return;
+    }
+
+    proc->type = type;
+}
+
+const char *proc_type_to_string(proc_type_t type) {
+    switch (type) {
+    case PROC_TYPE_UNASSIGNED:
+        return "UNASSIGNED";
+    case PROC_TYPE_BOOTSTRAP:
+        return "BOOTSTRAP";
+    case PROC_TYPE_IDLE:
+        return "IDLE";
+    case PROC_TYPE_KERNEL:
+        return "KERNEL";
+    case PROC_TYPE_USER:
+        return "USER";
+    default:
+        return "UNKNOWN";
+    }
 }
 
 void proc_sleep(uint32_t ticks) {
@@ -329,12 +371,14 @@ void yield(void) {
         proc_next->state = PROC_RUNNING;
         current_proc = proc_next;
 
-        debug_module(PROCESS_MGMT,
-                     "About to switch: \n"
-                     "\tPrev Process=%s (eflags=0x%lx) \n"
-                     "\tNew Process=%s  (eflags=0x%lx) \n",
-                     proc_now->name, proc_now->context.eflags, proc_next->name,
-                     proc_next->context.eflags);
+        debug_module(
+            PROCESS_MGMT,
+            "About to switch: \n\t"
+            "Prev Process=%s (PID=%u, Type=%s) (eflags=0x%lx) \n\t"
+            "New Process=%s  (PID=%u, Type=%s) (eflags=0x%lx) \n",
+            proc_now->name, proc_now->pid, proc_type_to_string(proc_now->type),
+            proc_now->context.eflags, proc_next->name, proc_next->pid,
+            proc_type_to_string(proc_next->type), proc_next->context.eflags);
 
         /* Context Switch to New Process */
         __asm__ __volatile__("cli");
@@ -431,6 +475,7 @@ pcb_t *proc_create_kernel_main(const char *name) {
 
     kernel_proc->pid = next_pid++;
     kernel_proc->state = PROC_RUNNING;
+    proc_set_type(kernel_proc, PROC_TYPE_BOOTSTRAP);
 
     memset(&kernel_proc->context, 0, sizeof(regs_context_t));
 

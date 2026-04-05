@@ -3,8 +3,6 @@
 #include "proc/proc.h"
 #include "tests/proc_tests.h"
 
-extern pcb_t *current_proc;
-
 static volatile int test_processes_remaining = 3;
 
 void test_process_finished(void) { test_processes_remaining--; }
@@ -82,6 +80,10 @@ void create_test_processes(void) {
     pcb_t *test_proc1 = proc_create(my_test_proc, NULL, "thread1");
     pcb_t *test_proc2 = proc_create(preemptive_proc, NULL, "thread2");
     pcb_t *test_proc3 = proc_create(my_sleep_proc, NULL, "thread3");
+
+    proc_set_type(test_proc1, PROC_TYPE_KERNEL);
+    proc_set_type(test_proc2, PROC_TYPE_KERNEL);
+    proc_set_type(test_proc3, PROC_TYPE_KERNEL);
 
     if (test_proc1 && test_proc2 && test_proc3) {
         KLOG_VERBOSE("TEST", "Test processes created successfully\n");

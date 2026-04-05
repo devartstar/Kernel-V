@@ -34,7 +34,6 @@ void kernel_main_loop() {
     pr_info("Production build - testing disabled\n");
 #endif
 
-
     syscall_table_init();
 
     while (1) {
@@ -52,6 +51,7 @@ void kernel_main_loop() {
         if (!user_test_spawned) {
             pcb_t *user_proc_test =
                 proc_create(my_usermode_test_proc, NULL, "user_proc_test");
+            proc_set_type(user_proc_test, PROC_TYPE_USER);
             if (!user_proc_test) {
                 KLOG_ERROR("TEST", "Failed to create user_proc_test process\n");
             }

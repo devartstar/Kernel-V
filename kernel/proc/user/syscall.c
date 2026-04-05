@@ -3,8 +3,6 @@
 #include "lib/printk.h"
 #include "proc/proc.h"
 
-extern pcb_t *current_proc;
-
 syscall_handler_t syscall_table[NUM_SYSCALLS] = {0};
 
 static int32_t syscall_test(uint32_t a, uint32_t b, uint32_t c, uint32_t d,

@@ -1,5 +1,7 @@
 #include "arch/x86/usermode_stub.h"
+#include "core/panik.h"
 #include "lib/printk.h"
+#include "proc/proc.h"
 #include <stdint.h>
 
 // These selectors must match your GDT layout
@@ -7,10 +9,12 @@
 #define USER_DS 0x23 // User data segment selector (index 4, RPL=3)
 
 void switch_to_usermode(uint32_t entry, uint32_t user_stack_top) {
-    // Align user stack to 16-byte boundary
-    user_stack_top = (user_stack_top & ~0xF) - 4;
 
-    KLOG_VERBOSE("PRIVILEGE", "Switched to user mode privilege for test\n");
+    if (!current_proc || current_proc->type != PROC_TYPE_USER) {
+        panik("Trying to switch to user mode from a non-user process\n");
+    }
+
+    KLOG_VERBOSE("PRIVILEGE", "Switching to user mode privilege for test\n");
 
     // Simpler approach - don't change segments before iret
     __asm__ __volatile__(

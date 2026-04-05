@@ -8,7 +8,6 @@
 #include <stdint.h>
 
 extern volatile uint32_t tick_count;
-extern pcb_t *current_proc;
 
 /* Circular log buffer for storing kernel messages */
 static char log_buffer[LOG_BUF_SIZE];
