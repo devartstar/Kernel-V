@@ -1,89 +1,238 @@
-## **Phase 7: Code Refactorign and Testing Framework**
+## Kernel version 0.7.4 enhancement plans
 
-## Interrupts
-### 1 IDT Refactor & Trap Handler Abstraction
-Instead of hardcoding interrupt handlers, build macros to register for ISR and
-IRQs
+### Phase A — Formalize the process model
+This phase is now more important than before.
+#### A1. Add process identity fields to PCB
+Add:
+- proc_type_t type
+- int32_t exit_code
+- uint8_t has_exited
+Also normalize user-process metadata:
+user_entry
+user_code_start
+user_code_size
 
-### 2 Automated ISR/IRQ Stub Generation
-Eliminate manual ISR asm. Use macros/script to auto-generate all 256 stubs, each
-pushes a vector number, calls the `isr_common_handler` and cleans up.
+Reason:
+Your current PCB knows too little about what the process is and what it owns.
 
-### 3 Central Interrupt Routine
-All exceptions/IRQs go through one C router.
+#### A2. Classify all process creation paths
 
-### 4 Context Structure Unification
-All ISRs recieve the exact same struct (register dump, error code and cpu state)
+Make the kernel explicitly distinguish:
 
-### 5 Interrupt nesting, priorities and masking
-Add mask and unmask logic and allow higher priority IRQs to preempt lower
-priority ISRs.
+PROC_TYPE_BOOTSTRAP → kernel_main
+PROC_TYPE_IDLE
+PROC_TYPE_KERNEL
+PROC_TYPE_USER
 
-## Syscalls
-### 1 Privelege seperation - Ring 3 entry
-User processes running at CPL=3 (ring 3)
+Reason:
+Your code currently has at least four semantically different process kinds, but the PCB does not express that.
 
-### 2 User to Kernel transition
-Set up a syscall vector 0x80 with dedicated handler
+#### A3. Split creation APIs
 
-### 3 System call tables and Dispatcher
-A table of system call vectors indexed by their syscall numbers
+Instead of one path plus tests, define:
 
-### 4 User/Kernel AbI and Arguments
-Decide argument passing ABI:
-- Classic: All in registers (eax=syscall#, ebx/ecx/edx/esi/edi/ebp for args)
-- Modern: Sysenter/syscall (fast path), or stack-based (for >5 args)
+proc_create_kernel(...)
+userproc_create_from_blob(...)
 
-### 5 Syscenter/Syscall faster implementation
-Add support for syscenter for faster entry
+Reason:
+Your current user process launch logic in test_usermode_process() already contains the exact ingredients of a constructor. It should become one.
 
-### 6 Syscall implementation CORE
-Implement a minimal but modern syscall API:
-write, read, exit, fork/clone, exec, getpid, yield, sbrk, mmap, etc.
+#### A4. Make exit semantics real
 
-### 7 Error handeling and Return
-Define consistent error codes, propagate via eax, use errno convention for POSIX
-compatibility.
+Refactor sys_exit() so it:
 
-## Advanced Features
-### 1 Syscall filtering/Whitelisting
-Like seccomp-bpf—allow/deny syscalls per process for sandboxing.
+records exit_code
+marks has_exited
+sets PROC_TERMINATED
+yields
+never returns
 
-### 2 Tracing/Logging
-Add tracing/logging hooks for every interrupt/syscall for debug, security, and performance.
+Reason:
+Current exit works operationally, but not yet as a real lifecycle primitive.
 
-### 3 Per Process SIGNAL/INTERRUPT handling
-Allow user processes to register signal/interrupt handlers (SIGSEGV, SIGINT, etc
-)
+#### A5. Make cleanup type-aware
 
-### 4 Vectoring Syscall: Multi ABI Compatibility
-Support alternate syscall entrypoints (e.g., both int 0x80 and sysenter, or 32/64-bit syscall ABI).
+Split cleanup into:
 
-### 5 Security Features
-Stack canaries, syscall argument validation, privilege checks.
+idle cleanup: never
+bootstrap cleanup: special / none for now
+kernel cleanup: free kernel-owned resources only
+user cleanup: free user mappings + kernel stack + PCB-owned resources
 
-### 6 Performance Optimizations
-Lazy context save/restore, syscall batching, interrupt coalescing, fastpath syscalls for common cases.
+Reason:
+Your current proc_free() is too generic for the architecture you’re building.
 
-## Validation, Testing, and Tools
+### Phase B — Turn user process launch into a subsystem
 
-- Unit tests for handlers, nested IRQs, privilege switches.
-- Integration tests: userland calling kernel syscalls, stress test for concurrent syscalls/interrupts.
-- Debug macros for step-by-step logging (with tracing levels).
-- Userland test programs (in assembly and C) to validate every syscall and interrupt scenario.
+This phase should now come earlier and more explicitly than before.
 
+#### B1. Extract test_usermode_process() into userproc_create_from_blob()
 
-## References and Inspirations:
+Right now your test helper is already 80% of a loader.
 
-- Linux x86 entry_64.S / entry_32.S (see how modern kernels handle hundreds of syscalls and vectorized ISRs)
+Move this logic into a real function.
 
-- OSDev Wiki: IDT, PIC, System Calls, Ring transitions
+It should:
 
-- Plan9/9front syscall mechanism (clean, elegant C-centric syscall dispatch)
+allocate PCB
+assign PROC_TYPE_USER
+create kernel stack
+map user stack
+map user code
+copy blob
+populate user metadata
+prepare process for ring 3 entry
 
-- Windows NT/XP syscall stubs (for inspiration on fastpath and tracing)
+Reason:
+This removes hand-written user launch logic from tests and makes it reusable.
 
-### Syscall Folder Structure
+#### B2. Introduce a user process entry wrapper
+
+Normal kernel threads start at thread_entry_wrapper().
+User processes should get an analogous controlled launch path.
+
+Something like:
+
+kernel thread starts
+wrapper sets up/enters user mode
+from then on process behaves as user process
+
+Reason:
+Right now switch_to_usermode() is called directly from a test helper. That should become a defined execution path.
+
+#### B3. Support multiple user blobs cleanly
+
+Once blob-based creation is a real API, let tests launch:
+
+user_hello
+user_syscall_test
+user_exit_test
+
+Reason:
+You are ready to move from “one stub proving int 0x80 works” to “user program test suite.”
+
+### Phase C — Harden the syscall layer
+
+This phase changes from “clean syscall subsystem” to “make syscall subsystem safe enough to grow.”
+
+#### C1. Keep canonical syscall ABI/header
+
+This part of your earlier plan still stands.
+
+Keep:
+
+syscall enum in one header
+table registration centralized
+
+That is already mostly in place.
+
+#### C2. Add user pointer validation helpers
+
+Before adding richer syscalls, add helpers like:
+
+user_ptr_valid(ptr)
+user_range_valid(ptr, len)
+
+Use them first in:
+
+sys_write
+
+Reason:
+Current sys_write() trusts user memory blindly.
+
+#### C3. Harden sys_write()
+
+Add:
+
+user range validation
+bounded copy
+possibly page-by-page safe access later
+
+Reason:
+This is the first syscall that crosses user-memory boundary. It should be your model for safe syscall design.
+
+#### C4. Add syscall tracing toggle
+
+You already have excellent logs. Formalize them behind a trace flag.
+
+Reason:
+You have enough logs now that selective visibility matters.
+
+#### C5. Add explicit syscall return/error convention
+
+Keep ENOSYS, but normalize all syscall return behavior:
+
+non-negative success
+negative error codes
+no mixed conventions
+
+Reason:
+You’re about to add more syscalls; now is the time to freeze conventions.
+
+### Phase D — Parent/child and process observability
+
+This phase should come before exec and far before ELF.
+
+#### D1. Add parent-child semantics
+
+You already have parent in PCB. Start using it.
+
+When user process is created:
+
+set parent properly
+record exit code on termination
+
+#### D2. Add wait() / waitpid() minimal version
+
+This is the natural next syscall after exit().
+
+Reason:
+Exit without wait means dead processes are only kernel-internal artifacts.
+Wait makes process lifecycle observable.
+
+#### D3. Add zombie state if needed
+
+Right now you only have:
+
+NEW
+READY
+RUNNING
+WAITING
+TERMINATED
+
+You may soon need:
+
+PROC_ZOMBIE
+
+Reason:
+If parent must read child exit code before cleanup, terminated-vs-cleaned-up should be separated.
+
+I would not add it immediately unless you implement wait(), but it’s coming.
+
+### Phase E — Program loading evolution
+
+Only after A–D are solid.
+
+#### E1. Keep flat binary loader, but make it reusable
+
+Right now blob loading is fine.
+
+#### E2. Add second user program
+
+This is the best bridge milestone before ELF.
+
+#### E3. Add exec model
+
+Only after you can create/wait/exit cleanly.
+
+#### E4. Move to ELF loading
+
+Only once flat-binary process lifecycle is clean.
+
+Reason:
+ELF is not just “better loading.” It depends on a stable user process abstraction.
+
+### Folder Structure
 ```
 kernel/
 ├── arch/                    # Architecture-specific code
@@ -129,4 +278,4 @@ kernel/
     ├── integration/       # Integration tests
     └── framework/         # Testing framework code
 ```
-
+### Testing Framework
