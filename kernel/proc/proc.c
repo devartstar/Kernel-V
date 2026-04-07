@@ -20,9 +20,10 @@ void cleanup_terminated_processes(void) {
     while (p) {
         pcb_t *next = p->next;
 
-        if (p->state == PROC_TERMINATED && strcmp(p->name, "idle") != 0) {
-            debug_module(PROCESS_MGMT, "Cleaning up terminated process: %s\n",
-                         p->name);
+        if (proc_is_reclaimable(p)) {
+            debug_module(PROCESS_MGMT,
+                         "Reclaiming process: %s (pid=%u, type=%s)\n", p->name,
+                         p->pid, proc_type_to_string(p->type));
             proc_free(p);
         }
 
@@ -121,6 +122,15 @@ void proc_free(pcb_t *proc) {
         return;
     }
 
+    if (proc_is_special(proc)) {
+        KLOG_ERROR(
+            "PROCESS_MGMT",
+            "Refused to free special process: name=%s (pid=%u, type=%s)\n",
+            proc->name, proc->pid, proc_type_to_string(proc->type));
+
+        return;
+    }
+
     // Don't set state here - should already be TERMINATED
     // Don't dequeue here - should already be dequeued
 
@@ -191,6 +201,9 @@ pcb_t *proc_create(void (*entry)(void *), void *arg, const char *name) {
 
     proc->state = PROC_READY;
 
+    proc->has_exited = 0;
+    proc->exit_code = 0;
+
     KLOG_VERBOSE(
         "PROC",
         "Process %s Created:\n\t"
@@ -256,6 +269,10 @@ void proc_exit(void) {
     /* Mark the process as Terminated */
     proc_now->state = PROC_TERMINATED;
 
+    KLOG_VERBOSE("PROCESS_MGMT", "Process exiting: Name=%s (pid=%u, type=%s)\n",
+                 proc_now->name, proc_now->pid,
+                 proc_type_to_string(proc_now->type));
+
     /* Remove the process from the Ready LIst */
     dequeue_ready(proc_now);
 
@@ -266,6 +283,22 @@ void proc_exit(void) {
     while (1) {
         __asm__ __volatile__("hlt");
     }
+}
+
+int proc_is_special(const pcb_t *proc) {
+    if (!proc) {
+        return 0;
+    }
+
+    return (proc->type == PROC_TYPE_BOOTSTRAP || proc->type == PROC_TYPE_IDLE);
+}
+
+int proc_is_reclaimable(const pcb_t *proc) {
+    if (!proc || !proc->has_exited || proc->state != PROC_TERMINATED) {
+        return 0;
+    }
+
+    return !proc_is_special(proc);
 }
 
 /*****************************************
@@ -496,6 +529,9 @@ pcb_t *proc_create_kernel_main(const char *name) {
 
     kernel_proc->parent = NULL;
     kernel_proc->timeslice_ticks = DEFAULT_TIMESLICE;
+
+    kernel_proc->has_exited = 0;
+    kernel_proc->exit_code = 0;
 
     enqueue_ready(kernel_proc);
 

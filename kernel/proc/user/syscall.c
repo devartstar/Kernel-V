@@ -22,17 +22,26 @@ static int32_t syscall_exit(uint32_t code, uint32_t _2, uint32_t _3,
     (void)_5;
     (void)_6;
 
-    KLOG_INFO("SYSCALL", "syscall_exit called: code=%d, pid=%d\n", code,
-              current_proc->pid);
+    if (!current_proc) {
+        panik("Syscall Exit: current proc is null\n");
+    }
+
+    KLOG_INFO("SYSCALL",
+              "syscall_exit called: code=%d, pid=%d name=%s, type=%s\n", code,
+              current_proc->pid, current_proc->name,
+              proc_type_to_string(current_proc->type));
 
     /* Mark the process as terminated and yield */
+    current_proc->exit_code = code;
+    current_proc->has_exited = 1;
     current_proc->state = PROC_TERMINATED;
-    dequeue_ready(current_proc);
+
     yield();
 
     /* should not reach here */
-    while (1) {
-    };
+    panik("syscall_exit returned after yield, should not reach this code\n");
+
+    return code;
 }
 
 static int32_t syscall_write(uint32_t fd, uint32_t buf_ptr, uint32_t len,

@@ -148,6 +148,22 @@ void proc_wakeup(pcb_t *proc);
  */
 void proc_exit(void);
 
+/*
+ * proc_is_reclaimable - If the process memory should be freed once terminated
+ * proc - process to check if it is reclaimable
+ *
+ * @return void
+ */
+int proc_is_reclaimable(const pcb_t *proc);
+
+/**
+ * proc_is_special - check if process should not be freed
+ * proc - process to check if it is special
+o*
+ * @return void
+ */
+int proc_is_special(const pcb_t *proc);
+
 /**
  * thread_entry_wrapper - Wrapper for process entry and exit.
  * For every new thread, sets the EIP here.
