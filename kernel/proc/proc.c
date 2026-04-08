@@ -24,6 +24,7 @@ void cleanup_terminated_processes(void) {
             debug_module(PROCESS_MGMT,
                          "Reclaiming process: %s (pid=%u, type=%s)\n", p->name,
                          p->pid, proc_type_to_string(p->type));
+            dequeue_ready(p);
             proc_free(p);
         }
 
@@ -117,6 +118,77 @@ pcb_t *proc_alloc(const char *name) {
     return new_proc;
 }
 
+void proc_cleanup_kernel(pcb_t *proc) {
+    if (!proc) {
+        return;
+    }
+
+    // Don't set state here - should already be TERMINATED
+    // Don't dequeue here - should already be dequeued
+
+    /* Free up the process kernel stack memory */
+    if (proc->kernel_stack_base && proc->kernel_stack_size) {
+        for (uint32_t offset = 0; offset < proc->kernel_stack_size;
+             offset += PAGE_SIZE) {
+            pmm_free_frame(
+                (void *)((uint8_t *)proc->kernel_stack_base + offset));
+        }
+    }
+
+    /* Free PCB */
+    pcb_free(proc);
+}
+
+void proc_cleanup_user(pcb_t *proc) {
+    if (!proc) {
+        return;
+    }
+
+    KLOG_VERBOSE(
+        "PROCESS_MGMT",
+        "Cleaning up user process: name=%s (pid=%u, type=%s) "
+        "user_entry=0x%08x, user_stack_top=0x%08x, user_code_size=0x%08x",
+        proc->name, proc->pid, proc_type_to_string(proc->type),
+        proc->user_entry, proc->user_stack_top, proc->user_code_size)
+
+    /* Free user code backing frame */
+    if (proc->user_entry) {
+        uint32_t phys_addr = paging_get_physical_address(proc->user_entry);
+        if (phys_addr) {
+            pmm_free_frame((void *)phys_addr);
+        }
+        paging_unmap_page(proc->user_entry);
+    }
+
+    /* Free user stack frames */
+    if (proc->user_stack_top && proc->user_stack_size) {
+        uint32_t stack_bottom =
+            proc->kernel_stack_top - proc->kernel_stack_size;
+        uint32_t pages = proc->kernel_stack_size / PAGE_SIZE;
+
+        for (uint32_t idx = 0; i < pages; i++) {
+            uint32_t virt = stack_bottom + idx * PAGE_SIZE;
+            uint32_t phys = paging_get_physical_address(virt);
+            if (phys) {
+                pmm_free_frame(phys);
+            }
+            paging_unmap_page(virt);
+        }
+    }
+
+    /* Free kernel stack */
+    if (proc->kernel_stack_base && proc->kernel_stack_size) {
+        uint32_t pages = proc->kernel_stack_size / PAGE_SIZE;
+        uint8_t *page = proc->kernel_stack_base;
+
+        for (uint32_t i = 0; i < pages; i++) {
+            pmm_free_frame(page + i * PAGE_SIZE);
+        }
+    }
+
+    pcb_free(proc);
+}
+
 void proc_free(pcb_t *proc) {
     if (!proc) {
         return;
@@ -130,7 +202,6 @@ void proc_free(pcb_t *proc) {
 
         return;
     }
-
     // Don't set state here - should already be TERMINATED
     // Don't dequeue here - should already be dequeued
 

@@ -133,3 +133,51 @@ void debug_dump_pte(uint32_t virtual_addr) {
                  "PTE for 0x%08x: 0x%08x [physical=0x%08x]\tflags=%s\n",
                  virtual_addr, pte, pte & 0xFFFFF000, flags);
 }
+
+uint32_t paging_get_physical_address(uint32_t virt) {
+    // 32 bit address ->
+    // each entry of pagetable/directory = 12 LSB are for flags, 20 MSB is the
+    // address
+    // ---
+    // => 10 MSB -> 31-22 -> page dir index in (1024) entries of page directory
+    // => 10 MSB -> 21-12 -> page table index in (1024) entries of page table
+    //
+    uint32_t pd_idx = PD_INDEX(virt);
+    uint32_t pt_idx = PT_INDEX(virt);
+
+    if (!(page_directory[pd_idx] & PAGE_PRESENT)) {
+        return 0;
+    }
+
+    uint32_t *page_table = page_directory[pd_idx] & 0xFFFFF000;
+
+    if (!(page_table[pt_idx] & PAGE_PRESENT)) {
+        return 0;
+    }
+
+    uint32_t phy_base = page_table[pt_idx] & 0xFFFFF000;
+    uint32_t offset = virt & 0xFFF;
+
+    return phy_base + offset;
+}
+
+void paging_unmap_page(uint32_t virt) {
+
+    uint32_t pd_idx = PD_INDEX(virt);
+    uint32_t pt_idx = PT_INDEX(virt);
+
+    if (!(page_directory[pd_idx] & PAGE_PRESENT)) {
+        return;
+    }
+
+    uint32_t *page_table = page_directory[pd_idx] & 0xFFFFF000;
+
+    if (!(page_table[pt_idx] & PAGE_PRESENT)) {
+        return;
+    }
+
+    page_table[pt_idx] = 0;
+
+    /* Flush the TLB for this address */
+    __asm__ __volatile__("invlpg (%0)" : : "r"(virt) : "memory");
+}

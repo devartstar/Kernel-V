@@ -93,6 +93,22 @@ void proc_init(void);
 
 pcb_t *proc_alloc(const char *name);
 
+/**
+ * proc_cleanup_kernel - cleanup kernel level process
+ * proc - kernel mode proc for cleanup
+ *
+ * @return void
+ */
+void proc_cleanup_kernel(pcb_t *proc);
+
+/**
+ * proc_cleanup_user - cleanup user level process
+ * proc - usermode proc for cleanup
+ *
+ * @return void
+ */
+void proc_cleanup_user(pcb_t *proc);
+
 void proc_free(pcb_t *proc);
 
 pcb_t *proc_find(uint32_t pid);

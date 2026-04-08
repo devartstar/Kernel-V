@@ -12,9 +12,17 @@
 #define PAGE_WRITE 0x2
 #define PAGE_USER 0x4
 
+#define PD_INDEX(x) (((x) >> 22) & 0x3FF)
+#define PT_INDEX(x) (((x) >> 12) & 0x3FF)
+#define PAGE_ALIGN(x) ((x)&0xFFFFFF000)
+
 void paging_init();
-//  void page_fault_handler(); // do we need this ? dupplicate of page_fault.h
+
 void paging_map_page(uint32_t virtual_addr, uint32_t physical_addr,
                      uint32_t flags);
 
 void debug_dump_pte(uint32_t virtual_addr);
+
+uint32_t paging_get_physical_address(uint32_t virt);
+
+void paging_unmap_page(uint32_t virt);
