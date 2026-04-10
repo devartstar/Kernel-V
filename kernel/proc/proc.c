@@ -123,6 +123,14 @@ void proc_cleanup_kernel(pcb_t *proc) {
         return;
     }
 
+    KLOG_VERBOSE("PROCESS_MGMT",
+                 "Cleaning up kernel process: name=%s (pid=%u, type=%s) "
+                 "kernel_stack_base=0x%08x, kernel_stack_top=0x%08x, "
+                 "kernel_stack_size=0x%08x\n",
+                 proc->name, proc->pid, proc_type_to_string(proc->type),
+                 proc->kernel_stack_base, proc->kernel_stack_top,
+                 proc->kernel_stack_size);
+
     // Don't set state here - should already be TERMINATED
     // Don't dequeue here - should already be dequeued
 
@@ -147,7 +155,7 @@ void proc_cleanup_user(pcb_t *proc) {
     KLOG_VERBOSE(
         "PROCESS_MGMT",
         "Cleaning up user process: name=%s (pid=%u, type=%s) "
-        "user_entry=0x%08x, user_stack_top=0x%08x, user_code_size=0x%08x",
+        "user_entry=0x%08x, user_stack_top=0x%08x, user_code_size=0x%08x\n",
         proc->name, proc->pid, proc_type_to_string(proc->type),
         proc->user_entry, proc->user_stack_top, proc->user_code_size)
 
@@ -166,7 +174,7 @@ void proc_cleanup_user(pcb_t *proc) {
             proc->kernel_stack_top - proc->kernel_stack_size;
         uint32_t pages = proc->kernel_stack_size / PAGE_SIZE;
 
-        for (uint32_t idx = 0; i < pages; i++) {
+        for (uint32_t idx = 0; idx < pages; idx++) {
             uint32_t virt = stack_bottom + idx * PAGE_SIZE;
             uint32_t phys = paging_get_physical_address(virt);
             if (phys) {
@@ -202,20 +210,24 @@ void proc_free(pcb_t *proc) {
 
         return;
     }
-    // Don't set state here - should already be TERMINATED
-    // Don't dequeue here - should already be dequeued
 
-    /* Free up the process kernel stack memory */
-    if (proc->kernel_stack_base && proc->kernel_stack_size) {
-        for (uint32_t offset = 0; offset < proc->kernel_stack_size;
-             offset += PAGE_SIZE) {
-            pmm_free_frame(
-                (void *)((uint8_t *)proc->kernel_stack_base + offset));
-        }
+    switch (proc->type) {
+    case PROC_TYPE_KERNEL:
+        proc_cleanup_kernel(proc);
+        break;
+    case PROC_TYPE_USER:
+        proc_cleanup_user(proc);
+        break;
+    case PROC_TYPE_BOOTSTRAP:
+    case PROC_TYPE_IDLE:
+    default:
+        KLOG_ERROR("PROCESS_MGMT",
+                   "proc_free reached invalid/special process: pid=%u name=%s "
+                   "type=%s\n",
+                   proc->pid, proc->name, proc_type_to_string(proc->type));
     }
 
-    /* Free PCB */
-    pcb_free(proc);
+    return;
 }
 
 pcb_t *proc_find(uint32_t pid) {
