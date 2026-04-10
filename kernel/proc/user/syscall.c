@@ -31,11 +31,12 @@ static int32_t syscall_exit(uint32_t code, uint32_t _2, uint32_t _3,
               current_proc->pid, current_proc->name,
               proc_type_to_string(current_proc->type));
 
-    /* Mark the process as terminated and yield */
-    current_proc->exit_code = code;
-    current_proc->has_exited = 1;
-    current_proc->state = PROC_TERMINATED;
+    if (proc_is_special(current_proc)) {
+        panik("syscall_exit called on a speciall process");
+    }
 
+    /* Mark the process as terminated and yield */
+    proc_mark_terminated(current_proc, code);
     yield();
 
     /* should not reach here */

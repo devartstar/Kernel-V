@@ -189,6 +189,10 @@ void proc_cleanup_user(pcb_t *proc) {
     proc->user_stack_top = 0;
     proc->user_stack_size = 0;
 
+    proc->kernel_stack_base = NULL;
+    proc->kernel_stack_top = NULL;
+    proc->kernel_stack_size = 0;
+
     pcb_free(proc);
 }
 
@@ -344,15 +348,12 @@ void proc_exit(void) {
     pcb_t *proc_now = current_proc;
     pcb_t *proc_next = NULL;
 
-    /* Mark the process as Terminated */
-    proc_now->state = PROC_TERMINATED;
-
     KLOG_VERBOSE("PROCESS_MGMT", "Process exiting: Name=%s (pid=%u, type=%s)\n",
                  proc_now->name, proc_now->pid,
                  proc_type_to_string(proc_now->type));
 
-    /* Remove the process from the Ready LIst */
-    dequeue_ready(proc_now);
+    /* Mark the process as terminated */
+    proc_mark_terminated(proc_now, 0x0);
 
     yield();
 
@@ -377,6 +378,30 @@ int proc_is_reclaimable(const pcb_t *proc) {
     }
 
     return !proc_is_special(proc);
+}
+
+void proc_mark_terminated(pcb_t *proc, int32_t exit_code) {
+    if (!proc) {
+        return;
+    }
+
+    if (proc_is_special(proc)) {
+        KLOG_ERROR("PROCESS_MGMT",
+                   "Refusing to terminate special process: name=%s (pid=%u, "
+                   "type=%s)\n",
+                   proc->name, proc->pid, proc_type_to_string(proc->type));
+        return;
+    }
+
+    proc->exit_code = exit_code;
+    proc->has_exited = 1;
+    proc->state = PROC_TERMINATED;
+
+    KLOG_INFO("PROCESS_MGMT",
+              "Process is marked as terminated: name=%s (pid=%u, type=%s) with "
+              "exit code=0x%08x\n",
+              proc->name, proc->pid, proc_type_to_string(proc->type),
+              proc->exit_code);
 }
 
 /*****************************************

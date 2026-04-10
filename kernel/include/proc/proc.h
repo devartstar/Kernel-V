@@ -181,6 +181,15 @@ o*
 int proc_is_special(const pcb_t *proc);
 
 /**
+ * proc_mark_terminated - mark the process as terminated when it exits
+ * proc - process to be marked as terminated
+ * exit_code - exit code for the terminated process
+ *
+ * @return void
+ */
+void proc_mark_terminated(pcb_t *proc, int32_t exit_code);
+
+/**
  * thread_entry_wrapper - Wrapper for process entry and exit.
  * For every new thread, sets the EIP here.
  * Push entry and args to the stack of the new process.
