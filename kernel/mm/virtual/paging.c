@@ -181,3 +181,17 @@ void paging_unmap_page(uint32_t virt) {
     /* Flush the TLB for this address */
     __asm__ __volatile__("invlpg (%0)" : : "r"(virt) : "memory");
 }
+
+void paging_free_region(uint32_t start, uint32_t size) {
+    uint32_t addr = PAGE_ALIGN_DOWN(start);
+    uint32_t end = PAGE_ALIGN_UP(start + size);
+
+    for (; addr < end; addr += PAGE_SIZE) {
+        uint32_t phys = paging_get_physical_address(addr);
+
+        if (phys) {
+            pmm_free_frame((void *)phys);
+            paging_unmap_page(addr);
+        }
+    }
+}

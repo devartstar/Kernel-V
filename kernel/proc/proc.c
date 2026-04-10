@@ -143,6 +143,10 @@ void proc_cleanup_kernel(pcb_t *proc) {
         }
     }
 
+    proc->kernel_stack_base = NULL;
+    proc->kernel_stack_top = NULL;
+    proc->kernel_stack_size = 0;
+
     /* Free PCB */
     pcb_free(proc);
 }
@@ -160,28 +164,14 @@ void proc_cleanup_user(pcb_t *proc) {
         proc->user_entry, proc->user_stack_top, proc->user_code_size)
 
     /* Free user code backing frame */
-    if (proc->user_entry) {
-        uint32_t phys_addr = paging_get_physical_address(proc->user_entry);
-        if (phys_addr) {
-            pmm_free_frame((void *)phys_addr);
-        }
-        paging_unmap_page(proc->user_entry);
+    if (proc->user_entry & proc->user_code_size > 0) {
+        paging_free_region(proc->user_entry, proc->user_code_size);
     }
 
     /* Free user stack frames */
-    if (proc->user_stack_top && proc->user_stack_size) {
-        uint32_t stack_bottom =
-            proc->kernel_stack_top - proc->kernel_stack_size;
-        uint32_t pages = proc->kernel_stack_size / PAGE_SIZE;
-
-        for (uint32_t idx = 0; idx < pages; idx++) {
-            uint32_t virt = stack_bottom + idx * PAGE_SIZE;
-            uint32_t phys = paging_get_physical_address(virt);
-            if (phys) {
-                pmm_free_frame(phys);
-            }
-            paging_unmap_page(virt);
-        }
+    if (proc->user_stack_top && proc->user_stack_size > 0) {
+        uint32_t stack_bottom = proc->user_stack_top - proc->user_stack_size;
+        paging_free_region(stack_bottom, proc->user_stack_size);
     }
 
     /* Free kernel stack */
@@ -193,6 +183,11 @@ void proc_cleanup_user(pcb_t *proc) {
             pmm_free_frame(page + i * PAGE_SIZE);
         }
     }
+
+    proc->user_entry = 0;
+    proc->user_code_size = 0;
+    proc->user_stack_top = 0;
+    proc->user_stack_size = 0;
 
     pcb_free(proc);
 }
@@ -292,7 +287,7 @@ pcb_t *proc_create(void (*entry)(void *), void *arg, const char *name) {
         "Process %s Created:\n\t"
         "kernel stack (top = 0x%08x, bottom = 0x%08x, size = 0x%08x)\n\t"
         "user stack (top = 0x%08x, size = 0x%08x)\n\t"
-        "user code (size = 0x%08x) -> entry = 0x%08x\n",
+        "user code (size = 0x%08x), entry = 0x%08x\n",
         proc->name, proc->kernel_stack_top, proc->kernel_stack_base,
         proc->kernel_stack_size, proc->user_stack_top, proc->user_stack_size,
         proc->user_code_size, proc->user_entry);
