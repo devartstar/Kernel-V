@@ -5,7 +5,7 @@
 
 /* 64Kb of user space stack */
 #define USER_STACK_TOP_VIRT 0xBFFFF000
-#define USER_STACK_SIZE 0x10000 // 64 KB
+#define USER_STACK_SIZE (4 * PAGE_SIZE) // 64 KB
 #define USER_STACK_BOTTOM_VIRT (USER_STACK_TOP_VIRT - USER_STACK_SIZE)
 
 #define USER_CODE_VIRT                                                         \
@@ -14,3 +14,8 @@
 int user_stack_init(pcb_t *proc);
 
 void switch_to_usermode(uint32_t entry, uint32_t user_stack_top);
+
+pcb_t *userproc_create_from_blob(const char *name, const uint8_t *blob_start,
+                                 uint32_t blob_size);
+
+void userproc_kernel_entry(void *args);

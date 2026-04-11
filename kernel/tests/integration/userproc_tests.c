@@ -7,6 +7,9 @@
 #include "mm/stack_map.h"
 #include "proc/user.h"
 
+extern uint8_t _binary_userprog_start[];
+extern uint8_t _binary_userprog_end[];
+
 static void map_user_range(uint32_t start, uint32_t end, uint32_t flags) {
     for (uint32_t va = start; va < end; va += PAGE_SIZE) {
         void *phys = pmm_alloc_frame();
@@ -36,8 +39,6 @@ void test_usermode_process(void) {
 
     /* _binary_userprog_start and _binary_userprog_end are address of the first
      * and last byte of the userprog provided by the linker. */
-    extern uint8_t _binary_userprog_start[];
-    extern uint8_t _binary_userprog_end[];
     uint32_t prog_size = _binary_userprog_end - _binary_userprog_start;
 
     /* ---------------------------
@@ -80,4 +81,16 @@ void test_usermode_process(void) {
     switch_to_usermode(current_proc->user_entry, current_proc->user_stack_top);
 
     panik("Returned from usermode (should never happen)");
+}
+
+void spawn_user_test_process(void) {
+    uint32_t blob_size =
+        (uint32_t)(_binary_userprog_end - _binary_userprog_start);
+
+    pcb_t *proc = userproc_create_from_blob("user_proc_test",
+                                            _binary_userprog_start, blob_size);
+
+    if (!proc) {
+        panik("spawn_user_test_process: failed");
+    }
 }

@@ -1,7 +1,11 @@
 #include "arch/x86/usermode_stub.h"
 #include "core/panik.h"
 #include "lib/printk.h"
+#include "lib/string.h"
+#include "mm/paging.h"
+#include "mm/pmm.h"
 #include "proc/proc.h"
+#include "proc/user.h"
 #include <stdint.h>
 
 // These selectors must match your GDT layout
@@ -33,4 +37,110 @@ void switch_to_usermode(uint32_t entry, uint32_t user_stack_top) {
         : "memory");
 
     KLOG_VERBOSE("PRIVILEGE", "Returned back from the user mode after test\n");
+}
+
+static void user_map_region(uint32_t virt_start, uint32_t size,
+                            uint32_t flags) {
+    /* start page and end page for the given virt address
+     *-----|s|--<v_s>---------<v_e>-|e|--- */
+    uint32_t start = virt_start & 0xFFFFF000;
+    uint32_t end = (virt_start + size + 0xFFF) & 0xFFFFF000;
+
+    for (uint32_t addr = start; addr < end; addr += PAGE_SIZE) {
+        void *phys = pmm_alloc_frame();
+        if (!phys) {
+            panik("user_map_region: pmm_alloc_frame failed");
+        }
+
+        paging_map_page(addr, (uint32_t)phys, flags);
+    }
+}
+
+static void user_zero_region(uint32_t virt_start, uint32_t size) {
+    memset((void *)virt_start, 0, size);
+}
+
+void userproc_kernel_entry(void *arg) {
+    (void)arg;
+
+    pcb_t *proc = current_proc;
+
+    if (!proc) {
+        panik("userproc_kernel_entry: proc is NULL");
+    }
+
+    if (proc != current_proc) {
+        panik("userproc_kernel_entry: Proc doesn't match Current runninf "
+              "process");
+    }
+
+    if (proc->type != PROC_TYPE_USER) {
+        panik("userproc_kernel_entry: current process is not USER");
+    }
+
+    if (!proc->user_entry || !proc->user_stack_top) {
+        panik("userproc_kernel_entry: invalid user entry/stack");
+    }
+
+    KLOG_INFO(
+        "USERPROC",
+        "Entering usermode: name=%d (pid=%u) entry=0x%08x stack_top=0x%08x\n",
+        proc->name, proc->pid, proc->user_entry, proc->kernel_stack_top);
+
+    /* Switch to Usermode */
+    switch_to_usermode(proc->user_entry, proc->user_stack_top - 4);
+
+    panik("userproc_kernel_entry: returned from switch_to_usermode");
+}
+
+pcb_t *userproc_create_from_blob(const char *name, const uint8_t *blob_start,
+                                 uint32_t blob_size) {
+    pcb_t *proc;
+
+    if (!name || !blob_start || blob_size == 0) {
+        KLOG_ERROR("USERPROC", "Invalid arguments: name=%s, blob=%p, size=%u\n",
+                   proc->name, blob_start, blob_size);
+        return NULL;
+    }
+
+    /* Create a schedulable kernel-mode processes whose execution starts from
+     * userproc_kenrel_entry */
+    proc = proc_create(userproc_kernel_entry, NULL, name);
+    if (!proc) {
+        KLOG_ERROR("USERPROC", "Process creation failed\n");
+        reutrn NULL;
+    }
+
+    proc_set_type(proc, PROC_TYPE_USER);
+
+    proc->parent = current_proc;
+
+    /* Userspace metadata */
+    proc->user_entry = USER_CODE_VIRT;
+    proc->user_code_size = blob_size;
+    proc->user_stack_top = USER_STACK_TOP_VIRT;
+    proc->user_stack_size = USER_STACK_SIZE;
+
+    /* Map user code pages */
+    user_map_region(proc->user_entry, proc->user_code_size,
+                    PAGE_PRESENT | PAGE_WRITE | PAGE_USER);
+
+    /* Map user stack pages */
+    user_map_region(proc->user_stack_top - proc->user_stack_size,
+                    proc->user_stack_size,
+                    PAGE_PRESENT | PAGE_WRITE | PAGE_USER);
+
+    /* Initialize memory contents */
+    memcpy((void *)proc->user_entry, blob_start, blob_size);
+    user_zero_region(proc->user_stack_top - proc->user_stack_size,
+                     proc->user_stack_size);
+
+    KLOG_INFO("USERPROC",
+              "Created user process: name=%s (pid=%u, type=%s), entry=0x%08x "
+              "code_size=0x%08x, stack_top=0x%08x, stack_size=0x%08x\n",
+              proc->name, proc->pid, proc_type_to_string(proc->type),
+              proc->user_entry, proc->user_code_size, proc->user_stack_top,
+              proc->user_stack_size);
+
+    return proc;
 }

@@ -50,7 +50,7 @@ void my_usermode_test_proc(void *arg) {
     KLOG_INFO("TEST", "usermode test process running in pid=%d\n",
               current_proc->pid);
 
-    test_usermode_process();
+    spawn_user_test_process();
 
     panik("usermode test process returned, but should have exited process if "
           "EXIT syscall made\n");
