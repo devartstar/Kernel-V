@@ -37,6 +37,7 @@ static int32_t syscall_exit(uint32_t code, uint32_t _2, uint32_t _3,
 
     /* Mark the process as terminated and yield */
     proc_mark_terminated(current_proc, code);
+    dequeue_ready(current_proc);
     yield();
 
     /* should not reach here */

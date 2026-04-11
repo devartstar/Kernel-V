@@ -85,13 +85,27 @@ typedef struct pcb {
 
     /* Process tree */
     struct pcb *parent;
+
+    /* All process linkage */
+    struct pcb *all_next;
+    struct pcb *all_prev;
+
+    /* Ready queue linkage */
     struct pcb *next;
     struct pcb *prev;
 } pcb_t;
 
+/* List of all the processes across all states */
+extern pcb_t *proc_list_head;
+extern pcb_t *proc_list_tail;
+
 void proc_init(void);
 
 pcb_t *proc_alloc(const char *name);
+
+void enqueue_proc_list(pcb_t *proc);
+
+void dequeue_proc_list(pcb_t *proc);
 
 /**
  * proc_cleanup_kernel - cleanup kernel level process

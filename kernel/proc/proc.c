@@ -14,16 +14,20 @@
 static uint32_t next_pid = 1;
 pcb_t *current_proc = NULL;
 
+pcb_t *proc_list_head = NULL;
+pcb_t *proc_list_tail = NULL;
+
 void cleanup_terminated_processes(void) {
-    pcb_t *p = ready_list_head;
+    pcb_t *p = proc_list_head;
 
     while (p) {
-        pcb_t *next = p->next;
+        pcb_t *next = p->all_next;
 
         if (proc_is_reclaimable(p)) {
             debug_module(PROCESS_MGMT,
                          "Reclaiming process: %s (pid=%u, type=%s)\n", p->name,
                          p->pid, proc_type_to_string(p->type));
+            dequeue_proc_list(p);
             dequeue_ready(p);
             proc_free(p);
         }
@@ -41,7 +45,7 @@ static void idle_process(void *arg) {
 
         /* Every 10 idle process - clean up terminated process */
         if (idle_count % 10 == 0) {
-            pr_info("[CLEANUP] Terminated Process\n");
+            KLOG_INFO("PRCOESS_MGMT", "[CLEANUP] Terminated Process\n");
             cleanup_terminated_processes();
         }
 
@@ -66,6 +70,7 @@ void pcb_free(pcb_t *pcb) { pool_free(&pcb_pool, pcb); }
  * **************************************/
 
 void proc_init(void) {
+    proc_list_head = NULL;
     ready_list_head = NULL;
     wait_list_head = NULL;
 
@@ -112,10 +117,62 @@ pcb_t *proc_alloc(const char *name) {
 
     new_proc->parent = NULL;
 
+    new_proc->all_next = NULL;
+    new_proc->all_prev = NULL;
+
+    new_proc->next = NULL;
+    new_proc->prev = NULL;
+
     /* Add the new created proc to the ready queue */
+    enqueue_proc_list(new_proc);
     enqueue_ready(new_proc);
 
     return new_proc;
+}
+
+void enqueue_proc_list(pcb_t *proc) {
+    if (!proc) {
+        return;
+    }
+
+    proc->all_next = NULL;
+    proc->all_prev = NULL;
+
+    if (proc_list_head) {
+        /* Entry is already present */
+        proc_list_tail->all_next = proc;
+        proc->all_prev = proc_list_tail;
+        proc_list_tail = proc;
+    } else {
+        /* First entry in proc_list */
+        proc_list_head = proc;
+        proc_list_tail = proc;
+    }
+}
+
+void dequeue_proc_list(pcb_t *proc) {
+    if (proc->all_prev) {
+        /* If not the first process in list */
+        proc->all_prev->all_next = proc->all_next;
+        proc->all_next->all_prev = proc->all_prev;
+    } else {
+        /* First entry in the list */
+        proc_list_head = proc->all_next;
+        proc_list_head->all_prev = NULL;
+    }
+
+    if (proc->all_next) {
+        /* If not the last process in list */
+        proc->all_prev->all_next = proc->all_next;
+        proc->all_next->all_prev = proc->all_prev;
+    } else {
+        /* Last entry in the list */
+        proc_list_tail = proc->all_prev;
+        proc_list_tail->all_next = NULL;
+    }
+
+    proc->all_next = NULL;
+    proc->all_prev = NULL;
 }
 
 void proc_cleanup_kernel(pcb_t *proc) {
@@ -354,7 +411,7 @@ void proc_exit(void) {
 
     /* Mark the process as terminated */
     proc_mark_terminated(proc_now, 0x0);
-
+    dequeue_ready(proc_now);
     yield();
 
     /* Should never reach here - the cleanup will happen later
@@ -636,6 +693,7 @@ pcb_t *proc_create_kernel_main(const char *name) {
     kernel_proc->has_exited = 0;
     kernel_proc->exit_code = 0;
 
+    enqueue_proc_list(kernel_proc);
     enqueue_ready(kernel_proc);
 
     current_proc = kernel_proc;
