@@ -99,7 +99,7 @@ pcb_t *userproc_create_from_blob(const char *name, const uint8_t *blob_start,
 
     if (!name || !blob_start || blob_size == 0) {
         KLOG_ERROR("USERPROC", "Invalid arguments: name=%s, blob=%p, size=%u\n",
-                   proc->name, blob_start, blob_size);
+                   name, blob_start, blob_size);
         return NULL;
     }
 
@@ -108,8 +108,16 @@ pcb_t *userproc_create_from_blob(const char *name, const uint8_t *blob_start,
     proc = proc_create(userproc_kernel_entry, NULL, name);
     if (!proc) {
         KLOG_ERROR("USERPROC", "Process creation failed\n");
-        reutrn NULL;
+        return NULL;
     }
+
+    /*
+     * Prevent the scheduler from picking this process before we finish
+     * setting up user metadata.  proc_create() already enqueued it as
+     * PROC_READY; temporarily mark it PROC_NEW so scheduler_pick_next()
+     * skips it.
+     */
+    proc->state = PROC_NEW;
 
     proc_set_type(proc, PROC_TYPE_USER);
 
@@ -134,6 +142,9 @@ pcb_t *userproc_create_from_blob(const char *name, const uint8_t *blob_start,
     memcpy((void *)proc->user_entry, blob_start, blob_size);
     user_zero_region(proc->user_stack_top - proc->user_stack_size,
                      proc->user_stack_size);
+
+    /* Setup complete — allow scheduling */
+    proc->state = PROC_READY;
 
     KLOG_INFO("USERPROC",
               "Created user process: name=%s (pid=%u, type=%s), entry=0x%08x "

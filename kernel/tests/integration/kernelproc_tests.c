@@ -52,8 +52,8 @@ void my_usermode_test_proc(void *arg) {
 
     spawn_user_test_process();
 
-    panik("usermode test process returned, but should have exited process if "
-          "EXIT syscall made\n");
+    /* Our job is done — the user process will run when scheduled.
+       Exit this kernel helper process. */
 }
 
 void preemptive_proc(void *args) {
