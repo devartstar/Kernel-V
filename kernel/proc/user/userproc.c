@@ -43,8 +43,8 @@ static void user_map_region(uint32_t virt_start, uint32_t size,
                             uint32_t flags) {
     /* start page and end page for the given virt address
      *-----|s|--<v_s>---------<v_e>-|e|--- */
-    uint32_t start = virt_start & 0xFFFFF000;
-    uint32_t end = (virt_start + size + 0xFFF) & 0xFFFFF000;
+    uint32_t start = PAGE_ALIGN_DOWN(virt_start);
+    uint32_t end = PAGE_ALIGN_UP(virt_start + size);
 
     for (uint32_t addr = start; addr < end; addr += PAGE_SIZE) {
         void *phys = pmm_alloc_frame();

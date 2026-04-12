@@ -46,6 +46,11 @@ void run_kernel_tests(void) {
     KLOG_VERBOSE("TEST", "Running Process/Integration Tests...\n");
     create_test_processes();
     KLOG_VERBOSE("TEST", "Process Tests Complete.\n");
+
+    KLOG_VERBOSE("TEST", "Running Usermode Process/Syscall Tests...\n");
+    test_usermode_process();
+    KLOG_VERBOSE("TEST", "Syscall Tests Completed.\n");
+
     tests_run = true;
 #endif
 
