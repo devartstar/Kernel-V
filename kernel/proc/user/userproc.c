@@ -43,8 +43,8 @@ static void user_map_region(uint32_t virt_start, uint32_t size,
                             uint32_t flags) {
     /* start page and end page for the given virt address
      *-----|s|--<v_s>---------<v_e>-|e|--- */
-    uint32_t start = PAGE_ALIGN_DOWN(virt_start);
-    uint32_t end = PAGE_ALIGN_UP(virt_start + size);
+    uint32_t start = virt_start & 0xFFFFF000;
+    uint32_t end = (virt_start + size + 0xFFF) & 0xFFFFF000;
 
     for (uint32_t addr = start; addr < end; addr += PAGE_SIZE) {
         void *phys = pmm_alloc_frame();
@@ -84,8 +84,8 @@ void userproc_kernel_entry(void *arg) {
 
     KLOG_INFO(
         "USERPROC",
-        "Entering usermode: name=%d (pid=%u) entry=0x%08x stack_top=0x%08x\n",
-        proc->name, proc->pid, proc->user_entry, proc->kernel_stack_top);
+        "Entering usermode: name=%s (pid=%u) entry=0x%08x stack_top=0x%08x\n",
+        proc->name, proc->pid, proc->user_entry, proc->user_stack_top);
 
     /* Switch to Usermode */
     switch_to_usermode(proc->user_entry, proc->user_stack_top - 4);
@@ -104,7 +104,7 @@ pcb_t *userproc_create_from_blob(const char *name, const uint8_t *blob_start,
     }
 
     /* Create a schedulable kernel-mode processes whose execution starts from
-     * userproc_kenrel_entry */
+     * userproc_kernel_entry */
     proc = proc_create(userproc_kernel_entry, NULL, name);
     if (!proc) {
         KLOG_ERROR("USERPROC", "Process creation failed\n");

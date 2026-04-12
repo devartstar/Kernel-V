@@ -22,6 +22,29 @@ typedef int32_t (*syscall_handler_t)(uint32_t, uint32_t, uint32_t, uint32_t,
  * index */
 extern syscall_handler_t syscall_table[NUM_SYSCALLS];
 
+/* syscall_table_init - Initialize the syscall table */
 void syscall_table_init(void);
 
+/* syscall_interrupt_handler - Entry for syscall interrupt and calls the
+ * appropriate handler for the syscall index
+ * @idt_index - intereupt vector number for the syscall
+ * @regs - pointer to the register values for the interrupe
+ *
+ * @return void
+ * */
 void syscall_interrupt_handler(uint32_t idt_index, regs_t *regs);
+
+/* usr_ptr_validate - check if the pointer points to address in user space
+ * @ptr - address to validate
+ *
+ * @return 1 if valid and 0 if invalid
+ */
+static uint8_t usr_ptr_validate(uint32_t ptr);
+
+/* usr_range_is_valid - check if the range of address is in user space
+ * @ptr - starting address of the range
+ * @len - length of the address
+ *
+ * @return 1 if valid and 0 if invalid
+ */
+static uint8_t usr_range_is_valid(uint32_t ptr, uint32_t len);

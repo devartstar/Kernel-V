@@ -1,7 +1,9 @@
 #include "proc/syscall.h"
 #include "lib/print_macros.h"
 #include "lib/printk.h"
+#include "mm/paging.h"
 #include "proc/proc.h"
+#include "proc/user.h"
 
 syscall_handler_t syscall_table[NUM_SYSCALLS] = {0};
 
@@ -53,27 +55,35 @@ static int32_t syscall_write(uint32_t fd, uint32_t buf_ptr, uint32_t len,
     (void)_6;
 
     /* Only supports fd = 1 (stdout) */
-    if (fd != 1)
+    if (fd != 1) {
         return -1;
-
-    const char *buf = (const char *)buf_ptr;
-
-    char kbuf[256];
-
-    if (len > sizeof(kbuf) - 1)
-        len = sizeof(kbuf) - 1;
-
-    for (uint32_t i = 0; i < len; i++) {
-        kbuf[i] = buf[i];
     }
 
-    kbuf[len] = '\0';
+    if (!usr_range_is_valid(buf_ptr, len)) {
+        KLOG_ERROR("SYSCALL",
+                   "sycall_write: invalid user buffer=0x%08x, length=%u\n",
+                   buf_ptr, len);
+        return -1;
+    }
+
+    /* Copy the buffer in kernel side before printing */
+
+    char kbuf[256];
+    uint32_t copy_len = len;
+
+    if (copy_len > sizeof(kbuf) - 1) {
+        /* if size > 255, copy only the first 255 characters */
+        copy_len = sizeof(kbuf) - 1;
+    }
+
+    memcpy(kbuf, (const void *)buf_ptr, copy_len);
+    kbuf[copy_len] = '\0';
 
     KLOG_INFO("SYSCALL",
-              "sycall_write: buf=0x%08x (msg: %s) len=%u from pid=%d\n", buf,
-              kbuf, len, current_proc->pid);
+              "sycall_write: buf=0x%08x (msg: %s) len=%u from pid=%d\n",
+              buf_ptr, kbuf, len, current_proc->pid);
 
-    return len;
+    return (int32_t)len;
 }
 
 static int32_t syscall_getpid(uint32_t _1, uint32_t _2, uint32_t _3,
@@ -134,4 +144,47 @@ void syscall_interrupt_handler(uint32_t idt_index, regs_t *regs) {
 
     /* Kernel syscall handler on return value is stored in eax register */
     regs->eax = retval;
+}
+
+static uint8_t usr_ptr_validate(uint32_t ptr) {
+    if (ptr < USER_VIRT_MIN) {
+        return 0;
+    }
+
+    if (ptr >= USER_VIRT_MAX) {
+        return 0;
+    }
+
+    if (paging_get_physical_address(ptr) == 0) {
+        return 0;
+    }
+
+    return 1;
+}
+
+static uint8_t usr_range_is_valid(uint32_t ptr, uint32_t len) {
+    uint32_t start, end;
+
+    if (len == 0) {
+        return 1;
+    }
+    if (!usr_ptr_validate(ptr)) {
+        return 0;
+    }
+
+    if (ptr + len < ptr) {
+        /* overflow */
+        return 0;
+    }
+
+    start = PAGE_ALIGN_DOWN(ptr);
+    end = PAGE_ALIGN_UP(ptr + len);
+
+    for (uint32_t addr = start; addr < end; addr += PAGE_SIZE) {
+        if (paging_get_physical_address(addr) == 0) {
+            return 0;
+        }
+    }
+
+    return 1;
 }

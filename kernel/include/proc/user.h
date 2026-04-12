@@ -3,6 +3,10 @@
 #include "proc/proc.h"
 #include <stdint.h>
 
+/* Range of user space address */
+#define USER_VIRT_MIN 0x00400000
+#define USER_VIRT_MAX 0xC0000000
+
 /* 64Kb of user space stack */
 #define USER_STACK_TOP_VIRT 0xBFFFF000
 #define USER_STACK_SIZE (4 * PAGE_SIZE) // 64 KB
