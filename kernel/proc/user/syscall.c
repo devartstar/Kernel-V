@@ -5,6 +5,8 @@
 #include "proc/proc.h"
 #include "proc/user.h"
 
+#define KBUF_CHUNK_SIZE 128
+
 syscall_handler_t syscall_table[NUM_SYSCALLS] = {0};
 
 static int32_t syscall_test(uint32_t a, uint32_t b, uint32_t c, uint32_t d,
@@ -68,20 +70,28 @@ static int32_t syscall_write(uint32_t fd, uint32_t buf_ptr, uint32_t len,
 
     /* Copy the buffer in kernel side before printing */
 
-    char kbuf[256];
-    uint32_t copy_len = len;
+    uint32_t copy_remaining_len = len;
+    uint32_t offset = 0;
 
-    if (copy_len > sizeof(kbuf) - 1) {
-        /* if size > 255, copy only the first 255 characters */
-        copy_len = sizeof(kbuf) - 1;
+    while (copy_remaining_len > 0) {
+        uint32_t chunk_len = copy_remaining_len;
+
+        if (chunk_len > KBUF_CHUNK_SIZE - 1) {
+            chunk_len = KBUF_CHUNK_SIZE - 1;
+        }
+
+        char kbuf[KBUF_CHUNK_SIZE];
+
+        memcpy(kbuf, (const void *)(buf_ptr + offset), chunk_len);
+        kbuf[chunk_len] = '\0';
+
+        KLOG_INFO("SYSCALL",
+                  "sycall_write: (buf_start=0x%08x, len=%u) (msg: %s)\n",
+                  (buf_ptr + offset), chunk_len, kbuf, len);
+
+        copy_remaining_len = copy_remaining_len - chunk_len;
+        offset += chunk_len;
     }
-
-    memcpy(kbuf, (const void *)buf_ptr, copy_len);
-    kbuf[copy_len] = '\0';
-
-    KLOG_INFO("SYSCALL",
-              "sycall_write: buf=0x%08x (msg: %s) len=%u from pid=%d\n",
-              buf_ptr, kbuf, len, current_proc->pid);
 
     return (int32_t)len;
 }
