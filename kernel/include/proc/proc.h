@@ -204,6 +204,22 @@ int proc_is_special(const pcb_t *proc);
 void proc_mark_terminated(pcb_t *proc, int32_t exit_code);
 
 /**
+ * proc_is_runnable - checks if the process is eligible to be picked by
+ * scheduler
+ * proc - process to check if it can run next
+ *
+ * @return uint8_t - 1 if runnable else 0
+ */
+uint8_t proc_is_runnable(const pcb_t *proc);
+
+/**
+ * proc_bootstrap_handoff - remove the bootstrap proc from further scheduling
+ *
+ * @return void
+ */
+void proc_bootstrap_handoff(void);
+
+/**
  * thread_entry_wrapper - Wrapper for process entry and exit.
  * For every new thread, sets the EIP here.
  * Push entry and args to the stack of the new process.

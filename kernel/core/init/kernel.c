@@ -35,6 +35,12 @@ void kernel_main_loop() {
     pr_info("Production build - testing disabled\n");
 #endif
 
+    proc_bootstrap_handoff();
+    yield();
+
+    panik("Bootstrap resumed un-expectedly");
+
+    /* Remove the process from scheduling. Marking the process as waiting.
     while (1) {
         // Check interrupt status before operations
         uint32_t eflags;
@@ -60,6 +66,7 @@ void kernel_main_loop() {
 
         loop_count++;
     }
+    */
 }
 
 void high_stack_entry() {

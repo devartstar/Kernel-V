@@ -1,4 +1,5 @@
 #include "drivers/serial.h"
+#include "arch/x86/interrupt.h"
 #include "core/io.h"
 
 #define SERIAL_PORT 0x3F8
@@ -30,13 +31,15 @@ void serial_init(void) {
 static int serial_is_transmit_ready() { return inb(SERIAL_PORT + 5) & 0x20; }
 
 void serial_putc(char c) {
-    while (!serial_is_transmit_ready) {
+    while (!serial_is_transmit_ready()) {
     };
     outb(SERIAL_PORT, c);
 }
 
 void serial_write(const char *data, size_t len) {
+    irq_flags_t flags = irq_save();
     for (size_t i = 0; i < len; i++) {
         serial_putc(data[i]);
     }
+    irq_restore(flags);
 }

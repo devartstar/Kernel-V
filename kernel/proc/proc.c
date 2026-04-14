@@ -1,4 +1,5 @@
 #include "proc/proc.h"
+#include "arch/x86/interrupt.h"
 #include "arch/x86/tss.h"
 #include "core/debug.h"
 #include "core/panik.h"
@@ -437,6 +438,20 @@ int proc_is_reclaimable(const pcb_t *proc) {
     return !proc_is_special(proc);
 }
 
+uint8_t proc_is_runnable(const pcb_t *proc) {
+    /* Process should not be terminated */
+    if (proc->state == PROC_TERMINATED) {
+        return 0;
+    }
+
+    /* Process should be ready and not already running */
+    if (proc->state != PROC_READY && proc->state != PROC_RUNNING) {
+        return 0;
+    }
+
+    return 1;
+}
+
 void proc_mark_terminated(pcb_t *proc, int32_t exit_code) {
     if (!proc) {
         return;
@@ -461,6 +476,33 @@ void proc_mark_terminated(pcb_t *proc, int32_t exit_code) {
               proc->exit_code);
 }
 
+void proc_bootstrap_handoff(void) {
+    irq_flags_t flags;
+
+    if (!current_proc) {
+        panik("proc_bootstrap_handoff: current_proc is NULL");
+    }
+
+    if (current_proc->type != PROC_TYPE_BOOTSTRAP) {
+        panik("proc_bootstrap_handoff: current process is not BOOTSTRAP");
+    }
+
+    KLOG_INFO("PROCESS_MGMT",
+              "Bootstrap handoff: name=%s (pid=%u, type=%s) removed from "
+              "normal scheduling.\n",
+              current_proc->name, current_proc->pid,
+              proc_type_to_string(current_proc->type));
+
+    flags = irq_save();
+
+    dequeue_ready(current_proc);
+    current_proc->state = PROC_WAITING;
+
+    irq_restore(flags);
+
+    return;
+}
+
 /*****************************************
  * START: PROCESS SCHEDULING             *
  * ***************************************/
@@ -480,7 +522,7 @@ pcb_t *scheduler_pick_next(void) {
 
     /* Look for a READY process (skip SLEEPING and TERMINATED processes) */
     do {
-        if (proc_next && proc_next->state == PROC_READY) {
+        if (proc_next && proc_is_runnable(proc_next)) {
             return proc_next;
         }
 
@@ -492,7 +534,7 @@ pcb_t *scheduler_pick_next(void) {
     } while (proc_next != proc_now);
 
     if (proc_now && proc_now->state == PROC_TERMINATED) {
-        /*  Find and return idle process */
+        /*  If no process ready to run, find and return idle process */
         for (pcb_t *p = ready_list_head; p; p = p->next) {
             if (strcmp(p->name, "idle") == 0) {
                 return p;
@@ -524,19 +566,18 @@ void yield(void) {
         pr_error("CURRENT PROCESS CORRUPTED: pid=%d, name=%s\n",
                  proc_now ? proc_now->pid : -1,
                  proc_now ? proc_now->name : "NULL");
-        while (1)
-            __asm__("hlt");
+        panik("process corrupted");
     }
 
     proc_next = scheduler_pick_next();
 
     /* Debug the new process contexts */
     if (proc_next) {
-        pr_verbose(
-            "DEBUG: Switching to %s: EIP=0x%08x ESP=0x%08x EFLAGS=0x%08x\n",
-            proc_next->name, PRINT_UINT32(proc_next->context.eip),
-            PRINT_UINT32(proc_next->context.esp),
-            PRINT_UINT32(proc_next->context.eflags));
+        KLOG_VERBOSE("PROCESS_MGMT",
+                     "Switching to %s: EIP=0x%08x ESP=0x%08x EFLAGS=0x%08x\n",
+                     proc_next->name, PRINT_UINT32(proc_next->context.eip),
+                     PRINT_UINT32(proc_next->context.esp),
+                     PRINT_UINT32(proc_next->context.eflags));
 
         /* Todo: Check condition if interrupts disabled and compare with
          * proc_next->context.eflag */
@@ -564,8 +605,13 @@ void yield(void) {
         proc_next->state = PROC_RUNNING;
         current_proc = proc_next;
 
-        debug_module(
-            PROCESS_MGMT,
+        KLOG_VERBOSE("PROCESS_MGMT",
+                     "New current process: %s (pid=%u, type=%s)\n",
+                     current_proc->name, current_proc->pid,
+                     proc_type_to_string(current_proc->type));
+
+        KLOG_VERBOSE(
+            "PROCESS_MGMT",
             "About to switch: \n\t"
             "Prev Process=%s (PID=%u, Type=%s) (eflags=0x%lx) \n\t"
             "New Process=%s  (PID=%u, Type=%s) (eflags=0x%lx) \n",
