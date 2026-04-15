@@ -5,6 +5,7 @@
 #include "core/panik.h"
 #include "lib/printk.h"
 #include "lib/string.h"
+#include "mm/paging.h"
 #include "mm/pmm.h"
 #include "mm/pool_alloc.h"
 #include "proc/context_switch.h"
@@ -124,6 +125,9 @@ pcb_t *proc_alloc(const char *name) {
     new_proc->next = NULL;
     new_proc->prev = NULL;
 
+    new_proc->page_directory_virt = kernel_page_directory_virt;
+    new_proc->page_directory_phys = kernel_page_directory_phys;
+
     /* Add the new created proc to the ready queue */
     enqueue_proc_list(new_proc);
     enqueue_ready(new_proc);
@@ -223,14 +227,32 @@ void proc_cleanup_user(pcb_t *proc) {
 
     /* Free user code backing frame */
     if (proc->user_entry & proc->user_code_size > 0) {
-        paging_free_region(proc->user_entry, proc->user_code_size);
+        paging_free_region_in_pd(proc->page_directory_virt, proc->user_entry,
+                                 proc->user_code_size);
     }
 
     /* Free user stack frames */
     if (proc->user_stack_top && proc->user_stack_size > 0) {
         uint32_t stack_bottom = proc->user_stack_top - proc->user_stack_size;
-        paging_free_region(stack_bottom, proc->user_stack_size);
+        paging_free_region_in_pd(proc->page_directory_virt, stack_bottom,
+                                 proc->user_stack_size);
     }
+
+    /* No need to free kernel half of PDE */
+    /* Free the user half PDE */
+    for (uint32_t i = 0; i < KERNEL_PDE_START; i++) {
+        uint32_t pde = proc->page_directory_virt[i];
+        if (pde & PAGE_PRESENT) {
+            uint32_t *pt_virt = (uint32_t *)(pde & 0xFFFFF000);
+            pmm_free_frame(pt_virt);
+            proc->page_directory_virt[i] = 0;
+        }
+    }
+
+    /* Free the Page Dir frame */
+    pmm_free_frame(proc->page_directory_virt);
+    proc->page_directory_virt = NULL;
+    proc->page_directory_phys = 0;
 
     /* Free kernel stack */
     if (proc->kernel_stack_base && proc->kernel_stack_size) {
@@ -624,10 +646,19 @@ void yield(void) {
         switch_to(proc_now, proc_next);
         __asm__ __volatile__("sti");
 
+        /** [START] Todo: move before switch_to */
         /* [todo] We have 1 TSS, its a good practice to have 1 per CPU */
         /* Update the TSS entry so if the process privilege switch from
          * user->kernel it can switch to that process kerel stack */
-        tss_df.esp0 = (uint32_t)current_proc->kernel_stack_top;
+        tss_df.esp0 = (uint32_t)proc_next->kernel_stack_top;
+
+        /* Load with the process page directory */
+        if (!proc_next->page_directory_phys) {
+            panik("yield: next process has no page directory");
+        }
+        paging_switch_address_space(proc_next->page_directory_phys);
+        update_tss_cr3();
+        /** [STOP] Todo: move before switch_to */
 
         /* Testing interrupt after process switch */
         uint32_t eflags_afterswitch;
@@ -729,6 +760,9 @@ pcb_t *proc_create_kernel_main(const char *name) {
     kernel_proc->kernel_stack_top = (uint8_t *)KERNEL_STACK_TOP_VIRT;
     kernel_proc->kernel_stack_size =
         KERNEL_STACK_TOP_VIRT - KERNEL_STACK_BOTTOM_VIRT;
+
+    kernel_proc->page_directory_virt = kernel_page_directory_virt;
+    kernel_proc->page_directory_phys = kernel_page_directory_phys;
 
     strncpy(kernel_proc->name, name, PROC_NAME_MAX);
     kernel_proc->name[PROC_NAME_MAX - 1] = '\0';

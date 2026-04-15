@@ -39,8 +39,8 @@ void switch_to_usermode(uint32_t entry, uint32_t user_stack_top) {
     KLOG_VERBOSE("PRIVILEGE", "Returned back from the user mode after test\n");
 }
 
-static void user_map_region(uint32_t virt_start, uint32_t size,
-                            uint32_t flags) {
+static void user_map_region_in_pd(uint32_t *pd_virt, uint32_t virt_start,
+                                  uint32_t size, uint32_t flags) {
     /* start page and end page for the given virt address
      *-----|s|--<v_s>---------<v_e>-|e|--- */
     uint32_t start = virt_start & 0xFFFFF000;
@@ -52,7 +52,7 @@ static void user_map_region(uint32_t virt_start, uint32_t size,
             panik("user_map_region: pmm_alloc_frame failed");
         }
 
-        paging_map_page(addr, (uint32_t)phys, flags);
+        paging_map_page_in_pd(pd_virt, addr, (uint32_t)phys, flags);
     }
 }
 
@@ -60,98 +60,77 @@ static void user_zero_region(uint32_t virt_start, uint32_t size) {
     memset((void *)virt_start, 0, size);
 }
 
-void userproc_kernel_entry(void *arg) {
-    (void)arg;
-
-    pcb_t *proc = current_proc;
-
+pcb_t *userproc_alloc(const char *name) {
+    pcb_t *proc = proc_create(userproc_kernel_entry, NULL, name);
     if (!proc) {
-        panik("userproc_kernel_entry: proc is NULL");
+        return NULL;
     }
 
-    if (proc != current_proc) {
-        panik("userproc_kernel_entry: Proc doesn't match Current runninf "
-              "process");
+    proc_set_type(proc, PROC_TYPE_USER);
+
+    if (paging_create_address_space(&proc->page_directory_virt,
+                                    &proc->page_directory_phys) != 0) {
+        return NULL;
+    }
+
+    proc->user_entry = 0;
+    proc->user_code_size = 0;
+    proc->user_stack_top = 0;
+    proc->user_stack_size = 0;
+
+    return proc;
+}
+
+int userproc_load_blob(pcb_t *proc, const uint8_t *blob_start,
+                       uint32_t blob_size) {
+    uint32_t code_start = USER_CODE_VIRT;
+    uint32_t stack_top = USER_STACK_TOP_VIRT;
+    uint32_t stack_size = USER_STACK_SIZE;
+    uint32_t stack_bottom = stack_top - stack_size;
+
+    if (!proc || !blob_start || blob_size == 0) {
+        return -1;
     }
 
     if (proc->type != PROC_TYPE_USER) {
-        panik("userproc_kernel_entry: current process is not USER");
+        retur - 1;
     }
 
-    if (!proc->user_entry || !proc->user_stack_top) {
-        panik("userproc_kernel_entry: invalid user entry/stack");
+    if (!proc->page_directory_virt || !proc->page_directory_phys) {
+        return -1;
     }
 
-    KLOG_INFO(
-        "USERPROC",
-        "Entering usermode: name=%s (pid=%u) entry=0x%08x stack_top=0x%08x\n",
-        proc->name, proc->pid, proc->user_entry, proc->user_stack_top);
+    user_map_region_in_pd(proc->page_directory_virt, code_start, blob_size,
+                          PAGE_PRESENT | PAGE_WRITE | PAGE_USER);
+    user_map_region_in_pd(proc->page_directory_virt, stack_bottom, stack_size,
+                          PAGE_PRESENT | PAGE_WRITE | PAGE_USER);
 
-    /* Switch to Usermode */
-    switch_to_usermode(proc->user_entry, proc->user_stack_top - 4);
+    uint32_t old_cr3 = paging_get_current_cr3();
+    paging_switch_address_space(proc->page_directory_phys);
 
-    panik("userproc_kernel_entry: returned from switch_to_usermode");
+    memcpy((void *)code_start, blob_start, blob_size);
+    memcpy((void *)stack_bottom, 0, stack_size);
+
+    paging_create_address_space(old_cr3);
+
+    proc->user_entry = code_start;
+    proc->user_code_size = blob_size;
+    proc->user_stack_top = stack_top;
+    proc->user_stack_size = stack_size;
+
+    return 0;
 }
 
 pcb_t *userproc_create_from_blob(const char *name, const uint8_t *blob_start,
                                  uint32_t blob_size) {
-    pcb_t *proc;
-
-    if (!name || !blob_start || blob_size == 0) {
-        KLOG_ERROR("USERPROC", "Invalid arguments: name=%s, blob=%p, size=%u\n",
-                   name, blob_start, blob_size);
-        return NULL;
-    }
-
-    /* Create a schedulable kernel-mode processes whose execution starts from
-     * userproc_kernel_entry */
-    proc = proc_create(userproc_kernel_entry, NULL, name);
+    pcb_t *proc = userproc_alloc(name);
     if (!proc) {
-        KLOG_ERROR("USERPROC", "Process creation failed\n");
         return NULL;
     }
 
-    /*
-     * Prevent the scheduler from picking this process before we finish
-     * setting up user metadata.  proc_create() already enqueued it as
-     * PROC_READY; temporarily mark it PROC_NEW so scheduler_pick_next()
-     * skips it.
-     */
-    proc->state = PROC_NEW;
-
-    proc_set_type(proc, PROC_TYPE_USER);
-
-    proc->parent = current_proc;
-
-    /* Userspace metadata */
-    proc->user_entry = USER_CODE_VIRT;
-    proc->user_code_size = blob_size;
-    proc->user_stack_top = USER_STACK_TOP_VIRT;
-    proc->user_stack_size = USER_STACK_SIZE;
-
-    /* Map user code pages */
-    user_map_region(proc->user_entry, proc->user_code_size,
-                    PAGE_PRESENT | PAGE_WRITE | PAGE_USER);
-
-    /* Map user stack pages */
-    user_map_region(proc->user_stack_top - proc->user_stack_size,
-                    proc->user_stack_size,
-                    PAGE_PRESENT | PAGE_WRITE | PAGE_USER);
-
-    /* Initialize memory contents */
-    memcpy((void *)proc->user_entry, blob_start, blob_size);
-    user_zero_region(proc->user_stack_top - proc->user_stack_size,
-                     proc->user_stack_size);
-
-    /* Setup complete — allow scheduling */
-    proc->state = PROC_READY;
-
-    KLOG_INFO("USERPROC",
-              "Created user process: name=%s (pid=%u, type=%s), entry=0x%08x "
-              "code_size=0x%08x, stack_top=0x%08x, stack_size=0x%08x\n",
-              proc->name, proc->pid, proc_type_to_string(proc->type),
-              proc->user_entry, proc->user_code_size, proc->user_stack_top,
-              proc->user_stack_size);
+    if (userproc_load_blob(proc, blob_start, blob_size) != 0) {
+        return NULL;
+    }
 
     return proc;
 }

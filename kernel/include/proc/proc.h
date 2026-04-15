@@ -83,6 +83,10 @@ typedef struct pcb {
     uint32_t user_stack_size;
     uint32_t user_code_size;
 
+    /* Address space */
+    uint32_t *page_directory_virt;
+    uint32_t page_directory_phys;
+
     /* Process tree */
     struct pcb *parent;
 
