@@ -151,6 +151,13 @@ pcb_t *proc_create(void (*entry)(void *), void *args, const char *name);
  */
 void proc_set_type(pcb_t *proc, proc_type_t type);
 
+/**
+ * proc_mark_ready - Mark a fully-initialized process as schedulable.
+ * Call this only after all setup (kernel stack, user blob, etc.) is complete.
+ * @proc pointer to the pcb to mark ready
+ */
+void proc_mark_ready(pcb_t *proc);
+
 /*
  * proc_type_to_string - enum to string conversion for the given process type
  * @type of process

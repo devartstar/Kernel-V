@@ -60,6 +60,14 @@ static void user_zero_region(uint32_t virt_start, uint32_t size) {
     memset((void *)virt_start, 0, size);
 }
 
+void userproc_kernel_entry(void *args) {
+    (void)args;
+    if (!current_proc || current_proc->type != PROC_TYPE_USER) {
+        panik("userproc_kernel_entry: not a user process\n");
+    }
+    switch_to_usermode(current_proc->user_entry, current_proc->user_stack_top);
+}
+
 pcb_t *userproc_alloc(const char *name) {
     pcb_t *proc = proc_create(userproc_kernel_entry, NULL, name);
     if (!proc) {
@@ -93,7 +101,7 @@ int userproc_load_blob(pcb_t *proc, const uint8_t *blob_start,
     }
 
     if (proc->type != PROC_TYPE_USER) {
-        retur - 1;
+        return -1;
     }
 
     if (!proc->page_directory_virt || !proc->page_directory_phys) {
@@ -109,9 +117,9 @@ int userproc_load_blob(pcb_t *proc, const uint8_t *blob_start,
     paging_switch_address_space(proc->page_directory_phys);
 
     memcpy((void *)code_start, blob_start, blob_size);
-    memcpy((void *)stack_bottom, 0, stack_size);
+    memset((void *)stack_bottom, 0, stack_size);
 
-    paging_create_address_space(old_cr3);
+    paging_switch_address_space(old_cr3);
 
     proc->user_entry = code_start;
     proc->user_code_size = blob_size;
@@ -131,6 +139,9 @@ pcb_t *userproc_create_from_blob(const char *name, const uint8_t *blob_start,
     if (userproc_load_blob(proc, blob_start, blob_size) != 0) {
         return NULL;
     }
+
+    /* Process is fully set up — now make it schedulable */
+    proc_mark_ready(proc);
 
     return proc;
 }

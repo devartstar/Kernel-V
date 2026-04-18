@@ -85,6 +85,10 @@ void create_test_processes(void) {
     proc_set_type(test_proc2, PROC_TYPE_KERNEL);
     proc_set_type(test_proc3, PROC_TYPE_KERNEL);
 
+    proc_mark_ready(test_proc1);
+    proc_mark_ready(test_proc2);
+    proc_mark_ready(test_proc3);
+
     if (test_proc1 && test_proc2 && test_proc3) {
         KLOG_VERBOSE("TEST", "Test processes created successfully\n");
 

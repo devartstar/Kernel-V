@@ -1,16 +1,15 @@
 #include "mm/paging.h"
 #include "core/debug.h"
-#include "core/panik.h"
-#include "lib/printk.h"
-#include "mm/pmm.h"
 
-/*
-static uint32_t *page_directory = (uint32_t *)PAGE_DIR_START_ADDR;
-static uint32_t *first_page_table = (uint32_t *)PAGE_TABLE_START_ADDR;
-*/
+uint32_t kernel_page_directory[PAGE_ENTRIES]
+    __attribute__((aligned(PAGE_SIZE)));
+uint32_t first_page_table[PAGE_ENTRIES] __attribute__((aligned(PAGE_SIZE)));
 
 uint32_t *kernel_page_directory_virt = kernel_page_directory;
 uint32_t kernel_page_directory_phys = (uint32_t)kernel_page_directory;
+#include "core/panik.h"
+#include "lib/printk.h"
+#include "mm/pmm.h"
 
 //
 //  Initialize paging by setting up first entry in page directory
@@ -67,7 +66,7 @@ void debug_dump_pte(uint32_t virtual_addr) {
     uint32_t ptable_index = (virtual_addr >> 12) & 0x3FF; /* bits 21-12 */
 
     /* check if page directory entry present */
-    if (!(page_directory[pdir_index] & PAGE_PRESENT)) {
+    if (!(kernel_page_directory[pdir_index] & PAGE_PRESENT)) {
         KLOG_VERBOSE("PAGE_TABLE",
                      "Page directory entry for 0x%08x not presnet.\n",
                      virtual_addr);
@@ -76,7 +75,7 @@ void debug_dump_pte(uint32_t virtual_addr) {
 
     /* Get the address of the page table */
     uint32_t *page_table =
-        (uint32_t *)(page_directory[pdir_index] & 0xFFFFF000);
+        (uint32_t *)(kernel_page_directory[pdir_index] & 0xFFFFF000);
     uint32_t pte = page_table[ptable_index];
 
     char flags[64];
@@ -106,7 +105,7 @@ void paging_map_page_in_pd(uint32_t *pd_virt, uint32_t virt_addr,
     if (pd_virt[pdir_index] & PAGE_PRESENT) {
         page_table = (uint32_t *)(pd_virt[pdir_index] & 0xFFFFF000);
     } else {
-        page_table = (uint32_t *)mm_alloc_frame();
+        page_table = (uint32_t *)pmm_alloc_frame();
         if (!page_table) {
             panik("paging_map_page_in_pd: Unable to allocate frame for new "
                   "page table");
@@ -229,7 +228,10 @@ int paging_create_address_space(uint32_t **out_pd_virt, uint32_t *out_pd_phys) {
         new_pd[i] = 0;
     }
 
-    /* Copy kernel side page dir entries from master kernel page dir */
+    /* Copy identity map (PDE[0]) so kernel code at 0x0001xxxx stays reachable */
+    new_pd[0] = kernel_page_directory_virt[0];
+
+    /* Copy kernel high-half page dir entries from master kernel page dir */
     for (uint32_t i = KERNEL_PDE_START; i < PAGE_ENTRIES; i++) {
         new_pd[i] = kernel_page_directory_virt[i];
     }

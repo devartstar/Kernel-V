@@ -81,14 +81,13 @@ void proc_init(void) {
 
     /* Create and IDLE process */
     pcb_t *idle = proc_create(idle_process, NULL, "idle");
-    proc_set_type(idle, PROC_TYPE_IDLE);
-    if (idle) {
-        /* IDLE process should always be ready to run */
-        debug_module(PROCESS_MGMT, "Created idle process with PID %d\n",
-                     idle->pid);
-    } else {
+    if (!idle) {
         panik("Failed creating IDLE process");
     }
+    proc_set_type(idle, PROC_TYPE_IDLE);
+    proc_mark_ready(idle);
+    debug_module(PROCESS_MGMT, "Created idle process with PID %d\n",
+                 idle->pid);
 }
 
 pcb_t *proc_alloc(const char *name) {
@@ -128,9 +127,8 @@ pcb_t *proc_alloc(const char *name) {
     new_proc->page_directory_virt = kernel_page_directory_virt;
     new_proc->page_directory_phys = kernel_page_directory_phys;
 
-    /* Add the new created proc to the ready queue */
+    /* Track in the global process list (not yet schedulable) */
     enqueue_proc_list(new_proc);
-    enqueue_ready(new_proc);
 
     return new_proc;
 }
@@ -361,8 +359,6 @@ pcb_t *proc_create(void (*entry)(void *), void *arg, const char *name) {
     proc->context.eflags =
         0x202; // IF (Interrupt Enable) bit set + reserved bit 1
 
-    proc->state = PROC_READY;
-
     proc->has_exited = 0;
     proc->exit_code = 0;
 
@@ -385,6 +381,15 @@ void proc_set_type(pcb_t *proc, proc_type_t type) {
     }
 
     proc->type = type;
+}
+
+void proc_mark_ready(pcb_t *proc) {
+    if (!proc) {
+        return;
+    }
+
+    proc->state = PROC_READY;
+    enqueue_ready(proc);
 }
 
 const char *proc_type_to_string(proc_type_t type) {
@@ -641,11 +646,6 @@ void yield(void) {
             proc_now->context.eflags, proc_next->name, proc_next->pid,
             proc_type_to_string(proc_next->type), proc_next->context.eflags);
 
-        /* Context Switch to New Process */
-        __asm__ __volatile__("cli");
-        switch_to(proc_now, proc_next);
-        __asm__ __volatile__("sti");
-
         /** [START] Todo: move before switch_to */
         /* [todo] We have 1 TSS, its a good practice to have 1 per CPU */
         /* Update the TSS entry so if the process privilege switch from
@@ -659,6 +659,11 @@ void yield(void) {
         paging_switch_address_space(proc_next->page_directory_phys);
         update_tss_cr3();
         /** [STOP] Todo: move before switch_to */
+
+        /* Context Switch to New Process */
+        __asm__ __volatile__("cli");
+        switch_to(proc_now, proc_next);
+        __asm__ __volatile__("sti");
 
         /* Testing interrupt after process switch */
         uint32_t eflags_afterswitch;

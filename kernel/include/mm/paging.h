@@ -21,9 +21,11 @@
 #define KERNEL_BASE_VIRT 0xC0000000
 #define KERNEL_PDE_START (KERNEL_BASE_VIRT >> 22)
 
-uint32_t kernel_page_directory[PAGE_ENTRIES]
-    __attribute__((aligned(PAGE_SIZE)));
-uint32_t first_page_table[PAGE_ENTRIES] __attribute__((aligned(PAGE_SIZE)));
+extern uint32_t kernel_page_directory[PAGE_ENTRIES];
+extern uint32_t first_page_table[PAGE_ENTRIES];
+
+extern uint32_t *kernel_page_directory_virt;
+extern uint32_t kernel_page_directory_phys;
 
 void paging_init();
 
