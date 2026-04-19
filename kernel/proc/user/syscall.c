@@ -3,13 +3,17 @@
 #include "lib/printk.h"
 #include "mm/paging.h"
 #include "proc/proc.h"
+#include "proc/scheduler.h"
 #include "proc/user.h"
 
 #define KBUF_CHUNK_SIZE 128
 
+static uint8_t usr_ptr_validate(uint32_t ptr);
+static uint8_t usr_range_is_valid(uint32_t ptr, uint32_t len);
+
 syscall_handler_t syscall_table[NUM_SYSCALLS] = {0};
 
-static int32_t syscall_test(uint32_t a, uint32_t b, uint32_t c, uint32_t d,
+static __attribute__((unused)) int32_t syscall_test(uint32_t a, uint32_t b, uint32_t c, uint32_t d,
                             uint32_t e, uint32_t f) {
     KLOG_VERBOSE("SYSCALL",
                  "SYSCALL TEST METHOD with argument a=%u, b=%u, c=%u, d=%u, "
@@ -156,6 +160,11 @@ void syscall_interrupt_handler(uint32_t idt_index, regs_t *regs) {
     regs->eax = retval;
 }
 
+/* usr_ptr_validate - check if the pointer points to address in user space
+ * @ptr - address to validate
+ *
+ * @return 1 if valid and 0 if invalid
+ */
 static uint8_t usr_ptr_validate(uint32_t ptr) {
     if (ptr < USER_VIRT_MIN) {
         return 0;
@@ -172,6 +181,12 @@ static uint8_t usr_ptr_validate(uint32_t ptr) {
     return 1;
 }
 
+/* usr_range_is_valid - check if the range of address is in user space
+ * @ptr - starting address of the range
+ * @len - length of the address
+ *
+ * @return 1 if valid and 0 if invalid
+ */
 static uint8_t usr_range_is_valid(uint32_t ptr, uint32_t len) {
     uint32_t start, end;
 

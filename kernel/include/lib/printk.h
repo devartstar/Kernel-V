@@ -29,11 +29,6 @@
 #define CONFIG_TRACE_LEVEL 3
 #endif
 
-// Log Format
-#define KLOG(level, tag, fmt, ...)                                             \
-    printk_structured(level, tag, __FILE__, __func__, __LINE__, fmt,           \
-                      ##__VA_ARGS__)
-
 //  Log level structure definition
 struct loglevel {
     char level_char;
@@ -97,5 +92,18 @@ int my_vsnprintf(char *buf, size_t size, const char *fmt, va_list args);
  * @returns void
  */
 void ringbuf_write(const char *str, size_t str_len);
+
+/**
+ * printk_structured - Structuring the format for the logs
+ * @level - Log level to be printed
+ * @tag - Log tag to be printed
+ * @file - File from where the log is printed
+ * @func - Function from which the log is printed
+ * @line - Line number from which the log is printed
+ *
+ * @return - length of the log
+ */
+int printk_structured(const char *level, const char *tag, const char *file,
+                      const char *func, int line, const char *fmt, ...);
 
 #endif /* KERNEL_PRINTK_H */

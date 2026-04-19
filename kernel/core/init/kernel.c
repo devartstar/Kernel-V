@@ -19,8 +19,6 @@ extern void switch_to_high_stack(uint32_t new_esp, void (*entry_func)());
 
 /* Kernel Background loop */
 void kernel_main_loop() {
-    uint32_t loop_count = 0;
-
     /* Initialize Syscall table before running tests */
     syscall_table_init();
 
@@ -40,7 +38,9 @@ void kernel_main_loop() {
 
     panik("Bootstrap resumed un-expectedly");
 
-    /* Remove the process from scheduling. Marking the process as waiting.
+    /* Remove the process from scheduling. Marking the process as waiting. */
+    /*
+    uint32_t loop_count = 0;
     while (1) {
         // Check interrupt status before operations
         uint32_t eflags;

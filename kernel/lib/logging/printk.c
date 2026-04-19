@@ -511,14 +511,14 @@ int printk_structured(const char *level, const char *tag, const char *file,
 
     const char *level_name = loglevels[log_level_idx].name;
     uint32_t tick = tick_count;
-    int pid = current_proc ? current_proc->pid : -1;
+    int pid = current_proc ? (int)current_proc->pid : -1;
     const char *pname = current_proc ? current_proc->name : "?";
     int cpu = 0;
 
     /* Structuring the log prefix */
     int prefix_len = my_snprintf(logbuf, sizeof(logbuf),
                                  "[%s][%lu][pid=%d:%s][cpu=%d][%s:%s:%d][%s] ",
-                                 loglevels[log_level_idx].name, tick, pid,
+                                 level_name, tick, pid,
                                  pname, cpu, file, func, line, tag);
 
     /* Structuring the user log message */

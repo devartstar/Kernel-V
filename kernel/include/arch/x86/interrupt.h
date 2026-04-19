@@ -7,9 +7,6 @@
 
 #define IDT_VECTOR_COUNT 256
 
-static uint8_t current_pic1_mask = 0xFF;
-static uint8_t current_pic2_mask = 0xFF;
-
 /**
  * We get a string of ranges of IRQ enabled for debugging.
  * Set the bitmap for the IRQs enabled for debugging.

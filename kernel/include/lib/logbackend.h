@@ -6,8 +6,8 @@ typedef void (*log_backend_t)(const char *msg, size_t len, char color);
 
 #define MAX_LOG_BACKENDS 4
 
-static log_backend_t log_backends[MAX_LOG_BACKENDS];
-static uint8_t num_logs_backend;
+extern log_backend_t log_backends[MAX_LOG_BACKENDS];
+extern uint8_t num_logs_backend;
 
 /*
  * Register logging to a backend

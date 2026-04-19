@@ -56,10 +56,6 @@ static void user_map_region_in_pd(uint32_t *pd_virt, uint32_t virt_start,
     }
 }
 
-static void user_zero_region(uint32_t virt_start, uint32_t size) {
-    memset((void *)virt_start, 0, size);
-}
-
 void userproc_kernel_entry(void *args) {
     (void)args;
     if (!current_proc || current_proc->type != PROC_TYPE_USER) {

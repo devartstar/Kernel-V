@@ -2,6 +2,9 @@
 #include "arch/x86/pic.h"
 #include "lib/printk.h"
 
+static uint8_t current_pic1_mask = 0xFF;
+static uint8_t current_pic2_mask = 0xFF;
+
 volatile uint8_t nested_interrupt_count = 0;
 
 static const char *irq_debug_cfg =

@@ -44,18 +44,6 @@ void my_sleep_proc(void *arg) {
     test_process_finished();
 }
 
-void my_usermode_test_proc(void *arg) {
-    (void)arg;
-
-    KLOG_INFO("TEST", "usermode test process running in pid=%d\n",
-              current_proc->pid);
-
-    spawn_user_test_process();
-
-    /* Our job is done — the user process will run when scheduled.
-       Exit this kernel helper process. */
-}
-
 void preemptive_proc(void *args) {
     (void)args;
     int i = 0;

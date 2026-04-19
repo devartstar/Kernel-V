@@ -224,7 +224,7 @@ void proc_cleanup_user(pcb_t *proc) {
         proc->user_entry, proc->user_stack_top, proc->user_code_size)
 
     /* Free user code backing frame */
-    if (proc->user_entry & proc->user_code_size > 0) {
+    if (proc->user_entry && (proc->user_code_size > 0)) {
         paging_free_region_in_pd(proc->page_directory_virt, proc->user_entry,
                                  proc->user_code_size);
     }
@@ -237,8 +237,8 @@ void proc_cleanup_user(pcb_t *proc) {
     }
 
     /* No need to free kernel half of PDE */
-    /* Free the user half PDE */
-    for (uint32_t i = 0; i < KERNEL_PDE_START; i++) {
+    /* Free the user half PDE, skip PDE[0] (kernel identity map) */
+    for (uint32_t i = 1; i < KERNEL_PDE_START; i++) {
         uint32_t pde = proc->page_directory_virt[i];
         if (pde & PAGE_PRESENT) {
             uint32_t *pt_virt = (uint32_t *)(pde & 0xFFFFF000);
@@ -335,7 +335,7 @@ pcb_t *proc_create(void (*entry)(void *), void *arg, const char *name) {
     proc->kernel_stack_top = proc->kernel_stack_base + proc->kernel_stack_size;
 
     /* since stack grows downwards, stack pointer pointing to top of stack */
-    uint32_t *stack_top = proc->kernel_stack_top;
+    uint32_t *stack_top = (uint32_t *)proc->kernel_stack_top;
 
     /*
      Update the stack to call the thread_entry_wrapper (entry, arg)
@@ -431,7 +431,6 @@ void proc_wakeup(pcb_t *proc) {
 
 void proc_exit(void) {
     pcb_t *proc_now = current_proc;
-    pcb_t *proc_next = NULL;
 
     KLOG_VERBOSE("PROCESS_MGMT", "Process exiting: Name=%s (pid=%u, type=%s)\n",
                  proc_now->name, proc_now->pid,
@@ -591,7 +590,7 @@ void yield(void) {
     /* If current process is invalid */
     if (!proc_now || proc_now->pid <= 0) {
         pr_error("CURRENT PROCESS CORRUPTED: pid=%d, name=%s\n",
-                 proc_now ? proc_now->pid : -1,
+                 proc_now ? (int)proc_now->pid : -1,
                  proc_now ? proc_now->name : "NULL");
         panik("process corrupted");
     }
@@ -718,7 +717,7 @@ void timer_interrupt_proc_handler(uint32_t tickcount) {
     /* Premption - Kernel to context switch automatically on timer tick */
     if (current_proc != NULL && current_proc->state == PROC_RUNNING) {
         current_proc->timeslice_ticks--;
-        pr_info("[TICK %lu] %s: timeslice ticks = %lu\n",
+        pr_info("[TICK %u] %s: timeslice ticks = %u\n",
                 PRINT_UINT32(tickcount), current_proc->name,
                 PRINT_UINT32(current_proc->timeslice_ticks));
         if (current_proc->timeslice_ticks <= 0) {
