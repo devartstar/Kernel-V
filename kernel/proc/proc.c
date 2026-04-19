@@ -85,7 +85,10 @@ void proc_init(void) {
         panik("Failed creating IDLE process");
     }
     proc_set_type(idle, PROC_TYPE_IDLE);
+
+    print_proc_info(idle);
     proc_mark_ready(idle);
+
     debug_module(PROCESS_MGMT, "Created idle process with PID %d\n",
                  idle->pid);
 }
@@ -361,16 +364,6 @@ pcb_t *proc_create(void (*entry)(void *), void *arg, const char *name) {
 
     proc->has_exited = 0;
     proc->exit_code = 0;
-
-    KLOG_VERBOSE(
-        "PROC",
-        "Process %s Created:\n\t"
-        "kernel stack (top = 0x%08x, bottom = 0x%08x, size = 0x%08x)\n\t"
-        "user stack (top = 0x%08x, size = 0x%08x)\n\t"
-        "user code (size = 0x%08x), entry = 0x%08x\n",
-        proc->name, proc->kernel_stack_top, proc->kernel_stack_base,
-        proc->kernel_stack_size, proc->user_stack_top, proc->user_stack_size,
-        proc->user_code_size, proc->user_entry);
 
     return proc;
 }
@@ -799,5 +792,78 @@ void proc_kernel_main_exit(void) {
     // For now, just halt
     while (1) {
         __asm__ __volatile__("cli; hlt");
+    }
+}
+
+static const char *proc_state_to_string(proc_state_t state) {
+    switch (state) {
+    case PROC_NEW:
+        return "NEW";
+    case PROC_READY:
+        return "READY";
+    case PROC_RUNNING:
+        return "RUNNING";
+    case PROC_WAITING:
+        return "WAITING";
+    case PROC_TERMINATED:
+        return "TERMINATED";
+    default:
+        return "UNKNOWN";
+    }
+}
+
+void print_proc_info(const pcb_t *proc) {
+    if (!proc) {
+        pr_info("Process is NULL\n");
+        return;
+    }
+
+    if (proc->type == PROC_TYPE_USER) {
+        KLOG_VERBOSE(
+            "PROC",
+            "[Identity] pid=%u name=%s type=%s state=%s\n\t"
+            "[Lifecycle] exited=%u exit_code=0x%08x\n\t"
+            "[Kernel Stack] base=0x%08x top=0x%08x size=0x%08x\n\t"
+            "[Scheduling] timeslice=%u sleep_ticks=%u\n\t"
+            "[Context] eip=0x%08x esp=0x%08x ebp=0x%08x eflags=0x%08x(IF=%s)\n\t"
+            "[Linkage] parent=%s(pid=%u)\n\t"
+            "[User Space] entry=0x%08x code_size=0x%08x stack_top=0x%08x stack_size=0x%08x\n\t"
+            "[Address Space] pd_virt=0x%08x pd_phys=0x%08x\n",
+            proc->pid, proc->name,
+            proc_type_to_string(proc->type),
+            proc_state_to_string(proc->state),
+            proc->has_exited, proc->exit_code,
+            proc->kernel_stack_base, proc->kernel_stack_top,
+            proc->kernel_stack_size,
+            proc->timeslice_ticks, proc->sleep_ticks,
+            proc->context.eip, proc->context.esp,
+            proc->context.ebp, proc->context.eflags,
+            (proc->context.eflags & 0x200) ? "on" : "off",
+            proc->parent ? proc->parent->name : "none",
+            proc->parent ? proc->parent->pid : 0,
+            proc->user_entry, proc->user_code_size,
+            proc->user_stack_top, proc->user_stack_size,
+            proc->page_directory_virt, proc->page_directory_phys);
+    } else {
+        KLOG_VERBOSE(
+            "PROC",
+            "[Identity] pid=%u name=%s type=%s state=%s\n\t"
+            "[Lifecycle] exited=%u exit_code=0x%08x\n\t"
+            "[Kernel Stack] base=0x%08x top=0x%08x size=0x%08x\n\t"
+            "[Scheduling] timeslice=%u sleep_ticks=%u\n\t"
+            "[Context] eip=0x%08x esp=0x%08x ebp=0x%08x eflags=0x%08x(IF=%s)\n\t"
+            "[Linkage] parent=%s(pid=%u)\n",
+            proc->pid, proc->name,
+            proc_type_to_string(proc->type),
+            proc_state_to_string(proc->state),
+            proc->has_exited, proc->exit_code,
+            proc->kernel_stack_base, proc->kernel_stack_top,
+            proc->kernel_stack_size,
+            proc->timeslice_ticks, proc->sleep_ticks,
+            proc->context.eip, proc->context.esp,
+            proc->context.ebp, proc->context.eflags,
+            (proc->context.eflags & 0x200) ? "on" : "off",
+            proc->parent ? proc->parent->name : "none",
+            proc->parent ? proc->parent->pid : 0);
     }
 }

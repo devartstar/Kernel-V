@@ -22,16 +22,34 @@ Start:
     ; [si+8] [si+15]    - LBA to Read from the Disk
     ; 1. Load the Kernel into memory 0x10000 ()
     ; [PMM] Reserved kernel range: 0x65536 - 0x78800 
+    ; INT 0x13/AH=42h can only load up to 64KB (127 sectors) per call
+    ; due to segment:offset limits.  Split into two reads.
 LoadKernel:
+    ; --- Read 1: Load first 127 sectors to 0x1000:0x0000 (phys 0x10000) ---
     mov si, ReadPacket
     mov word[si], 0x10
-    mov word[si+2], 0x80            ; Load 16 sectors from the Disk 
-    mov word[si+4], 0x00
-    mov word[si+6], 0x1000          ; Segment to Load to Load
-    mov dword[si+8], 0x09           ; Read from the 10th Sector (LBA=9, offset 0x1200)
+    mov word[si+2], 0x7F            ; 127 sectors = 0xFE00 bytes
+    mov word[si+4], 0x00            ; Offset 0x0000
+    mov word[si+6], 0x1000          ; Segment 0x1000 -> phys 0x10000
+    mov dword[si+8], 0x09           ; LBA 9
     mov dword[si+12], 0x00
 
     mov ah, 0x42
+    mov dl, 0x80
+    int 0x13
+    jc ReadError
+
+    ; --- Read 2: Load next sectors to 0x1FE0:0x0000 (phys 0x1FE00) ---
+    mov si, ReadPacket
+    mov word[si], 0x10
+    mov word[si+2], 0x30            ; 48 more sectors = 24KB (total 175 = ~87KB headroom)
+    mov word[si+4], 0x00            ; Offset 0x0000
+    mov word[si+6], 0x1FE0          ; Segment 0x1FE0 -> phys 0x1FE00 (contiguous)
+    mov dword[si+8], 0x88           ; LBA = 9 + 127 = 136 (0x88)
+    mov dword[si+12], 0x00
+
+    mov ah, 0x42
+    mov dl, 0x80
     int 0x13
     jc ReadError
 

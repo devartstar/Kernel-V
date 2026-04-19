@@ -282,6 +282,12 @@ pcb_t *proc_create_kernel_main(const char *name);
  */
 void proc_kernel_main_exit(void);
 
+/**
+ * Log the Process info for debugging
+ * @proc - process to log the info for
+ */
+void print_proc_info(const pcb_t *proc);
+
 extern pcb_t *current_proc;
 
 #endif

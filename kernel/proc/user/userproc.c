@@ -137,6 +137,7 @@ pcb_t *userproc_create_from_blob(const char *name, const uint8_t *blob_start,
     }
 
     /* Process is fully set up — now make it schedulable */
+    print_proc_info(proc);
     proc_mark_ready(proc);
 
     return proc;

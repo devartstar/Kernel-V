@@ -73,8 +73,13 @@ void create_test_processes(void) {
     proc_set_type(test_proc2, PROC_TYPE_KERNEL);
     proc_set_type(test_proc3, PROC_TYPE_KERNEL);
 
+    print_proc_info(test_proc1);
     proc_mark_ready(test_proc1);
+
+    print_proc_info(test_proc2);
     proc_mark_ready(test_proc2);
+
+    print_proc_info(test_proc3);
     proc_mark_ready(test_proc3);
 
     if (test_proc1 && test_proc2 && test_proc3) {
