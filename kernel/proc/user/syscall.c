@@ -116,6 +116,23 @@ static int32_t syscall_getpid(uint32_t _1, uint32_t _2, uint32_t _3,
     return current_proc->pid;
 }
 
+static int32_t syscall_sched_yield(uint32_t _1, uint32_t _2, uint32_t _3,
+                                   uint32_t _4, uint32_t _5, uint32_t _6) {
+    (void)_1;
+    (void)_2;
+    (void)_3;
+    (void)_4;
+    (void)_5;
+    (void)_6;
+
+    KLOG_VERBOSE("SYSCALL", "syscall_sched_yield: pid=%d name=%s\n",
+                current_proc->pid, current_proc->name);
+
+    yield();
+
+    return 0;
+}
+
 void syscall_table_init(void) {
     /* Register default handler (ENOSYS) for all syscalls */
     for (int8_t i = 0; i < NUM_SYSCALLS; i++) {
@@ -125,6 +142,7 @@ void syscall_table_init(void) {
     syscall_table[SYS_EXIT] = syscall_exit;
     syscall_table[SYS_WRITE] = syscall_write;
     syscall_table[SYS_GETPID] = syscall_getpid;
+    syscall_table[SYS_SCHED_YIELD] = syscall_sched_yield;
 }
 
 void syscall_interrupt_handler(uint32_t idt_index, regs_t *regs) {
