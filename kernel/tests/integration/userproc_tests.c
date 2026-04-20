@@ -10,17 +10,25 @@
 extern uint8_t _binary_userprog_start[];
 extern uint8_t _binary_userprog_end[];
 
+extern uint8_t _binary_userprog_a_start[];
+extern uint8_t _binary_userprog_a_end[];
+
+extern uint8_t _binary_userprog_b_start[];
+extern uint8_t _binary_userprog_b_end[];
+
 static void spawn_user_test_process(void);
+static void spawn_two_user_test_process(void);
 
 void test_usermode_process(void) {
     KLOG_VERBOSE("TEST", "RUNNING usermode process test\n");
 
-    spawn_user_test_process();
+    /* spawn_user_test_process(); */
+    spawn_two_user_test_process();
 
     KLOG_VERBOSE("TEST", "User process test completed\n");
 }
 
-static void spawn_user_test_process(void) {
+static __attribute__((unused)) void spawn_user_test_process(void) {
     uint32_t blob_size =
         (uint32_t)(_binary_userprog_end - _binary_userprog_start);
 
@@ -29,5 +37,24 @@ static void spawn_user_test_process(void) {
 
     if (!proc) {
         panik("spawn_user_test_process: failed");
+    }
+}
+
+static void spawn_two_user_test_process(void) {
+    size_t size_a =
+        (uint32_t)(_binary_userprog_a_end - _binary_userprog_a_start);
+    size_t size_b =
+        (uint32_t)(_binary_userprog_b_end - _binary_userprog_b_start);
+
+    pcb_t *proc_a =
+        userproc_create_from_blob("user_a", _binary_userprog_a_start, size_a);
+    if (!proc_a) {
+        panik("spawn_two_user_test_process: failed to create user process a");
+    }
+
+    pcb_t *proc_b =
+        userproc_create_from_blob("user_b", _binary_userprog_b_start, size_b);
+    if (!proc_b) {
+        panik("spawn_two_user_test_process: failed to create user process b");
     }
 }

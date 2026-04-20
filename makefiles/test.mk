@@ -7,6 +7,14 @@ USERPROG_ASM 				:= $(KERN_ARCH_DIR)/user/userprog.asm
 USERPROG_BIN 				:= $(BUILD_TEST)/userprog.bin
 USERPROG_OBJ 				:= $(BUILD_TEST)/userprog.o
 
+USERPROG_A_ASM 				:= $(KERN_ARCH_DIR)/user/userprog_a.asm
+USERPROG_A_BIN 				:= $(BUILD_TEST)/userprog_a.bin
+USERPROG_A_OBJ 				:= $(BUILD_TEST)/userprog_a.o
+
+USERPROG_B_ASM 				:= $(KERN_ARCH_DIR)/user/userprog_b.asm
+USERPROG_B_BIN 				:= $(BUILD_TEST)/userprog_b.bin
+USERPROG_B_OBJ 				:= $(BUILD_TEST)/userprog_b.o
+
 # Test-specific sources
 ifeq ($(CONFIG_TESTS_UNIT), y)
 UNIT_TEST_SOURCES 			:= $(shell find $(TESTDIR)/unit -type f -name "*.c")
@@ -19,7 +27,7 @@ endif
 ifeq ($(CONFIG_TESTS_INTEGRATION), y)
 INTEGRATION_TEST_SOURCES 	:= $(shell find $(TESTDIR)/integration -type f -name "*.c") \
 							   $(shell find $(TESTDIR)/interrupt -type f -name "*.c" 2>/dev/null || true)
-INTEGRATION_TEST_OBJS 		:= $(patsubst $(KERNDIR)/%.c,$(BUILD_TEST)/%.o,$(INTEGRATION_TEST_SOURCES)) $(USERPROG_OBJ)
+INTEGRATION_TEST_OBJS 		:= $(patsubst $(KERNDIR)/%.c,$(BUILD_TEST)/%.o,$(INTEGRATION_TEST_SOURCES)) $(USERPROG_OBJ) $(USERPROG_A_OBJ) $(USERPROG_B_OBJ)
 else
 INTEGRATION_TEST_SOURCES 	:=
 INTEGRATION_TEST_OBJS 		:=
@@ -33,7 +41,7 @@ ALL_TEST_OBJS 				:= $(UNIT_TEST_OBJS) $(INTEGRATION_TEST_OBJS) $(TEST_RUNNER_OB
 # Core kernel objects for tests (excluding tests themselves)
 KERNEL_CORE_TEST_OBJS := $(BUILD_TEST)/kernel_entry.o \
 						 $(patsubst $(KERNDIR)/%.c,$(BUILD_TEST)/%.o,$(shell find $(KERNDIR) -name "*.c" -not -path "$(TESTDIR)/*" -not -name "*_generator.c")) \
-						 $(patsubst $(KERNDIR)/%.asm,$(BUILD_TEST)/%.o,$(shell find $(KERNDIR) -name "*.asm" -not -path "$(BOOTDIR)/*" -not -name "kernel_entry.asm"))
+						 $(patsubst $(KERNDIR)/%.asm,$(BUILD_TEST)/%.o,$(shell find $(KERNDIR) -name "*.asm" -not -path "$(BOOTDIR)/*" -not -name "kernel_entry.asm" -not -path "$(KERN_ARCH_DIR)/user/userprog*.asm"))
 
 # Test kernels - UNIT, INTEGRATION, FULL
 KERNEL_TEST_ELF 			:= $(BUILD_TEST)/kernel_test.elf
@@ -208,6 +216,32 @@ $(USERPROG_OBJ): $(USERPROG_BIN) | $(BUILD_TEST)
 		--redefine-sym _binary_userprog_bin_start=_binary_userprog_start \
 		--redefine-sym _binary_userprog_bin_end=_binary_userprog_end \
 		userprog.bin userprog.o)
+
+$(USERPROG_A_BIN): $(USERPROG_A_ASM) | $(BUILD_TEST)
+	$(ECHO) "  ASM-USER $@"
+	$(Q)$(NASM) -f bin $< -o $@
+
+$(USERPROG_A_OBJ): $(USERPROG_A_BIN) | $(BUILD_TEST)
+	$(ECHO) "  OBJCOPY $@"
+	$(Q)(cd $(BUILD_TEST) && \
+	 $(OBJCOPY) -I binary -O elf32-i386 -B i386 \
+		--rename-section .data=.rodata,contents,alloc,load,readonly,data \
+		--redefine-sym _binary_userprog_a_bin_start=_binary_userprog_a_start \
+		--redefine-sym _binary_userprog_a_bin_end=_binary_userprog_a_end \
+		userprog_a.bin userprog_a.o)
+
+$(USERPROG_B_BIN): $(USERPROG_B_ASM) | $(BUILD_TEST)
+	$(ECHO) "  ASM-USER $@"
+	$(Q)$(NASM) -f bin $< -o $@
+
+$(USERPROG_B_OBJ): $(USERPROG_B_BIN) | $(BUILD_TEST)
+	$(ECHO) "  OBJCOPY $@"
+	$(Q)(cd $(BUILD_TEST) && \
+	 $(OBJCOPY) -I binary -O elf32-i386 -B i386 \
+		--rename-section .data=.rodata,contents,alloc,load,readonly,data \
+		--redefine-sym _binary_userprog_b_bin_start=_binary_userprog_b_start \
+		--redefine-sym _binary_userprog_b_bin_end=_binary_userprog_b_end \
+		userprog_b.bin userprog_b.o)
 endif
 
 endif
@@ -217,7 +251,7 @@ endif
 ifeq ($(CONFIG_BUILD_TEST), y)
 
 ifeq ($(CONFIG_TESTS_INTEGRATION), y)
-$(KERNEL_TEST_ELF): $(USERPROG_OBJ) $(KERNEL_CORE_TEST_OBJS) $(ALL_TEST_OBJS) $(KERNEL_LD) | $(BUILD_TEST)
+$(KERNEL_TEST_ELF): $(USERPROG_OBJ) $(USERPROG_A_OBJ) $(USERPROG_B_OBJ) $(KERNEL_CORE_TEST_OBJS) $(ALL_TEST_OBJS) $(KERNEL_LD) | $(BUILD_TEST)
 else
 $(KERNEL_TEST_ELF): $(KERNEL_CORE_TEST_OBJS) $(ALL_TEST_OBJS) $(KERNEL_LD) | $(BUILD_TEST)
 endif
@@ -258,7 +292,7 @@ endif
 
 ifeq ($(CONFIG_TESTS_INTEGRATION), y)
 
-$(KERNEL_INTEGRATION_ELF): $(KERNEL_CORE_TEST_OBJS) $(INTEGRATION_TEST_OBJS) $(TEST_RUNNER_OBJECT) $(KERNEL_LD) $(USERPROG_OBJ) | $(BUILD_TEST)
+$(KERNEL_INTEGRATION_ELF): $(KERNEL_CORE_TEST_OBJS) $(INTEGRATION_TEST_OBJS) $(TEST_RUNNER_OBJECT) $(KERNEL_LD) $(USERPROG_OBJ) $(USERPROG_A_OBJ) $(USERPROG_B_OBJ) | $(BUILD_TEST)
 	$(ECHO) "  LD-TEST $@"
 	$(Q)$(LD) $(LDFLAGS) -T $(KERNEL_LD) -o $@ $(KERNEL_CORE_TEST_OBJS) $(INTEGRATION_TEST_OBJS) $(TEST_RUNNER_OBJECT) -nostdlib
 
