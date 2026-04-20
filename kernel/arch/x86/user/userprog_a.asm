@@ -1,4 +1,5 @@
 BITS 32
+org 0x00400000
 global _start
 
 section .text

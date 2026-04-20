@@ -1,5 +1,9 @@
 #include "mm/paging.h"
 #include "core/debug.h"
+#include "core/panik.h"
+#include "lib/printk.h"
+#include "mm/pmm.h"
+#include "proc/proc.h"
 
 uint32_t kernel_page_directory[PAGE_ENTRIES]
     __attribute__((aligned(PAGE_SIZE)));
@@ -7,9 +11,6 @@ uint32_t first_page_table[PAGE_ENTRIES] __attribute__((aligned(PAGE_SIZE)));
 
 uint32_t *kernel_page_directory_virt = kernel_page_directory;
 uint32_t kernel_page_directory_phys = (uint32_t)kernel_page_directory;
-#include "core/panik.h"
-#include "lib/printk.h"
-#include "mm/pmm.h"
 
 //
 //  Initialize paging by setting up first entry in page directory
@@ -137,9 +138,10 @@ void paging_map_page_in_pd(uint32_t *pd_virt, uint32_t virt_addr,
 //
 void paging_map_page(uint32_t virtual_addr, uint32_t physical_addr,
                      uint32_t flags) {
-    /* Map the virtual address in the current process page directory */
-    paging_map_page_in_pd(kernel_page_directory_virt, virtual_addr,
-                          physical_addr, flags);
+    uint32_t *pd = (current_proc && current_proc->page_directory_virt)
+                       ? current_proc->page_directory_virt
+                       : kernel_page_directory_virt;
+    paging_map_page_in_pd(pd, virtual_addr, physical_addr, flags);
 }
 
 uint32_t paging_get_physical_address_in_pd(uint32_t *pd_virt, uint32_t virt) {
@@ -174,7 +176,7 @@ uint32_t paging_get_physical_address(uint32_t virt) {
     // => 10 MSB -> 31-22 -> page dir index in (1024) entries of page directory
     // => 10 MSB -> 21-12 -> page table index in (1024) entries of page table
     //
-    return paging_get_physical_address_in_pd(kernel_page_directory_virt, virt);
+    return paging_get_physical_address_in_pd(current_proc->page_directory_virt, virt);
 }
 
 void paging_unmap_page_in_pd(uint32_t *pd_virt, uint32_t virt) {
@@ -201,7 +203,7 @@ void paging_unmap_page_in_pd(uint32_t *pd_virt, uint32_t virt) {
 }
 
 void paging_unmap_page(uint32_t virt) {
-    paging_unmap_page_in_pd(kernel_page_directory_virt, virt);
+    paging_unmap_page_in_pd(current_proc->page_directory_virt, virt);
 }
 
 uint32_t paging_get_current_cr3(void) {
@@ -259,5 +261,5 @@ void paging_free_region_in_pd(uint32_t *pd_virt, uint32_t start,
 }
 
 void paging_free_region(uint32_t start, uint32_t size) {
-    paging_free_region_in_pd(kernel_page_directory_virt, start, size);
+    paging_free_region_in_pd(current_proc->page_directory_virt, start, size);
 }

@@ -13,8 +13,9 @@ static uint8_t usr_range_is_valid(uint32_t ptr, uint32_t len);
 
 syscall_handler_t syscall_table[NUM_SYSCALLS] = {0};
 
-static __attribute__((unused)) int32_t syscall_test(uint32_t a, uint32_t b, uint32_t c, uint32_t d,
-                            uint32_t e, uint32_t f) {
+static __attribute__((unused)) int32_t syscall_test(uint32_t a, uint32_t b,
+                                                    uint32_t c, uint32_t d,
+                                                    uint32_t e, uint32_t f) {
     KLOG_VERBOSE("SYSCALL",
                  "SYSCALL TEST METHOD with argument a=%u, b=%u, c=%u, d=%u, "
                  "e=%u, f=%u\n",
@@ -167,14 +168,27 @@ void syscall_interrupt_handler(uint32_t idt_index, regs_t *regs) {
  */
 static uint8_t usr_ptr_validate(uint32_t ptr) {
     if (ptr < USER_VIRT_MIN) {
+        KLOG_ERROR(
+            "SYSCALL",
+            "Invalid vitual address for the buffer=0x%08x < Min=0x%08x\n", ptr,
+            USER_VIRT_MIN);
+
         return 0;
     }
 
     if (ptr >= USER_VIRT_MAX) {
+        KLOG_ERROR("SYSCALL",
+                     "Invalid virtual address for the buffer=0x%08x, Max=%u\n",
+                     ptr, USER_VIRT_MAX);
+
         return 0;
     }
 
-    if (paging_get_physical_address(ptr) == 0) {
+    if (paging_get_physical_address_in_pd(current_proc->page_directory_virt,
+                                           ptr) == 0) {
+        KLOG_ERROR("SYSCALL",
+                     "Invalid physical address for the buffer=0x%08x\n", ptr);
+
         return 0;
     }
 
@@ -199,6 +213,9 @@ static uint8_t usr_range_is_valid(uint32_t ptr, uint32_t len) {
 
     if (ptr + len < ptr) {
         /* overflow */
+        KLOG_ERROR("SYSCALL",
+                     "Invalid address range for the buffer=0x%08x, len=%u\n",
+                     ptr, len);
         return 0;
     }
 
@@ -206,7 +223,12 @@ static uint8_t usr_range_is_valid(uint32_t ptr, uint32_t len) {
     end = PAGE_ALIGN_UP(ptr + len);
 
     for (uint32_t addr = start; addr < end; addr += PAGE_SIZE) {
-        if (paging_get_physical_address(addr) == 0) {
+        if (paging_get_physical_address_in_pd(
+                current_proc->page_directory_virt, addr) == 0) {
+            KLOG_ERROR(
+                "SYSCALL",
+                "Invalid physical address for the buffer=0x%08x, len=%u\n", ptr,
+                len);
             return 0;
         }
     }

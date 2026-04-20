@@ -1,6 +1,6 @@
 ; arch/x86/user/userprog.asm
 BITS 32
-USER_BASE equ 0x00400000
+org 0x00400000
 
 section .data
 msg:	db "Hello from user mode!", 0xA
@@ -13,7 +13,7 @@ user_entry:
 .loop
 	mov eax, 2	; SYS_WRITE
 	mov ebx, 1	; fd=1 => stdout
-	mov ecx, USER_BASE + msg
+	mov ecx, msg
 	mov edx, msg_len
 	int 0x80
 
