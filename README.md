@@ -1,281 +1,822 @@
-## Kernel version 0.7.4 enhancement plans
+# Kernel-V (v0.8.x) PCI Learning Subproject Roadmap
+## Project Helix — PCI Core + VirtIO Block for Kernel-V
 
-### Phase A — Formalize the process model
-This phase is now more important than before.
-#### A1. Add process identity fields to PCB
-Add:
-- proc_type_t type
-- int32_t exit_code
-- uint8_t has_exited
-Also normalize user-process metadata:
-user_entry
-user_code_start
-user_code_size
+---
 
-Reason:
-Your current PCB knows too little about what the process is and what it owns.
+# 0. Project Intent
 
-#### A2. Classify all process creation paths
+## Main Goal
+Build a **real PCI subsystem** inside Kernel-V and prove it by bringing up a **VirtIO Block PCI device**, so the kernel gains:
 
-Make the kernel explicitly distinguish:
+- deep understanding of PCI device discovery and configuration
+- a reusable bus/device/driver foundation
+- real storage access through a modern PCI device
+- a launchpad for future filesystems, AHCI, NICs, and more advanced drivers
 
-PROC_TYPE_BOOTSTRAP → kernel_main
-PROC_TYPE_IDLE
-PROC_TYPE_KERNEL
-PROC_TYPE_USER
+## Why this project matters
+This is not just a “learn PCI” project.
 
-Reason:
-Your code currently has at least four semantically different process kinds, but the PCB does not express that.
+It upgrades the kernel in a meaningful way by introducing:
 
-#### A3. Split creation APIs
+- hardware resource discovery
+- device enumeration
+- MMIO / PIO resource handling
+- driver binding
+- DMA-oriented memory thinking
+- interrupt-driven device completion
+- the first real block device path
 
-Instead of one path plus tests, define:
+---
 
-proc_create_kernel(...)
-userproc_create_from_blob(...)
+# 1. Big Picture Architecture
 
-Reason:
-Your current user process launch logic in test_usermode_process() already contains the exact ingredients of a constructor. It should become one.
+The project is divided into these phases:
 
-#### A4. Make exit semantics real
+1. **Foundation Hardening for Device Work**
+2. **PCI Config Access + Enumeration**
+3. **PCI Resources, BARs, and Capabilities**
+4. **Kernel Device / Driver Model**
+5. **VirtIO PCI Transport Bring-up**
+6. **Virtqueue and DMA-style Queue Setup**
+7. **VirtIO Block Driver**
+8. **Kernel Block Layer Integration**
+9. **Validation, Debugging, and Extension Path**
 
-Refactor sys_exit() so it:
+Each phase has:
+- purpose
+- technical learning goals
+- implementation goals
+- expected deliverables
+- mistakes to avoid
+- exit criteria
 
-records exit_code
-marks has_exited
-sets PROC_TERMINATED
-yields
-never returns
+---
 
-Reason:
-Current exit works operationally, but not yet as a real lifecycle primitive.
+# Phase 1 — Foundation Hardening for Device Work
 
-#### A5. Make cleanup type-aware
+## Purpose
+Before touching PCI devices, make the kernel reliable for hardware-facing code.
 
-Split cleanup into:
+PCI/device work exposes weaknesses in:
+- physical memory assumptions
+- page allocation correctness
+- MMIO access discipline
+- interrupt safety
+- driver structure cleanliness
 
-idle cleanup: never
-bootstrap cleanup: special / none for now
-kernel cleanup: free kernel-owned resources only
-user cleanup: free user mappings + kernel stack + PCB-owned resources
+## What you should learn
+By the end of this phase, you should understand:
 
-Reason:
-Your current proc_free() is too generic for the architecture you’re building.
+- why hardware drivers care about **physical addresses**, not just kernel virtual addresses
+- why **page alignment** and **contiguity** matter
+- why device code should not call raw PMM functions everywhere
+- why MMIO needs dedicated typed access helpers
+- why lockless driver code becomes dangerous once interrupts are involved
 
-### Phase B — Turn user process launch into a subsystem
+## Technical goals
+Implement or improve:
 
-This phase should now come earlier and more explicitly than before.
+### 1. Physical allocator hardening
+Add support for:
 
-#### B1. Extract test_usermode_process() into userproc_create_from_blob()
+- page-aligned page allocation
+- allocation of multiple contiguous pages
+- reliable free path for multi-page allocations
+- ability to retrieve the physical address of an allocated kernel buffer
 
-Right now your test helper is already 80% of a loader.
+### 2. DMA-style allocation abstraction
+Add a minimal interface like:
 
-Move this logic into a real function.
+- `void* dma_alloc_pages(size_t count, phys_addr_t* out_phys)`
+- `void dma_free_pages(void* kva, size_t count)`
 
-It should:
+Even if the implementation is simple at first, the abstraction is important.
 
-allocate PCB
-assign PROC_TYPE_USER
-create kernel stack
-map user stack
-map user code
-copy blob
-populate user metadata
-prepare process for ring 3 entry
+### 3. MMIO access helpers
+Introduce helpers for mapped device memory:
 
-Reason:
-This removes hand-written user launch logic from tests and makes it reusable.
+- `mmio_read8`
+- `mmio_read16`
+- `mmio_read32`
+- `mmio_write8`
+- `mmio_write16`
+- `mmio_write32`
 
-#### B2. Introduce a user process entry wrapper
+Also keep a clean distinction between:
 
-Normal kernel threads start at thread_entry_wrapper().
-User processes should get an analogous controlled launch path.
+- port I/O
+- MMIO access
 
+### 4. Tiny locking layer
+Introduce a minimal spinlock API:
+
+- `spin_lock`
+- `spin_unlock`
+- `spin_lock_irqsave`
+- `spin_unlock_irqrestore`
+
+### 5. Interrupt registration abstraction
+Add a device-facing interrupt hook layer, even if it still uses legacy PIC/INTx under the hood.
+
+## Deliverables
+At the end of this phase, you should have:
+
+- reliable page allocation for device buffers
+- a DMA-style allocation API
+- MMIO helper layer
+- tiny spinlock support
+- a minimal interrupt registration abstraction
+
+## Mistakes to avoid
+- hardcoding assumptions that “kernel virtual == physical”
+- letting drivers directly manipulate random paging internals
+- mixing port I/O and MMIO access casually
+- writing device code without IRQ-safe locking discipline
+
+## Exit criteria
+You are ready to move on when:
+
+- you can allocate contiguous, page-aligned memory and know both its virtual and physical addresses
+- you can safely read/write MMIO through helpers
+- you have enough locking and IRQ abstraction for future driver code
+
+---
+
+# Phase 2 — PCI Config Space Access + Enumeration
+
+## Purpose
+Build the kernel’s first real PCI core: discover every PCI function visible to the machine.
+
+## What you should learn
+By the end of this phase, you should understand:
+
+- how x86 PCI Configuration Mechanism #1 works
+- why PCI devices are addressed as:
+  - bus
+  - device
+  - function
+- how a device exposes:
+  - vendor ID
+  - device ID
+  - class code
+  - subclass
+  - programming interface
+  - revision ID
+  - header type
+- what multifunction devices are
+- how PCI enumeration actually begins
+
+## Technical goals
+Implement:
+
+### 1. PCI config read/write primitives
+Using `0xCF8` / `0xCFC`:
+
+- `pci_config_read8`
+- `pci_config_read16`
+- `pci_config_read32`
+- optionally write variants too
+
+### 2. Address construction logic
+Encode:
+- bus
+- device
+- function
+- register offset
+
+into config address cycles correctly.
+
+### 3. PCI function scan logic
+Start with:
+- bus 0
+- devices 0–31
+- functions 0–7 as needed
+
+Later make scanning more complete.
+
+### 4. Device identification structure
+Create a structure like:
+
+- bus
+- device
+- function
+- vendor ID
+- device ID
+- class code
+- subclass
+- prog-if
+- revision
+- header type
+
+### 5. Kernel PCI registry
+Store discovered devices in a central table/list.
+
+## Deliverables
+At the end of this phase, the kernel should:
+
+- scan PCI bus/device/function space
+- identify present devices
+- log all discovered devices
+- maintain an internal list of PCI functions
+
+## Suggested milestone output
+Your kernel log should print something conceptually like:
+
+- `00:00.0 host bridge ...`
+- `00:01.0 ISA bridge ...`
+- `00:02.0 VGA compatible controller ...`
+- `00:04.0 VirtIO block ...`
+
+## Mistakes to avoid
+- assuming every device is single-function
+- forgetting to validate vendor ID `0xFFFF`
+- mixing device-level and function-level thinking
+- building logs only, without an internal data model
+
+## Exit criteria
+You are ready to move on when:
+
+- config reads are correct
+- device discovery works
+- discovered PCI devices are stored internally, not just printed
+
+---
+
+# Phase 3 — PCI Resources, BARs, and Capabilities
+
+## Purpose
+Move from “device exists” to “device owns resources and may be usable.”
+
+## What you should learn
+By the end of this phase, you should understand:
+
+- what a BAR is
+- the difference between:
+  - I/O BAR
+  - MMIO BAR
+- how BAR sizing works
+- why BAR values are resource descriptors, not raw addresses to trust blindly
+- how PCI command register bits enable:
+  - I/O space
+  - memory space
+  - bus mastering
+- how the PCI capability linked list works
+
+## Technical goals
+Implement:
+
+### 1. BAR parsing
+For each standard device header, decode BARs:
+
+- determine whether BAR is I/O or MMIO
+- determine base address
+- determine resource length by probing size
+- store all BAR information in resource descriptors
+
+### 2. PCI command/status handling
+Add helpers to:
+
+- read command register
+- set/clear bits
+- enable:
+  - memory space
+  - I/O space
+  - bus mastering
+
+### 3. Capability walking
+If the device advertises capabilities:
+
+- locate capability pointer
+- walk the linked list
+- record capability IDs and offsets
+
+This becomes very important for VirtIO PCI and later MSI/MSI-X.
+
+## Deliverables
+At the end of this phase, the kernel should know for each PCI function:
+
+- what resources it owns
+- how large each BAR is
+- whether the device exposes capabilities
+- whether the device can be enabled for bus mastering
+
+## Mistakes to avoid
+- treating BAR contents as final before proper masking/decoding
+- ignoring capability chains
+- enabling bus mastering too casually without understanding why
+- assuming all devices use only MMIO
+
+## Exit criteria
+You are ready to move on when:
+
+- BARs are decoded into structured resource objects
+- capability walking works
+- you can enable a PCI device cleanly
+
+---
+
+# Phase 4 — Kernel Device / Driver Model
+
+## Purpose
+Prevent PCI from turning into a pile of special cases.
+
+This phase creates the first reusable driver framework.
+
+## What you should learn
+By the end of this phase, you should understand:
+
+- why kernels separate:
+  - discovered device
+  - driver implementation
+  - driver binding/probe
+- how a bus core hands a discovered function to a matching driver
+- why future scalability depends on not hardcoding probe logic all over the place
+
+## Technical goals
+Introduce minimal kernel objects:
+
+### 1. Generic device structure
+Contains things like:
+- name
+- parent bus
+- device type
+- private driver data pointer
+
+### 2. PCI device structure
+Wraps:
+- bus/device/function addressing
+- IDs
+- class fields
+- BAR resources
+- capabilities
+- IRQ metadata
+
+### 3. PCI driver structure
+Contains:
+- name
+- match information
+- `probe()`
+- optional `remove()`
+
+### 4. Match and bind flow
+Support at least:
+- vendor/device match
+- optionally class/subclass match
+
+### 5. Helper APIs
+Provide helpers like:
+- enable device
+- claim/map BAR
+- register interrupt callback
+
+## Deliverables
+At the end of this phase:
+
+- a PCI driver can be registered
+- the PCI core can probe matching devices
+- the driver gets handed a clean `pci_device` object
+
+## Mistakes to avoid
+- letting drivers rescan PCI on their own
+- storing PCI config-space facts in ad hoc globals
+- writing VirtIO code directly inside the PCI core
+- skipping abstraction because “only one driver exists for now”
+
+## Exit criteria
+You are ready to move on when:
+
+- a PCI driver registration/bind path exists
+- the PCI subsystem can attach a driver to a discovered device
+
+---
+
+# Phase 5 — VirtIO PCI Transport Bring-up
+
+## Purpose
+Start the first real PCI device target: VirtIO Block over PCI.
+
+This phase is about transport discovery and device negotiation, not block I/O yet.
+
+## What you should learn
+By the end of this phase, you should understand:
+
+- what VirtIO is conceptually
+- why VirtIO over PCI is a transport over PCI resources
+- the difference between:
+  - PCI enumeration
+  - VirtIO transport discovery
+  - VirtIO device-specific logic
+- how modern VirtIO PCI exposes capabilities for:
+  - common config
+  - notify config
+  - ISR status
+  - device config
+
+## Technical goals
+Implement:
+
+### 1. Match the VirtIO block PCI function
+Usually via vendor/device or class-based recognition depending on setup.
+
+### 2. Parse modern VirtIO PCI capabilities
+Find and store mappings for:
+- common configuration
+- notification region
+- ISR status
+- device-specific configuration
+
+### 3. MMIO map the required regions
+Map the BAR backing those structures.
+
+### 4. Device status progression
+Implement the initial state machine:
+- reset
+- acknowledge
+- driver
+- feature negotiation
+- features OK
+- driver OK
+
+### 5. Feature negotiation
+Read device features and accept the subset your kernel supports.
+
+## Deliverables
+At the end of this phase, the kernel should:
+
+- discover a VirtIO block PCI device
+- attach the VirtIO block driver
+- parse and map the required VirtIO PCI structures
+- complete initial device negotiation successfully
+
+## Mistakes to avoid
+- mixing transport setup with queue setup too early
+- negotiating features you do not actually support
+- hardcoding config layout without capability parsing
+- failing to separate generic VirtIO transport code from block-specific code
+
+## Exit criteria
+You are ready to move on when:
+
+- the VirtIO block device reaches “driver OK” cleanly
+- all required VirtIO transport regions are discovered and mapped
+
+---
+
+# Phase 6 — Virtqueue and DMA-Style Queue Setup
+
+## Purpose
+Create the shared queue structures that allow the kernel and device to exchange work.
+
+## What you should learn
+By the end of this phase, you should understand:
+
+- what a virtqueue is
+- how descriptor tables, available rings, and used rings work
+- why these structures must be physically accessible to the device
+- why cache/ordering thinking matters even in “simple” drivers
+- how notification and completion flow works
+
+## Technical goals
+Implement:
+
+### 1. Virtqueue memory allocation
+Allocate physically accessible, properly aligned memory for:
+- descriptor table
+- available ring
+- used ring
+
+### 2. Queue initialization
+Set queue size
+Bind queue memory
+Enable queue
+
+### 3. Descriptor management
+Build descriptors for request chains.
+
+### 4. Notification path
+Notify the device when new work is available.
+
+### 5. Completion path
+Track used ring updates and recognize completion.
+
+## Deliverables
+At the end of this phase, the kernel should:
+
+- create at least one functioning virtqueue
+- post a descriptor chain
+- see the device consume it
+- observe used-ring completion
+
+## Mistakes to avoid
+- allocating queue memory without knowing physical address
+- confusing descriptor lifetime and request lifetime
+- ignoring ordering / visibility assumptions
+- trying to support many queues immediately
+
+## Exit criteria
+You are ready to move on when:
+
+- one queue is initialized correctly
+- requests can be submitted and later seen as completed
+
+---
+
+# Phase 7 — VirtIO Block Driver
+
+## Purpose
+Turn the transport and queue machinery into actual block I/O.
+
+## What you should learn
+By the end of this phase, you should understand:
+
+- how a block request is represented
+- how LBA-based I/O maps into device requests
+- how request headers, data buffers, and status bytes are chained
+- how completion confirms success/failure
+- how an actual storage driver interacts with a queue-based PCI device
+
+## Technical goals
+Implement:
+
+### 1. Read-only path first
+Start with:
+- single-sector read
+- fixed scratch buffer
+- synchronous completion
+
+Then extend to:
+- multi-sector reads
+
+### 2. Write path
+After reads are stable:
+- implement sector writes
+- validate persistence
+
+### 3. Capacity query
+Read the device’s exposed geometry/capacity info.
+
+### 4. Error handling
+Handle:
+- unsupported requests
+- queue submission failure
+- device error status
+
+## Deliverables
+At the end of this phase, the kernel should:
+
+- read sectors from the VirtIO block device
+- optionally write sectors back
+- verify that returned data matches expected disk contents
+
+## Suggested validation targets
+- read MBR / GPT sector
+- dump known sector contents
+- compare with a prepared disk image
+- read multiple sequential sectors
+
+## Mistakes to avoid
+- starting with async complexity too early
+- trying to build a cache before raw I/O works
+- burying request logic inside interrupt handlers
+- not checking returned request status carefully
+
+## Exit criteria
+You are ready to move on when:
+
+- sector reads are correct and repeatable
+- write path is either working or intentionally deferred with clean design
+
+---
+
+# Phase 8 — Kernel Block Layer Integration
+
+## Purpose
+Make the driver useful to the rest of the kernel.
+
+## What you should learn
+By the end of this phase, you should understand:
+
+- why drivers should expose generic services upward
+- why upper layers should not depend on VirtIO internals
+- how a block device abstraction becomes a kernel-wide interface
+
+## Technical goals
+Introduce a tiny block layer:
+
+### 1. Block device abstraction
 Something like:
+- sector size
+- capacity
+- read op
+- write op
+- private driver pointer
 
-kernel thread starts
-wrapper sets up/enters user mode
-from then on process behaves as user process
+### 2. Registration
+Allow block devices to be registered centrally.
 
-Reason:
-Right now switch_to_usermode() is called directly from a test helper. That should become a defined execution path.
+### 3. Generic block API
+Support:
+- `block_read(dev, lba, count, buf)`
+- `block_write(dev, lba, count, buf)`
 
-#### B3. Support multiple user blobs cleanly
+### 4. Optional request serialization
+Keep the first design simple and synchronous if needed.
 
-Once blob-based creation is a real API, let tests launch:
+## Deliverables
+At the end of this phase:
 
-user_hello
-user_syscall_test
-user_exit_test
+- other kernel components can use storage without knowing about VirtIO PCI
+- the first true storage service boundary exists inside Kernel-V
 
-Reason:
-You are ready to move from “one stub proving int 0x80 works” to “user program test suite.”
+## Mistakes to avoid
+- leaking VirtIO-specific structures into higher-level code
+- overengineering a full Linux-style block layer too early
+- mixing test code with permanent API shape
 
-### Phase C — Harden the syscall layer
+## Exit criteria
+You are ready to move on when:
 
-This phase changes from “clean syscall subsystem” to “make syscall subsystem safe enough to grow.”
+- a generic block API exists
+- VirtIO block is one implementation behind it
 
-#### C1. Keep canonical syscall ABI/header
+---
 
-This part of your earlier plan still stands.
+# Phase 9 — Validation, Debugging, and Extension Path
 
-Keep:
+## Purpose
+Stabilize what you built and prepare for future device work.
 
-syscall enum in one header
-table registration centralized
+## What you should learn
+By the end of this phase, you should understand:
 
-That is already mostly in place.
+- how to debug device-driver failures systematically
+- how to verify PCI resource correctness
+- how to distinguish:
+  - enumeration bugs
+  - MMIO mapping bugs
+  - queue bugs
+  - interrupt bugs
+  - request formatting bugs
 
-#### C2. Add user pointer validation helpers
+## Technical goals
+Add debugging and validation tools:
 
-Before adding richer syscalls, add helpers like:
+### 1. PCI dump tooling
+Print:
+- full config header
+- BARs
+- command/status
+- capabilities
 
-user_ptr_valid(ptr)
-user_range_valid(ptr, len)
+### 2. VirtIO dump tooling
+Print:
+- negotiated features
+- queue size
+- queue addresses
+- device status
+- ISR status
 
-Use them first in:
+### 3. Block verification helpers
+- sector hex dump
+- compare against expected signatures
+- repeated-read consistency tests
 
-sys_write
+### 4. Interrupt/queue tracing
+Log:
+- submit index
+- notify
+- ISR hit
+- used ring advance
+- completion status
 
-Reason:
-Current sys_write() trusts user memory blindly.
+## Deliverables
+You finish this phase with a subsystem that is not just working once, but explainable and debuggable.
 
-#### C3. Harden sys_write()
+## Exit criteria
+You are done when:
 
-Add:
+- PCI enumeration is stable
+- VirtIO block read path is stable
+- block abstraction exists
+- the subsystem is understandable enough to extend later
 
-user range validation
-bounded copy
-possibly page-by-page safe access later
+---
 
-Reason:
-This is the first syscall that crosses user-memory boundary. It should be your model for safe syscall design.
+# 2. Learning Progression Summary
 
-#### C4. Add syscall tracing toggle
+## What each phase teaches conceptually
 
-You already have excellent logs. Formalize them behind a trace flag.
+### Phase 1
+**Device foundations**
+- physical memory discipline
+- DMA-oriented thinking
+- MMIO safety
+- lock/IRQ safety
 
-Reason:
-You have enough logs now that selective visibility matters.
+### Phase 2
+**PCI discovery**
+- config space
+- BDF addressing
+- enumeration
 
-#### C5. Add explicit syscall return/error convention
+### Phase 3
+**PCI usability**
+- BARs
+- resources
+- command register
+- capabilities
 
-Keep ENOSYS, but normalize all syscall return behavior:
+### Phase 4
+**Kernel architecture**
+- bus/device/driver separation
+- probe model
 
-non-negative success
-negative error codes
-no mixed conventions
+### Phase 5
+**Transport-level device bring-up**
+- VirtIO PCI structures
+- feature negotiation
+- device initialization state machine
 
-Reason:
-You’re about to add more syscalls; now is the time to freeze conventions.
+### Phase 6
+**Shared queues**
+- descriptors
+- avail/used rings
+- physically accessible memory
 
-### Phase D — Parent/child and process observability
+### Phase 7
+**Real storage I/O**
+- block request construction
+- data transfer
+- completion handling
 
-This phase should come before exec and far before ELF.
+### Phase 8
+**Subsystem design**
+- block layer abstraction
+- driver independence
 
-#### D1. Add parent-child semantics
+### Phase 9
+**Reliability and extension**
+- debugging discipline
+- testability
+- readiness for future drivers
 
-You already have parent in PCB. Start using it.
+---
 
-When user process is created:
+# 3. Recommended Milestones
 
-set parent properly
-record exit code on termination
+## Milestone A
+PCI enumeration works.
 
-#### D2. Add wait() / waitpid() minimal version
+## Milestone B
+BAR decoding and capability walking work.
 
-This is the natural next syscall after exit().
+## Milestone C
+PCI driver model attaches a VirtIO block device.
 
-Reason:
-Exit without wait means dead processes are only kernel-internal artifacts.
-Wait makes process lifecycle observable.
+## Milestone D
+VirtIO negotiation succeeds.
 
-#### D3. Add zombie state if needed
+## Milestone E
+One virtqueue is live.
 
-Right now you only have:
+## Milestone F
+Single-sector read succeeds.
 
-NEW
-READY
-RUNNING
-WAITING
-TERMINATED
+## Milestone G
+Block layer exists and uses VirtIO block as backend.
 
-You may soon need:
+---
 
-PROC_ZOMBIE
+# 4. Recommended “Definition of Done”
 
-Reason:
-If parent must read child exit code before cleanup, terminated-vs-cleaned-up should be separated.
+This subproject is considered successful when the kernel can:
 
-I would not add it immediately unless you implement wait(), but it’s coming.
+- enumerate PCI devices
+- decode and manage PCI BAR resources
+- bind a PCI driver through a structured PCI core
+- bring up a VirtIO PCI block device
+- submit and complete real block I/O requests
+- expose the device behind a generic block interface
 
-### Phase E — Program loading evolution
+---
 
-Only after A–D are solid.
+# 5. After This Project
 
-#### E1. Keep flat binary loader, but make it reusable
+Once this project is done, your next strong options are:
 
-Right now blob loading is fine.
+## Option 1 — Filesystem
+Use the block layer to build:
+- sector cache
+- simple filesystem
+- inode/file abstraction
 
-#### E2. Add second user program
+## Option 2 — AHCI
+Use the PCI core to attach a real SATA/AHCI controller.
 
-This is the best bridge milestone before ELF.
+## Option 3 — NIC
+Use the PCI core to attach a network card and begin networking.
 
-#### E3. Add exec model
+## Option 4 — MSI/MSI-X and APIC path
+Upgrade interrupt delivery beyond legacy PIC/INTx.
 
-Only after you can create/wait/exit cleanly.
-
-#### E4. Move to ELF loading
-
-Only once flat-binary process lifecycle is clean.
-
-Reason:
-ELF is not just “better loading.” It depends on a stable user process abstraction.
-
-### Folder Structure
-```
-kernel/
-├── arch/                    # Architecture-specific code
-│   └── x86/
-│       ├── boot/           # Boot and initialization
-│       ├── cpu/            # CPU management (GDT, IDT, TSS)
-│       ├── interrupt/      # Interrupt handling
-│       └── memory/         # Architecture-specific memory management
-├── core/                   # Core kernel functionality
-│   ├── init/              # Kernel initialization
-│   ├── panic/             # Panic handling
-│   └── debug/             # Debug utilities
-├── drivers/                # Device drivers
-│   ├── char/              # Character devices
-│   ├── block/             # Block devices
-│   └── video/             # Video devices
-├── fs/                     # File system support
-├── include/                # Header files (organized by subsystem)
-│   ├── arch/
-│   ├── core/
-│   ├── drivers/
-│   ├── mm/
-│   ├── proc/
-│   └── lib/
-├── ipc/                    # Inter-process communication
-├── lib/                    # Kernel library functions
-│   ├── string/            # String manipulation
-│   ├── printf/            # Formatted printing
-│   └── data_structures/   # Data structures (lists, trees, etc.)
-├── mm/                     # Memory management
-│   ├── physical/          # Physical memory management
-│   ├── virtual/           # Virtual memory management
-│   └── allocators/        # Memory allocators
-├── net/                    # Network stack
-├── proc/                   # Process and task management
-│   ├── scheduler/         # Scheduling algorithms
-│   ├── context/           # Context switching
-│   └── sync/              # Synchronization primitives
-├── security/               # Security subsystem
-├── time/                   # Time management
-└── tests/                  # Testing framework (empty for now)
-    ├── unit/              # Unit tests
-    ├── integration/       # Integration tests
-    └── framework/         # Testing framework code
-```
-### Testing Framework
+---
