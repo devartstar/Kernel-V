@@ -613,21 +613,11 @@ void yield(void) {
     }
 
     if (proc_next && proc_next != proc_now) {
-        /* If the Process is Terminated - Keep it Terminated */
-
-        /* If the Process was Running - Mark it as Ready */
-        if (proc_now->state == PROC_RUNNING) {
-            proc_now->state = PROC_READY;
-        }
-
-        /* Mark the selected Process as Running */
-        proc_next->state = PROC_RUNNING;
-        current_proc = proc_next;
 
         KLOG_VERBOSE("PROCESS_MGMT",
                      "New current process: %s (pid=%u, type=%s)\n",
-                     current_proc->name, current_proc->pid,
-                     proc_type_to_string(current_proc->type));
+                     proc_next->name, proc_next->pid,
+                     proc_type_to_string(proc_next->type));
 
         KLOG_VERBOSE(
             "PROCESS_MGMT",
@@ -637,6 +627,23 @@ void yield(void) {
             proc_now->name, proc_now->pid, proc_type_to_string(proc_now->type),
             proc_now->context.eflags, proc_next->name, proc_next->pid,
             proc_type_to_string(proc_next->type), proc_next->context.eflags);
+
+        /*
+         * CRITICAL: Disable interrupts before updating current_proc and
+         * process states. A timer interrupt firing between current_proc
+         * update and switch_to would see the new current_proc but still
+         * be on the old stack, corrupting the saved context.
+         */
+        __asm__ __volatile__("cli");
+
+        /* If the Process was Running - Mark it as Ready */
+        if (proc_now->state == PROC_RUNNING) {
+            proc_now->state = PROC_READY;
+        }
+
+        /* Mark the selected Process as Running */
+        proc_next->state = PROC_RUNNING;
+        current_proc = proc_next;
 
         /** [START] Todo: move before switch_to */
         /* [todo] We have 1 TSS, its a good practice to have 1 per CPU */
@@ -653,7 +660,6 @@ void yield(void) {
         /** [STOP] Todo: move before switch_to */
 
         /* Context Switch to New Process */
-        __asm__ __volatile__("cli");
         switch_to(proc_now, proc_next);
         __asm__ __volatile__("sti");
 
