@@ -200,8 +200,7 @@ void proc_cleanup_kernel(pcb_t *proc) {
     if (proc->kernel_stack_base && proc->kernel_stack_size) {
         for (uint32_t offset = 0; offset < proc->kernel_stack_size;
              offset += PAGE_SIZE) {
-            pmm_free_frame(
-                (void *)((uint8_t *)proc->kernel_stack_base + offset));
+            pmm_free_frame((phys_addr_t)proc->kernel_stack_base + offset);
         }
     }
 

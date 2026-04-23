@@ -1,5 +1,6 @@
 #pragma once
 
+#include "types/address.h"
 #include <stdint.h>
 
 #define PAGE_SIZE 4096
@@ -37,7 +38,7 @@ void paging_map_page(uint32_t virtual_addr, uint32_t physical_addr,
 
 void debug_dump_pte(uint32_t virtual_addr);
 
-uint32_t paging_get_physical_address_in_pd(uint32_t *pd_virt, uint32_t virt);
+phys_addr_t paging_get_physical_address_in_pd(uint32_t *pd_virt, uint32_t virt);
 
 uint32_t paging_get_physical_address(uint32_t virt);
 

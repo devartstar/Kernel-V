@@ -31,9 +31,28 @@ void pmm_set_frame_bitmap(phys_addr_t start_address, phys_addr_t end_address);
 phys_addr_t pmm_alloc_frame(void);
 
 /**
+ * pmm_alloc_frames - allocates a range of continous free memory block of 4KB
+ * from available memory
+ * @count - number of frames to allocate
+ *
+ * @return address of the first frame in the range
+ */
+phys_addr_t pmm_alloc_frames_v1(uint32_t count);
+
+/**
  * pmm_free_frame - free the 4KB memory block
- * @frame - base physical address of the frame to free
+ * @base - base physical address of the frame to free
  *
  * @return void
  */
-void pmm_free_frame(phys_addr_t frame);
+void pmm_free_frame(phys_addr_t base);
+
+/**
+ * pmm_free_frames_v1 - free the count of 4KB memory block starting from a
+ * address
+ * @base - base physical address of the frame to free
+ * @count - number of frames to free
+ *
+ * @return void
+ */
+void pmm_free_frames_v1(phys_addr_t base, uint32_t count);

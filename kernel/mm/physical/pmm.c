@@ -18,6 +18,7 @@ static uint32_t used_frames = 0;
  * 3. frame_bitmap[max_frame_index] => each entry = 8 bits => each bit = 1 PAGE
  */
 #define FRAME_INDEX(addr) ((addr) / PAGE_SIZE)
+#define FRAME_INDEX_TO_PHYS_ADDR(idx) (idx * PAGE_SIZE)
 #define BITMAP_SET(idx) (frame_bitmap[(idx) / 8] |= (1 << ((idx) % 8)))
 #define BITMAP_CLEAR(idx) (frame_bitmap[(idx) / 8] &= ~(1 << ((idx) % 8)))
 #define BITMAP_GET(idx) (frame_bitmap[(idx) / 8] & (1 << ((idx) % 8)))
@@ -45,7 +46,7 @@ void pmm_init(void) {
 
         /* at what index of frame_bitmap can the address of region_end be
          * represented */
-        uint32_t current_frame_idx = FRAME_INDEX(region_end);
+        uint32_t current_frame_idx = FRAME_INDEX(region_end - 1);
 
         /* max of all frame index to calculate the size of the frame bitmap
          * array */
@@ -73,14 +74,15 @@ void pmm_init(void) {
             usable_memory_region[usable_memory_region_idx].base;
         uint32_t region_length =
             usable_memory_region[usable_memory_region_idx].length;
+        phys_addr_t region_end = region_base + region_length;
 
-        for (uint32_t addr = region_base; addr < region_base + region_length;
+        for (uint32_t addr = region_base; addr < region_end;
              addr += PAGE_SIZE) {
             /* bitmap index = (address / PAGE_SIZE) / 8,
              * bit position in array index = (address / PAGE_SIZE) % 8
              */
             uint32_t frame_index = FRAME_INDEX(addr);
-            if (frame_index < max_frame_idx) {
+            if (frame_index <= max_frame_idx) {
                 BITMAP_CLEAR(frame_index);
                 total_frames++;
             }
@@ -195,28 +197,72 @@ void pmm_set_frame_bitmap(phys_addr_t start_address, phys_addr_t end_address) {
     }
 }
 
-phys_addr_t pmm_alloc_frame(void) {
+phys_addr_t pmm_alloc_frames_v1(uint32_t count) {
+    if (count == 0) {
+        return 0;
+    }
+
     //  Start from frame 1 to avoid allocating frame 0 (address 0x0)
     //  often reserved by BIOS.
-    for (uint32_t frame_idx = 1; frame_idx < total_frames; frame_idx++) {
-        if (!BITMAP_GET(frame_idx)) {
-            BITMAP_SET(frame_idx);
-            used_frames++;
-            return (phys_addr_t)(frame_idx * PAGE_SIZE);
+    for (uint32_t frame_idx = 1; frame_idx <= max_frame_idx; frame_idx++) {
+        uint32_t start_idx = frame_idx;
+        uint32_t end_idx = frame_idx + count - 1;
+        if (end_idx > max_frame_idx) {
+            break;
         }
+
+        int all_free = 1;
+        for (uint32_t idx = start_idx; idx <= end_idx; idx++) {
+            if (BITMAP_GET(idx)) {
+                all_free = 0;
+                break;
+            }
+        }
+
+        if (!all_free) {
+            continue;
+        }
+
+        for (uint32_t idx = start_idx; idx <= end_idx; idx++) {
+            BITMAP_SET(idx);
+        }
+
+        return FRAME_INDEX_TO_PHYS_ADDR(start_idx);
     }
+
     debug_module(MEMORY, "[PMM] No free frames available!\n");
     return 0;
 }
 
-void pmm_free_frame(phys_addr_t addr) {
-    uint32_t frame_idx = FRAME_INDEX((uint32_t)addr);
-    if (frame_idx < total_frames) {
-        BITMAP_CLEAR(frame_idx);
-        used_frames--;
-    } else {
-        debug_module(
-            MEMORY, "[PMM] Attempted to free an invalid frame at address: %p\n",
-            addr);
+phys_addr_t pmm_alloc_frame(void) { return pmm_alloc_frames_v1(1); }
+
+void pmm_free_frames_v1(phys_addr_t base, uint32_t count) {
+    if (count == 0) {
+        return;
+    }
+
+    /* Check if frame is aligned */
+    if (!(base & (PAGE_SIZE - 1))) {
+        panik("pmm_free_frames_v1: unaligned base address");
+    }
+
+    uint32_t start_idx = FRAME_INDEX(base);
+    uint32_t end_idx = start_idx + count - 1;
+
+    if (start_idx < 1 || end_idx > max_frame_idx) {
+        panik("pmm_free_frames_v1: frame range is out of bounds");
+    }
+
+    for (uint32_t idx = start_idx; idx <= end_idx; idx++) {
+        if (!BITMAP_GET(idx)) {
+            panik("pmm_free_frames_v1: double free or freeing unallocated "
+                  "frames");
+        }
+    }
+
+    for (uint32_t idx = start_idx; idx <= end_idx; idx++) {
+        BITMAP_CLEAR(idx);
     }
 }
+
+void pmm_free_frame(phys_addr_t base) { pmm_free_frames_v1(base, 1); }

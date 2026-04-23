@@ -12,6 +12,8 @@ uint32_t first_page_table[PAGE_ENTRIES] __attribute__((aligned(PAGE_SIZE)));
 uint32_t *kernel_page_directory_virt = kernel_page_directory;
 uint32_t kernel_page_directory_phys = (uint32_t)kernel_page_directory;
 
+static inline void *phys_to_virt_identity(phys_addr_t phys);
+
 //
 //  Initialize paging by setting up first entry in page directory
 //  to a simple identity-mapped page table
@@ -148,7 +150,8 @@ void paging_map_page(uint32_t virtual_addr, uint32_t physical_addr,
     paging_map_page_in_pd(pd, virtual_addr, physical_addr, flags);
 }
 
-uint32_t paging_get_physical_address_in_pd(uint32_t *pd_virt, uint32_t virt) {
+phys_addr_t paging_get_physical_address_in_pd(uint32_t *pd_virt,
+                                              virt_addr_t virt) {
     uint32_t pdir_index = PD_INDEX(virt);
     uint32_t ptable_index = PT_INDEX(virt);
 
@@ -160,19 +163,20 @@ uint32_t paging_get_physical_address_in_pd(uint32_t *pd_virt, uint32_t virt) {
         return 0;
     }
 
-    uint32_t *page_table = (uint32_t *)(pd_virt[pdir_index] & 0xFFFFF000);
+    phys_addr_t pt_phys = (phys_addr_t)(pd_virt[pdir_index] & 0xFFFFF000);
+    uint32_t *pt_virt = (uint32_t *)phys_to_virt_identity(pt_phys);
 
-    if (!(page_table[ptable_index] & PAGE_PRESENT)) {
+    if (!(pt_virt[ptable_index] & PAGE_PRESENT)) {
         return 0;
     }
 
-    uint32_t phy_base = page_table[ptable_index] & 0xFFFFF000;
-    uint32_t offset = page_table[ptable_index] & 0xFFF;
+    phys_addr_t page_base = (phys_addr_t)(pt_virt[ptable_index] & 0xFFFFF000);
+    phys_addr_t page_offset = (phys_addr_t)(virt & 0xFFF);
 
-    return phy_base + offset;
+    return (page_base | page_offset);
 }
 
-uint32_t paging_get_physical_address(uint32_t virt) {
+phys_addr_t paging_get_physical_address(uint32_t virt) {
     // 32 bit address ->
     // each entry of pagetable/directory = 12 LSB are for flags, 20 MSB is the
     // address
@@ -196,13 +200,14 @@ void paging_unmap_page_in_pd(uint32_t *pd_virt, uint32_t virt) {
         return;
     }
 
-    uint32_t *page_table = (uint32_t *)(pd_virt[pdir_index] & 0xFFFFF000);
+    phys_addr_t *pt_phys = (phys_addr_t)(pd_virt[pdir_index] & 0xFFFFF000);
+    uint32_t *pt_virt = (uint32_t *)phys_to_virt_identity(pt_phys);
 
-    if (!(page_table[ptable_index] & PAGE_PRESENT)) {
+    if (!(pt_virt[ptable_index] & PAGE_PRESENT)) {
         return;
     }
 
-    page_table[ptable_index] = 0;
+    pt_virt[ptable_index] = 0;
 
     __asm__ __volatile__("invlpg (%0)" : : "r"(virt) : "memory");
 }
@@ -232,7 +237,7 @@ int paging_create_address_space(uint32_t **out_pd_virt,
         return -1;
     }
 
-    uint32_t *new_pd_virt = (uint32_t *)new_pd_phys;
+    uint32_t *new_pd_virt = (uint32_t *)phys_to_virt_identity(new_pd_phys);
 
     for (uint32_t i = 0; i < PAGE_ENTRIES; i++) {
         new_pd_virt[i] = 0;
@@ -255,14 +260,14 @@ int paging_create_address_space(uint32_t **out_pd_virt,
 
 void paging_free_region_in_pd(uint32_t *pd_virt, uint32_t start,
                               uint32_t size) {
-    uint32_t addr = PAGE_ALIGN_DOWN(start);
-    uint32_t end = PAGE_ALIGN_UP(start + size);
+    phys_addr_t addr = PAGE_ALIGN_DOWN(start);
+    phys_addr_t end = PAGE_ALIGN_UP(start + size);
 
     for (; addr < end; addr += PAGE_SIZE) {
-        uint32_t phys = paging_get_physical_address_in_pd(pd_virt, addr);
+        phys_addr_t phys = paging_get_physical_address_in_pd(pd_virt, addr);
 
         if (phys) {
-            pmm_free_frame((void *)(phys & 0xFFFFF000));
+            pmm_free_frame((phys_addr_t)(phys & 0xFFFFF000));
         }
 
         paging_unmap_page_in_pd(pd_virt, addr);
@@ -271,4 +276,12 @@ void paging_free_region_in_pd(uint32_t *pd_virt, uint32_t start,
 
 void paging_free_region(uint32_t start, uint32_t size) {
     paging_free_region_in_pd(current_proc->page_directory_virt, start, size);
+}
+
+static inline void *phys_to_virt_identity(phys_addr_t phys) {
+    if (phys > 0x00400000) {
+        panik("phys_to_virt_identity: physical address outside current low "
+              "identity map");
+    }
+    return (void *)phys;
 }
