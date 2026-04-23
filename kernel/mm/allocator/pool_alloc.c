@@ -11,24 +11,21 @@
  * @size: current value to be rounded up
  * @align: alignment, rounded up to multiple of align
  */
-static size_t round_up(size_t size, size_t align)
-{
-	return (size + align - 1) & ~(align - 1);
+static size_t round_up(size_t size, size_t align) {
+    return (size + align - 1) & ~(align - 1);
 }
 
-int pool_init(pool_allocator_t* pool, size_t obj_size)
-{
-	/* size of each object in the pool should be least pointer size to store
-	 * next pointer */
-	if (!pool || obj_size < sizeof(void*))
-	{
-		return -1;
-	}
+int pool_init(pool_allocator_t *pool, size_t obj_size) {
+    /* size of each object in the pool should be least pointer size to store
+     * next pointer */
+    if (!pool || obj_size < sizeof(void *)) {
+        return -1;
+    }
 
-	pool->free_list = NULL;
-	pool->object_size = round_up(obj_size, sizeof(void*));
+    pool->free_list = NULL;
+    pool->object_size = round_up(obj_size, sizeof(void *));
 
-	return 0;
+    return 0;
 }
 
 /**
@@ -38,50 +35,43 @@ int pool_init(pool_allocator_t* pool, size_t obj_size)
  *
  * @pool - pointer to the pool struct
  */
-void* pool_alloc(pool_allocator_t* pool)
-{
-	/* if memory pool not initialized then return */
-	if (!pool)
-	{
-		return NULL;
-	}
+void *pool_alloc(pool_allocator_t *pool) {
+    /* if memory pool not initialized then return */
+    if (!pool) {
+        return NULL;
+    }
 
-	/* If no free object, allocate a new page and split into object */
-	if (!pool->free_list)
-	{
-		void* page = pmm_alloc_frame();
-		if (!page)
-		{
-			return NULL;
-		}
+    /* If no free object, allocate a new page and split into object */
+    if (!pool->free_list) {
+        phys_addr_t page = pmm_alloc_frame();
+        if (!page) {
+            return NULL;
+        }
 
-		uint8_t* p = (uint8_t*)page;
+        uint8_t *p = (uint8_t *)page;
 
-		/* number of pool objects that can be created from a frame */
-		size_t n_objs = POOL_PAGE_SIZE / pool->object_size;
+        /* number of pool objects that can be created from a frame */
+        size_t n_objs = POOL_PAGE_SIZE / pool->object_size;
 
-		for (size_t obj_idx = 0; obj_idx < n_objs; obj_idx++)
-		{
-			void* obj = (void*)(p + obj_idx * pool->object_size);
-			*((void**)obj) = pool->free_list;
-			pool->free_list = obj;
-		}
-	}
+        for (size_t obj_idx = 0; obj_idx < n_objs; obj_idx++) {
+            void *obj = (void *)(p + obj_idx * pool->object_size);
+            *((void **)obj) = pool->free_list;
+            pool->free_list = obj;
+        }
+    }
 
-	/* Pop the first free object */
-	void* obj = pool->free_list;
-	pool->free_list = *((void**)obj);
+    /* Pop the first free object */
+    void *obj = pool->free_list;
+    pool->free_list = *((void **)obj);
 
-	return obj;
+    return obj;
 }
 
-void pool_free(pool_allocator_t* pool, void* obj)
-{
-	if (!pool || !obj)
-	{
-		return;
-	}
+void pool_free(pool_allocator_t *pool, void *obj) {
+    if (!pool || !obj) {
+        return;
+    }
 
-	*((void**)obj) = pool->free_list;
-	pool->free_list = obj;
+    *((void **)obj) = pool->free_list;
+    pool->free_list = obj;
 }

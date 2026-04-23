@@ -47,7 +47,7 @@ static void user_map_region_in_pd(uint32_t *pd_virt, uint32_t virt_start,
     uint32_t end = (virt_start + size + 0xFFF) & 0xFFFFF000;
 
     for (uint32_t addr = start; addr < end; addr += PAGE_SIZE) {
-        void *phys = pmm_alloc_frame();
+        phys_addr_t phys = pmm_alloc_frame();
         if (!phys) {
             panik("user_map_region: pmm_alloc_frame failed");
         }

@@ -89,8 +89,7 @@ void proc_init(void) {
     print_proc_info(idle);
     proc_mark_ready(idle);
 
-    debug_module(PROCESS_MGMT, "Created idle process with PID %d\n",
-                 idle->pid);
+    debug_module(PROCESS_MGMT, "Created idle process with PID %d\n", idle->pid);
 }
 
 pcb_t *proc_alloc(const char *name) {
@@ -328,7 +327,7 @@ pcb_t *proc_create(void (*entry)(void *), void *arg, const char *name) {
     }
 
     /* allocate a memory page as kernel stack to process */
-    void *kernel_stack_block = pmm_alloc_frame();
+    phys_addr_t kernel_stack_block = pmm_alloc_frame();
     if (!kernel_stack_block) {
         proc_free(proc);
         return NULL;
@@ -716,8 +715,8 @@ void timer_interrupt_proc_handler(uint32_t tickcount) {
     /* Premption - Kernel to context switch automatically on timer tick */
     if (current_proc != NULL && current_proc->state == PROC_RUNNING) {
         current_proc->timeslice_ticks--;
-        pr_info("[TICK %u] %s: timeslice ticks = %u\n",
-                PRINT_UINT32(tickcount), current_proc->name,
+        pr_info("[TICK %u] %s: timeslice ticks = %u\n", PRINT_UINT32(tickcount),
+                current_proc->name,
                 PRINT_UINT32(current_proc->timeslice_ticks));
         if (current_proc->timeslice_ticks <= 0) {
             pr_info("%s out of timeslice! Switching...\n", current_proc->name);
@@ -831,24 +830,21 @@ void print_proc_info(const pcb_t *proc) {
             "[Lifecycle] exited=%u exit_code=0x%08x\n\t"
             "[Kernel Stack] base=0x%08x top=0x%08x size=0x%08x\n\t"
             "[Scheduling] timeslice=%u sleep_ticks=%u\n\t"
-            "[Context] eip=0x%08x esp=0x%08x ebp=0x%08x eflags=0x%08x(IF=%s)\n\t"
+            "[Context] eip=0x%08x esp=0x%08x ebp=0x%08x "
+            "eflags=0x%08x(IF=%s)\n\t"
             "[Linkage] parent=%s(pid=%u)\n\t"
-            "[User Space] entry=0x%08x code_size=0x%08x stack_top=0x%08x stack_size=0x%08x\n\t"
+            "[User Space] entry=0x%08x code_size=0x%08x stack_top=0x%08x "
+            "stack_size=0x%08x\n\t"
             "[Address Space] pd_virt=0x%08x pd_phys=0x%08x\n",
-            proc->pid, proc->name,
-            proc_type_to_string(proc->type),
-            proc_state_to_string(proc->state),
-            proc->has_exited, proc->exit_code,
-            proc->kernel_stack_base, proc->kernel_stack_top,
-            proc->kernel_stack_size,
-            proc->timeslice_ticks, proc->sleep_ticks,
-            proc->context.eip, proc->context.esp,
-            proc->context.ebp, proc->context.eflags,
-            (proc->context.eflags & 0x200) ? "on" : "off",
+            proc->pid, proc->name, proc_type_to_string(proc->type),
+            proc_state_to_string(proc->state), proc->has_exited,
+            proc->exit_code, proc->kernel_stack_base, proc->kernel_stack_top,
+            proc->kernel_stack_size, proc->timeslice_ticks, proc->sleep_ticks,
+            proc->context.eip, proc->context.esp, proc->context.ebp,
+            proc->context.eflags, (proc->context.eflags & 0x200) ? "on" : "off",
             proc->parent ? proc->parent->name : "none",
-            proc->parent ? proc->parent->pid : 0,
-            proc->user_entry, proc->user_code_size,
-            proc->user_stack_top, proc->user_stack_size,
+            proc->parent ? proc->parent->pid : 0, proc->user_entry,
+            proc->user_code_size, proc->user_stack_top, proc->user_stack_size,
             proc->page_directory_virt, proc->page_directory_phys);
     } else {
         KLOG_VERBOSE(
@@ -857,18 +853,15 @@ void print_proc_info(const pcb_t *proc) {
             "[Lifecycle] exited=%u exit_code=0x%08x\n\t"
             "[Kernel Stack] base=0x%08x top=0x%08x size=0x%08x\n\t"
             "[Scheduling] timeslice=%u sleep_ticks=%u\n\t"
-            "[Context] eip=0x%08x esp=0x%08x ebp=0x%08x eflags=0x%08x(IF=%s)\n\t"
+            "[Context] eip=0x%08x esp=0x%08x ebp=0x%08x "
+            "eflags=0x%08x(IF=%s)\n\t"
             "[Linkage] parent=%s(pid=%u)\n",
-            proc->pid, proc->name,
-            proc_type_to_string(proc->type),
-            proc_state_to_string(proc->state),
-            proc->has_exited, proc->exit_code,
-            proc->kernel_stack_base, proc->kernel_stack_top,
-            proc->kernel_stack_size,
-            proc->timeslice_ticks, proc->sleep_ticks,
-            proc->context.eip, proc->context.esp,
-            proc->context.ebp, proc->context.eflags,
-            (proc->context.eflags & 0x200) ? "on" : "off",
+            proc->pid, proc->name, proc_type_to_string(proc->type),
+            proc_state_to_string(proc->state), proc->has_exited,
+            proc->exit_code, proc->kernel_stack_base, proc->kernel_stack_top,
+            proc->kernel_stack_size, proc->timeslice_ticks, proc->sleep_ticks,
+            proc->context.eip, proc->context.esp, proc->context.ebp,
+            proc->context.eflags, (proc->context.eflags & 0x200) ? "on" : "off",
             proc->parent ? proc->parent->name : "none",
             proc->parent ? proc->parent->pid : 0);
     }
