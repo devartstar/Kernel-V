@@ -30,7 +30,6 @@ void cleanup_terminated_processes(void) {
                          "Reclaiming process: %s (pid=%u, type=%s)\n", p->name,
                          p->pid, proc_type_to_string(p->type));
             dequeue_proc_list(p);
-            dequeue_ready(p);
             proc_free(p);
         }
 
@@ -156,24 +155,25 @@ void enqueue_proc_list(pcb_t *proc) {
 }
 
 void dequeue_proc_list(pcb_t *proc) {
+    /* Guard against double-dequeue */
+    if (!proc->all_prev && !proc->all_next && proc != proc_list_head) {
+        return;
+    }
+
     if (proc->all_prev) {
         /* If not the first process in list */
         proc->all_prev->all_next = proc->all_next;
-        proc->all_next->all_prev = proc->all_prev;
     } else {
         /* First entry in the list */
         proc_list_head = proc->all_next;
-        proc_list_head->all_prev = NULL;
     }
 
     if (proc->all_next) {
         /* If not the last process in list */
-        proc->all_prev->all_next = proc->all_next;
         proc->all_next->all_prev = proc->all_prev;
     } else {
         /* Last entry in the list */
         proc_list_tail = proc->all_prev;
-        proc_list_tail->all_next = NULL;
     }
 
     proc->all_next = NULL;
