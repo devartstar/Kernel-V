@@ -2,6 +2,7 @@
 #include "core/kernel.h"
 #include "lib/printk.h"
 #include "tests/nested_irq.h"
+#include "tests/test_mmio.h"
 #include <stdbool.h>
 
 //  Conditionally include headers based on what's available
@@ -37,6 +38,9 @@ void run_kernel_tests(void) {
     run_printk_tests();
     run_printk_scrolling_test();
     run_panik_unit_tests();
+    test_mmio_helpers_basic_32b();
+    test_mmio_helpers_basic_16b();
+    test_mmio_helpers_basic_8b();
     KLOG_VERBOSE("TEST", "Unit Tests Complete.\n");
     tests_run = true;
 #endif

@@ -178,7 +178,6 @@ void pmm_reserve_memory_region(reserved_memory_type_t reserved_type) {
 //
 //  Given a start and end address, set the corresponding frames in the bitmap as
 //  used
-//
 void pmm_set_frame_bitmap(phys_addr_t start_address, phys_addr_t end_address) {
     //  round down the start address to k*PAGE_SIZE
     //  bit manipulation to unset all bits below PAGE_SIZE

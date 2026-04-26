@@ -12,8 +12,6 @@ uint32_t first_page_table[PAGE_ENTRIES] __attribute__((aligned(PAGE_SIZE)));
 uint32_t *kernel_page_directory_virt = kernel_page_directory;
 uint32_t kernel_page_directory_phys = (uint32_t)kernel_page_directory;
 
-static inline void *phys_to_virt_identity(phys_addr_t phys);
-
 //
 //  Initialize paging by setting up first entry in page directory
 //  to a simple identity-mapped page table
@@ -278,7 +276,7 @@ void paging_free_region(uint32_t start, uint32_t size) {
     paging_free_region_in_pd(current_proc->page_directory_virt, start, size);
 }
 
-static inline void *phys_to_virt_identity(phys_addr_t phys) {
+void *phys_to_virt_identity(phys_addr_t phys) {
     if (phys > 0x00400000) {
         panik("phys_to_virt_identity: physical address outside current low "
               "identity map");

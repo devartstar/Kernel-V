@@ -55,3 +55,5 @@ uint32_t paging_get_current_cr3(void);
 void paging_switch_address_space(uint32_t pd_phys);
 
 int paging_create_address_space(uint32_t **out_pd_virt, uint32_t *out_pd_phys);
+
+void *phys_to_virt_identity(phys_addr_t phys);
