@@ -1,4 +1,5 @@
 #include "sync/spinlock.h"
+#include "arch/x86/cpu_utils.h"
 #include <stdint.h>
 
 static inline uint32_t atomic_xchg_u32(volatile uint32_t *ptr, uint32_t value) {
@@ -12,7 +13,7 @@ static inline uint32_t atomic_xchg_u32(volatile uint32_t *ptr, uint32_t value) {
 void spin_lock(spinlock_t *lock) {
     while (atomic_xchg_u32(&lock->locked, 1) != 0) {
         while (lock->locked) {
-            __asm__ __volatile__("pause");
+            cpu_relax();
         }
     }
 }
