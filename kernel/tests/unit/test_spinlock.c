@@ -3,47 +3,47 @@
 #include "sync/spinlock.h"
 
 void run_spinlock_tests(void) {
-    int all_passed = 1;
+    int failed_count = 0;
 
     if (test_spinlock_basic()) {
         KLOG_INFO("TEST", "SPINLOCK_BASIC passed\n");
     } else {
         KLOG_ERROR("TEST", "SPINLOCK_BASIC failed\n");
-        all_passed = 0;
+        failed_count++;
     }
 
     if (test_irq_save_restore_enable()) {
         KLOG_INFO("TEST", "SPINLOCK_IRQS_ENABLED passed\n");
     } else {
         KLOG_ERROR("TEST", "SPINLOCK_IRQS_ENABLED failed\n");
-        all_passed = 0;
+        failed_count++;
     }
 
     if (test_irq_save_restore_disable()) {
         KLOG_INFO("TEST", "SPINLOCK_IRQS_DISABLED passed\n");
     } else {
         KLOG_ERROR("TEST", "SPINLOCK_IRQ_DISABLED failed\n");
-        all_passed = 0;
+        failed_count++;
     }
 
     if (test_spinlock_irqsave_enable()) {
         KLOG_INFO("TEST", "SPINLOCK_IRQSAVE_ENABLED passed\n");
     } else {
         KLOG_ERROR("TEST", "SPINLOCK_IRQSAVE_ENABLED failed\n");
-        all_passed = 0;
+        failed_count++;
     }
 
     if (test_spinlock_irqsave_disable()) {
         KLOG_INFO("TEST", "SPINLOCK_IRQSAVE_DISABLED passed\n");
     } else {
         KLOG_ERROR("TEST", "SPINLOCK_IRQSAVE_DISABLED failed\n");
-        all_passed = 0;
+        failed_count++;
     }
 
-    if (all_passed) {
+    if (failed_count == 0) {
         KLOG_INFO("TEST", "all spinlock/irq tests passed\n");
     } else {
-        KLOG_ERROR("TEST", "one or more spinlock/irq tests failed\n");
+        KLOG_ERROR("TEST", "%d spinlock/irq tests failed\n", failed_count);
     }
 }
 
