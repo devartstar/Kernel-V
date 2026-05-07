@@ -140,7 +140,7 @@ int test_spinlock_irqsave() {
 
     /* restore the cpu flags with the previously saved eflags and release lock
      */
-    spin_lock_irqrestore(&lock, eflags_saved);
+    spin_unlock_irqrestore(&lock, eflags_saved);
 
     /* Read the cpu flags to check irq_restor correctly restored the original
      * eflags. ie. enabled in this test */

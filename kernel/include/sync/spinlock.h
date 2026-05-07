@@ -21,7 +21,7 @@ void spin_unlock(spinlock_t *lock);
  * context and the normal kernel context
  */
 irq_flags_t spin_lock_irqsave(spinlock_t *lock);
-irq_flags_t spin_lock_irqrestore(spinlock_t *lock, irq_flags_t flags);
+void spin_unlock_irqrestore(spinlock_t *lock, irq_flags_t flags);
 
 /**
  * read_eflags - reads the cpu flags and return it
