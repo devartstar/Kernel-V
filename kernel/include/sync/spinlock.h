@@ -28,7 +28,7 @@ void spin_unlock_irqrestore(spinlock_t *lock, irq_flags_t flags);
  */
 static inline uint32_t read_eflags(void) {
     uint32_t flags;
-    __asm__ __volatile__("pushf\n\t"
+    __asm__ __volatile__("pushfl\n\t"
                          "pop %0"
                          : "=r"(flags)
                          :

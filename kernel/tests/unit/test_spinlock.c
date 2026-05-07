@@ -2,7 +2,50 @@
 #include "arch/x86/interrupt.h"
 #include "sync/spinlock.h"
 
-#define EFLAG_IF (1u << 9)
+void run_spinlock_tests(void) {
+    int all_passed = 1;
+
+    if (test_spinlock_basic()) {
+        KLOG_INFO("TEST", "SPINLOCK_BASIC passed\n");
+    } else {
+        KLOG_ERROR("TEST", "SPINLOCK_BASIC failed\n");
+        all_passed = 0;
+    }
+
+    if (test_irq_save_restore_enable()) {
+        KLOG_INFO("TEST", "SPINLOCK_IRQS_ENABLED passed\n");
+    } else {
+        KLOG_ERROR("TEST", "SPINLOCK_IRQS_ENABLED failed\n");
+        all_passed = 0;
+    }
+
+    if (test_irq_save_restore_disable()) {
+        KLOG_INFO("TEST", "SPINLOCK_IRQS_DISABLED passed\n");
+    } else {
+        KLOG_ERROR("TEST", "SPINLOCK_IRQ_DISABLED failed\n");
+        all_passed = 0;
+    }
+
+    if (test_spinlock_irqsave_enable()) {
+        KLOG_INFO("TEST", "SPINLOCK_IRQSAVE_ENABLED passed\n");
+    } else {
+        KLOG_ERROR("TEST", "SPINLOCK_IRQSAVE_ENABLED failed\n");
+        all_passed = 0;
+    }
+
+    if (test_spinlock_irqsave_disable()) {
+        KLOG_INFO("TEST", "SPINLOCK_IRQSAVE_DISABLED passed\n");
+    } else {
+        KLOG_ERROR("TEST", "SPINLOCK_IRQSAVE_DISABLED failed\n");
+        all_passed = 0;
+    }
+
+    if (all_passed) {
+        KLOG_INFO("TEST", "all spinlock/irq tests passed\n");
+    } else {
+        KLOG_ERROR("TEST", "one or more spinlock/irq tests failed\n");
+    }
+}
 
 int test_spinlock_basic() {
     spinlock_t lock = SPINLOCK_INIT;
@@ -112,45 +155,105 @@ int test_irq_save_restore_disable() {
     return 1;
 }
 
-int test_spinlock_irqsave() {
+int test_spinlock_irqsave_enable() {
     spinlock_t lock = SPINLOCK_INIT;
 
     /* Enabled int interrupts to start the test */
     __asm__ __volatile__("sti" ::: "memory");
 
-    /* check interrupt should be disabled */
+    /* check interrupt should be enabled */
     int eflags_before = read_eflags();
     if (!(eflags_before & EFLAG_IF)) {
-        KLOG_ERROR("TEST",
-                   "SPINLOCK_IRQSAVE interrupts are enabled post disabling.\n");
+        KLOG_ERROR("TEST", "SPINLOCK_IRQSAVE_ENABLED interrupts are disabled "
+                           "post enabling.\n");
         return 0;
     }
 
     /* disable and save the cpu flags and acquire lock */
     int eflags_saved = spin_lock_irqsave(&lock);
+    if (lock.locked != 1) {
+        KLOG_ERROR("TEST", "SPINLOCK_IRQSAVE_ENABLED lock is not acquired.\n");
+        return 0;
+    }
 
     /* Read the cpu flags to check irq_save correctly disabled interrupts */
     int eflags_test = read_eflags();
     if (eflags_test & EFLAG_IF) {
-        KLOG_ERROR(
-            "TEST",
-            "SPINLOCK_IRQSAVE  interrupts are enabled post acquiring lock.\n");
+        KLOG_ERROR("TEST", "SPINLOCK_IRQSAVE_ENABLED  interrupts are enabled "
+                           "post acquiring lock.\n");
         return 0;
     }
 
-    /* restore the cpu flags with the previously saved eflags and release lock
-     */
+    /* restore the cpu flags with the previously saved eflags & release lock */
     spin_unlock_irqrestore(&lock, eflags_saved);
+    if (lock.locked != 0) {
+        KLOG_ERROR("TEST", "SPINLOCK_IRQSAVE_ENABLED lock not released post "
+                           "releasing lock.\n");
+        return 0;
+    }
 
     /* Read the cpu flags to check irq_restor correctly restored the original
-     * eflags. ie. enabled in this test */
+     * eflags */
     int eflags_after = read_eflags();
     if (!(eflags_after & EFLAG_IF)) {
-        KLOG_ERROR("TEST", "SPINLOCK_IRQSAVE interruprs are disabled post "
-                           "restore and release lock. Should be enabled.\n");
+        KLOG_ERROR("TEST",
+                   "SPINLOCK_IRQSAVE_ENABLED interruprs are disabled post "
+                   "restore and release lock. Should be enabled.\n");
         return 0;
     }
 
-    KLOG_INFO("TEST", "SPINLOCK_IRQSAVE interrupts corrects restored.\n");
+    KLOG_INFO("TEST",
+              "SPINLOCK_IRQSAVE_ENABLED interrupts corrects restored.\n");
+    return 1;
+}
+
+int test_spinlock_irqsave_disable() {
+    spinlock_t lock = SPINLOCK_INIT;
+
+    /* Clear int interrupts to start the test */
+    __asm__ __volatile__("cli" ::: "memory");
+
+    /* check interrupt should be disabled */
+    int eflags_before = read_eflags();
+    if (eflags_before & EFLAG_IF) {
+        KLOG_ERROR("TEST", "SPINLOCK_IRQSAVE_DISABLED interrupts are enabled "
+                           "post disabling.\n");
+        return 0;
+    }
+
+    /* disable and save the cpu flags and acquire lock */
+    int eflags_saved = spin_lock_irqsave(&lock);
+    if (lock.locked != 1) {
+        KLOG_ERROR("TEST", "SPINLOCK_IRQSAVE_DISABLED lock is not acquired.\n");
+        return 0;
+    }
+
+    /* Read the cpu flags to check irq_save correctly disabled interrupts */
+    int eflags_test = read_eflags();
+    if (eflags_test & EFLAG_IF) {
+        KLOG_ERROR("TEST", "SPINLOCK_IRQSAVE_DISABLED  interrupts are enabled "
+                           "post acquiring lock.\n");
+        return 0;
+    }
+
+    /* restore the cpu flags with the previously saved eflags & release lock */
+    spin_unlock_irqrestore(&lock, eflags_saved);
+    if (lock.locked != 0) {
+        KLOG_ERROR("TEST", "SPINLOCK_IRQSAVE_DISABLED lock not released.\n");
+        return 0;
+    }
+
+    /* Read the cpu flags to check irq_restor correctly restored the original
+     * eflags */
+    int eflags_after = read_eflags();
+    if (eflags_after & EFLAG_IF) {
+        KLOG_ERROR("TEST",
+                   "SPINLOCK_IRQSAVE_DISABLED interruprs are enabled post "
+                   "restore and release lock. Should be disabled.\n");
+        return 0;
+    }
+
+    KLOG_INFO("TEST",
+              "SPINLOCK_IRQSAVE_DISABLED interrupts corrects restored.\n");
     return 1;
 }

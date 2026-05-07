@@ -42,10 +42,7 @@ void run_kernel_tests(void) {
     test_mmio_helpers_basic_32b();
     test_mmio_helpers_basic_16b();
     test_mmio_helpers_basic_8b();
-    test_spinlock_basic();
-    test_irq_save_restore_enable();
-    test_irq_save_restore_disable();
-    test_spinlock_irqsave();
+    run_spinlock_tests();
 
     KLOG_VERBOSE("TEST", "Unit Tests Complete.\n");
     tests_run = true;
