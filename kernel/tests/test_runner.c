@@ -4,6 +4,7 @@
 #include "tests/nested_irq.h"
 #include "tests/test_irq.h"
 #include "tests/test_mmio.h"
+#include "tests/test_pci.h"
 #include "tests/test_spinlock.h"
 #include <stdbool.h>
 
@@ -45,6 +46,8 @@ void run_kernel_tests(void) {
     test_mmio_helpers_basic_8b();
     run_spinlock_tests();
     run_irq_tests();
+    pci_cfg_smoke_test();
+    pci_cf_extract_test();
 
     KLOG_VERBOSE("TEST", "Unit Tests Complete.\n");
     tests_run = true;

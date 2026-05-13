@@ -18,6 +18,8 @@
  * Bit 1 - should be 0 for 32 bit alignment
  */
 
+#include "core/io.h"
+#include "lib/printk.h"
 #include <stdint.h>
 
 /*
@@ -81,6 +83,77 @@ static inline uint32_t pci_cfg_addr_make(pci_bdf_t bdf, uint8_t reg_offset) {
            (((uint32_t)bdf.function & PCI_CFG_FUNC_MASK)
             << PCI_CFG_FUNC_SHIFT) |
            ((uint32_t)reg_offset & PCI_CFG_REG_MASK);
+}
+
+/**
+ * pci_cfg_read32 - 32 bit read of the pci config space
+ * @bdf - to specify the endpoint whose config space to read
+ * @reg_off - offset(bytes) in config space at  which to read
+ *
+ * @return value read from config space.
+ */
+static inline uint32_t pci_cfg_read32(pci_bdf_t bdf, uint8_t reg_off) {
+    uint32_t addr;
+
+    if (!is_bdf_valid(bdf)) {
+        KLOG_ERROR("PCI", "Querying for invalid bfd %02x:%02.%02f\n", bdf.bus,
+                   bdf.device, bdf.function);
+        return 0xFFFFFFFFu;
+    }
+
+    addr = pci_cfg_addr_make(bdf, reg_off);
+    outl(PCI_CFG_ADDR_PORT, addr);
+    return inl(PCI_CFG_DATA_PORT);
+}
+
+/**
+ * pci_cfg_read16 - reads 16 bits of config space from a given offset
+ *
+ * @bdf - to specify the endpoint whose config space to read
+ * @reg_ofset - offset(bytes) of the config space to read from. It should be
+ * either:
+ *              - low halfword aligned (0x...0) read bits 0-15
+ *              - high halfword aligned (0x...2) read bits 16-31
+ */
+static inline uint16_t pci_cfg_read16(pci_bdf_t bdf, uint8_t reg_off) {
+    uint32_t value;
+    uint32_t shift;
+
+    /* check register offset alignment */
+    if (reg_off & 0x1) {
+        KLOG_ERROR(
+            "PCI",
+            "Incorrect alignment of config space offset (%0x8) to read16.\n",
+            reg_off);
+        return 0xFFFF;
+    }
+
+    value = pci_cfg_read32(bdf, reg_off);
+
+    /* offset bytes to bits conversion */
+    shift = (uint8_t)((reg_off & 0x2) << 3);
+
+    /* shift = 0 for low halfword and = 16 for high halfword */
+    return (uint16_t)((value >> shift) & 0xFFFF);
+}
+
+/**
+ * pci_cfg_read8 - reads 8 bits of config space from a given offset
+ *
+ * @bdf - to specify the endpoint whose config space to read
+ * @reg_ofset - offset(bytes) of the config space to read from.
+ */
+static inline uint8_t pci_cfg_read8(pci_bdf_t bdf, uint8_t reg_off) {
+    uint32_t value;
+    uint32_t shift;
+
+    value = pci_cfg_read32(bdf, reg_off);
+
+    /* offset bytes to bits conversion to shift */
+    shift = (uint8_t)((reg_off & 0x3) << 3);
+
+    /* shift can be 0(0-7), 8(8-15), 16(16-23), 24(24,31) */
+    return (uint16_t)((value >> shift) & 0xFF);
 }
 
 #endif PCI_CFG_H
