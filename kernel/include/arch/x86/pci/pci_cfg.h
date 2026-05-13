@@ -23,6 +23,24 @@
 #include <stdint.h>
 
 /*
+ * Standard PCI configuration header offsets.
+ * These are byte offsets within one function's config space.
+ */
+#define PCI_CFG_VENDOR_ID 0x00u
+#define PCI_CFG_DEVICE_ID 0x02u
+#define PCI_CFG_COMMAND 0x04u
+#define PCI_CFG_STATUS 0x06u
+#define PCI_CFG_REVISION_ID 0x08u
+#define PCI_CFG_PROG_IF 0x09u
+#define PCI_CFG_SUBCLASS 0x0Au
+#define PCI_CFG_CLASS_CODE 0x0Bu
+#define PCI_CFG_CACHELINE_SIZE 0x0Cu
+#define PCI_CFG_LATENCY_TIMER 0x0Du
+#define PCI_CFG_HEADER_TYPE 0x0Eu
+#define PCI_CFG_BIST 0x0Fu
+
+/*
+ * Header type interpretation
  * if function 0 is absent then the slot is generally treated as absent
  * if function 0 is present then - check the bit 7 of header type
  *   bit 7 clear - kernel to probe onlu function 0
@@ -30,6 +48,11 @@
  */
 #define PCI_CFG_HEADER_TYPE_MASK 0x7f           // 0111 1111
 #define PCI_CFG_HEADER_TYPE_MULTI_FUNCTION 0x80 // 1000 0000
+
+/*
+ * Standard sentinel for "no function present".
+ */
+#define PCI_INVALID_VENDOR_ID 0xFFFFu
 
 #define PCI_CFG_ADDR_PORT 0xCF8u
 #define PCI_CFG_DATA_PORT 0xCFCu
@@ -84,6 +107,8 @@ static inline uint32_t pci_cfg_addr_make(pci_bdf_t bdf, uint8_t reg_offset) {
             << PCI_CFG_FUNC_SHIFT) |
            ((uint32_t)reg_offset & PCI_CFG_REG_MASK);
 }
+
+/* PCI Config Space Read Utilities */
 
 /**
  * pci_cfg_read32 - 32 bit read of the pci config space
@@ -156,4 +181,29 @@ static inline uint8_t pci_cfg_read8(pci_bdf_t bdf, uint8_t reg_off) {
     return (uint16_t)((value >> shift) & 0xFF);
 }
 
+/* PCI Config Space Field Extractor */
+
+static inline uint16_t pci_dword_lo16(uint32_t value) {
+    return (uint16_t)(value & 0xFFFFu);
+}
+
+static inline uint16_t pci_dword_hi16(uint32_t value) {
+    return (uint16_t)((value >> 16) & 0xFFFFu);
+}
+
+static inline uint8_t pci_dword_byte0(uint32_t value) {
+    return (uint8_t)(value & 0xFFu);
+}
+
+static inline uint8_t pci_dword_byte1(uint32_t value) {
+    return (uint8_t)((value >> 8) & 0xFFu);
+}
+
+static inline uint8_t pci_dword_byte2(uint32_t value) {
+    return (uint8_t)((value >> 16) & 0xFFu);
+}
+
+static inline uint8_t pci_dword_byte3(uint32_t value) {
+    return (uint8_t)((value >> 24) & 0xFFu);
+}
 #endif PCI_CFG_H

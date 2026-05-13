@@ -46,8 +46,7 @@ void run_kernel_tests(void) {
     test_mmio_helpers_basic_8b();
     run_spinlock_tests();
     run_irq_tests();
-    pci_cfg_smoke_test();
-    pci_cf_extract_test();
+    run_pci_tests();
 
     KLOG_VERBOSE("TEST", "Unit Tests Complete.\n");
     tests_run = true;
