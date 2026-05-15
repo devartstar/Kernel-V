@@ -237,26 +237,27 @@ void proc_cleanup_user(pcb_t *proc) {
                                  proc->user_stack_size);
     }
 
-    /* No need to free kernel half of PDE */
-    /* Free the user half PDE, skip PDE[0] (kernel identity map) */
+    /* No need to free lower kernel half of PDE */
+    /* Free the higher half PDE, skip PDE[0] (kernel identity map) */
     for (uint32_t i = 1; i < KERNEL_PDE_START; i++) {
+        /* Get the physical address of the page directory entry */
         uint32_t pde = proc->page_directory_virt[i];
         if (pde & PAGE_PRESENT) {
-            uint32_t *pt_virt = (uint32_t *)(pde & 0xFFFFF000);
-            pmm_free_frame(pt_virt);
+            phys_addr_t pt_phys = (phys_addr_t)(pde & 0xFFFFF000);
+            pmm_free_frame(pt_phys);
             proc->page_directory_virt[i] = 0;
         }
     }
 
     /* Free the Page Dir frame */
-    pmm_free_frame(proc->page_directory_virt);
+    pmm_free_frame(proc->page_directory_phys);
     proc->page_directory_virt = NULL;
     proc->page_directory_phys = 0;
 
     /* Free kernel stack */
     if (proc->kernel_stack_base && proc->kernel_stack_size) {
         uint32_t pages = proc->kernel_stack_size / PAGE_SIZE;
-        uint8_t *page = proc->kernel_stack_base;
+        uint8_t page = (phys_addr_t)proc->kernel_stack_base;
 
         for (uint32_t i = 0; i < pages; i++) {
             pmm_free_frame(page + i * PAGE_SIZE);
@@ -331,12 +332,15 @@ pcb_t *proc_create(void (*entry)(void *), void *arg, const char *name) {
         proc_free(proc);
         return NULL;
     }
-    proc->kernel_stack_base = kernel_stack_block;
+
+    /* Identity map between kernel physical and virtual address space */
+    proc->kernel_stack_base =
+        (uint8_t *)phys_to_virt_identity(kernel_stack_block);
     proc->kernel_stack_size = KERNEL_STACK_SIZE;
     proc->kernel_stack_top = proc->kernel_stack_base + proc->kernel_stack_size;
 
     /* since stack grows downwards, stack pointer pointing to top of stack */
-    uint32_t *stack_top = (uint32_t *)proc->kernel_stack_top;
+    virt_addr_t *stack_top = (virt_addr_t *)proc->kernel_stack_top;
 
     /*
      Update the stack to call the thread_entry_wrapper (entry, arg)
@@ -348,12 +352,12 @@ pcb_t *proc_create(void (*entry)(void *), void *arg, const char *name) {
     /* push a fake return address (will never be used) */
     *(--stack_top) = 0;
     /* push the entry function to be used by thread_entry_wrapper */
-    *(--stack_top) = (uint32_t)entry;
+    *(--stack_top) = (virt_addr_t)entry;
     /* push the argument pointer */
-    *(--stack_top) = (uint32_t)arg;
+    *(--stack_top) = (virt_addr_t)arg;
 
-    proc->context.esp = (uint32_t)(uintptr_t)stack_top;
-    proc->context.eip = (uint32_t)(uintptr_t)thread_entry_wrapper;
+    proc->context.esp = (virt_addr_t)(uintptr_t)stack_top;
+    proc->context.eip = (virt_addr_t)(uintptr_t)thread_entry_wrapper;
     proc->context.ebp = 0;
 
     // Initialize EFLAGS with interrupts enabled

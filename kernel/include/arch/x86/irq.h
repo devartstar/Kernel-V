@@ -3,6 +3,7 @@
 
 #include "arch/x86/interrupt.h"
 #include "arch/x86/pic.h"
+#include "lib/printk.h"
 #include <stdint.h>
 
 #define IRQ_LINE_COUNT 16

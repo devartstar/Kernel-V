@@ -59,7 +59,7 @@ uint8_t irq_unregister_handle(uint8_t irq_line) {
     irq_action[irq_line].handler = NULL;
     irq_action[irq_line].ctx = NULL;
     irq_action[irq_line].name = NULL;
-    irq_action[irq_line].registered = NULL;
+    irq_action[irq_line].registered = 0;
 
     irq_restore(flags);
     return 1;

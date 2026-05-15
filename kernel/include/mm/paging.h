@@ -15,8 +15,8 @@
 
 #define PD_INDEX(x) (((x) >> 22) & 0x3FF)
 #define PT_INDEX(x) (((x) >> 12) & 0x3FF)
-#define PAGE_ALIGN(x) ((x)&0xFFFFFF000)
-#define PAGE_ALIGN_DOWN(x) ((x)&0xFFFFF000)
+#define PAGE_ALIGN(x) ((x) & 0xFFFFFF000)
+#define PAGE_ALIGN_DOWN(x) ((x) & 0xFFFFF000)
 #define PAGE_ALIGN_UP(x) (((x) + 0xFFF) & 0xFFFFF000)
 
 #define KERNEL_BASE_VIRT 0xC0000000
@@ -25,11 +25,21 @@
 extern uint32_t kernel_page_directory[PAGE_ENTRIES];
 extern uint32_t first_page_table[PAGE_ENTRIES];
 
-extern uint32_t *kernel_page_directory_virt;
-extern uint32_t kernel_page_directory_phys;
+extern virt_addr_t *kernel_page_directory_virt;
+extern phys_addr_t kernel_page_directory_phys;
 
 void paging_init();
 
+/*
+ * 31........12 11..9 8 7 6 5 4 3 2 1 0
+ * +------------+----+-+-+-+-+-+-+-+-+-+-+
+ * | phys base  | AVL|G|P|D|A|C|W|U|R|P|
+ * +------------+----+-+-+-+-+-+-+-+-+-+-+
+ *
+ * phys base = 4 KiB-aligned physical frame/page-table address
+ * AVL       = OS-reserved software bits
+ * low bits  = x86 paging flags
+ */
 void paging_map_page_in_pd(uint32_t *pd_virt, uint32_t virt_addr,
                            uint32_t phys_addr, uint32_t flags);
 

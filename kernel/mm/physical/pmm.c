@@ -3,6 +3,7 @@
 #include "lib/printk.h"
 #include "mm/memory_map.h"
 #include "mm/paging.h"
+#include "core/panik.h"
 
 static uint8_t *frame_bitmap = NULL;
 static uint32_t max_frame_idx = 0;
