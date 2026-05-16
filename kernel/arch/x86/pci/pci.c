@@ -49,7 +49,7 @@ pci_probe_result_t pci_probe_function(pci_bdf_t bdf,
 
 pci_probe_result_t pci_probe_slot(pci_bus_t bus, pci_device_t device,
                                   pci_probe_visitor_fn visitor, void *ctx,
-                                  uint8_t *fn_found) {
+                                  uint32_t *fn_found) {
     pci_bdf_t bdf0;
     pci_function_identity_t id0;
     pci_probe_result_t res;
@@ -88,8 +88,8 @@ pci_probe_result_t pci_probe_slot(pci_bus_t bus, pci_device_t device,
     /* Read the bit 7 of Header type of the function 0 */
     if (!pci_cfg_header_type_is_multifunctional(id0.header_type)) {
         /* If slot is not multifunctional */
-        KLOG_ERROR("PCI", "Completed probing slot at bus:device %02x:%02x\n",
-                   bdf0.bus, bdf0.device);
+        KLOG_VERBOSE("PCI", "Completed probing slot at bus:device %02x:%02x\n",
+                     bdf0.bus, bdf0.device);
         return PCI_PROBE_SUCCESS;
     }
 
@@ -111,6 +111,14 @@ pci_probe_result_t pci_probe_slot(pci_bus_t bus, pci_device_t device,
             return PCI_PROBE_ERROR;
         }
 
+        /* Some functions in the slot might be absent, keep scanning. */
+        if (res == PCI_PROBE_ABSENT) {
+            KLOG_ERROR(
+                "PCI",
+                "function at bus:device %02x:%02x.%u absent. Keep scanning.\n",
+                bdf.bus, bdf.device, fn);
+        }
+
         if (res == PCI_PROBE_SUCCESS) {
             KLOG_VERBOSE("PCI",
                          "Suvvessfully probed Function %u at slot bus:device "
@@ -118,6 +126,46 @@ pci_probe_result_t pci_probe_slot(pci_bus_t bus, pci_device_t device,
                          bdf.function, bdf.bus, bdf.device);
             visitor(&id, ctx);
             (*fn_found)++;
+        }
+    }
+
+    return PCI_PROBE_SUCCESS;
+}
+
+pci_probe_result_t pci_scan_bus0(pci_scan_visitor_fn visitor, void *ctx,
+                                 uint32_t *fn_found) {
+    if (!visitor || !fn_found) {
+        KLOG_ERROR("PCI", "Invalid callback or pointer to function counter.\n");
+        return PCI_PROBE_ERROR;
+    }
+
+    (*fn_found) = 0;
+
+    for (pci_device_t dev = 0; dev < PCI_DEVICES_PER_BUS; dev++) {
+        uint32_t fn_count_in_slot = 0;
+        pci_probe_result_t res;
+
+        res = pci_probe_slot(0x00, dev, visitor, ctx, &fn_count_in_slot);
+
+        if (res == PCI_PROBE_ERROR) {
+            KLOG_ERROR("PCI", "probing slot for bus:device 00:%02x failed.\n",
+                       dev);
+            return PCI_PROBE_ERROR;
+        }
+
+        /* Some device slot in the bus might be absent, keep scanning. */
+        if (res == PCI_PROBE_ABSENT) {
+            KLOG_ERROR("PCI",
+                       "slot at bus:device 00:%02x absent. Keep scanning.\n",
+                       dev);
+        }
+
+        if (res == PCI_PROBE_SUCCESS) {
+            (*fn_found) += fn_count_in_slot;
+            KLOG_VERBOSE(
+                "PCI",
+                "probing slot for bus:device 00:%02x success. slot count %u.\n",
+                dev, fn_count_in_slot);
         }
     }
 

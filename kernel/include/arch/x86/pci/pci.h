@@ -36,6 +36,10 @@ typedef enum pci_probe_result {
     PCI_PROBE_SUCCESS = 1,
 } pci_probe_result_t;
 
+/* Callback for bus scaner on finding a device(slot) */
+typedef void (*pci_scan_visitor_fn)(const pci_function_identity_t *id,
+                                    void *ctx);
+
 /* Callback from slot scanner on fiding a funtion */
 typedef void (*pci_probe_visitor_fn)(const pci_function_identity_t *id,
                                      void *ctx);
@@ -62,16 +66,28 @@ pci_probe_result_t pci_probe_function(pci_bdf_t bdf,
                                       pci_function_identity_t *out);
 
 /**
- * pci_probe_slot - scans for pci device slot for all the dunction
+ * pci_probe_slot - scans for pci device slot for all the function
  * @bus in which the device exists for scanning
  * @device to scan for fnctions
  * @visitor - callback routine whenever a function is found in the slot.
  * @ctx - info to pass to the callback on finding a function.
+ * @fn_found - updates with the number of functions found.
  *
- * @return - the number of functions identified int he slot.
+ * @return - status if the of slot scan. -1: absent, 0: error, 1: success.
  */
 pci_probe_result_t pci_probe_slot(pci_bus_t bus, pci_device_t device,
                                   pci_probe_visitor_fn visitor, void *ctx,
-                                  uint8_t *fn_found);
+                                  uint32_t *fn_found);
+
+/**
+ * pci_scan_bus0 - a bus wise scanner for all device slots
+ * @visitor - callback routine whenever we discover a slot
+ * @ctx - info to pass to the callback
+ * @fn_found - count of the number of fuctions under a bus.
+ *
+ * @return - status of the bus0 scan. -1: absent, 0: error, 1: success.
+ */
+pci_probe_result_t pci_scan_bus0(pci_scan_visitor_fn visitor, void *ctx,
+                                 uint32_t *fn_found);
 
 #endif PCI_H

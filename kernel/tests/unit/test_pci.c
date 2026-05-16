@@ -129,10 +129,11 @@ uint8_t pci_probe_function_test() {
 }
 
 typedef struct pci_slot_test_ctx {
-    uint8_t count;
+    uint32_t count;
 } pci_slot_test_ctx_t;
 
-void pci_slot_test_visitor(const pci_function_identity_t *id, void *ctx) {
+static void pci_slot_test_visitor(const pci_function_identity_t *id,
+                                  void *ctx) {
     pci_slot_test_ctx_t *test_ctx = (pci_slot_test_ctx_t *)ctx;
     test_ctx->count++;
 
@@ -147,7 +148,7 @@ void pci_slot_test_visitor(const pci_function_identity_t *id, void *ctx) {
 uint8_t pci_probe_slot_test() {
     pci_slot_test_ctx_t ctx = {.count = 0};
     pci_probe_result_t res;
-    uint8_t fn_count = 0;
+    uint32_t fn_count = 0;
 
     res = pci_probe_slot(0x00, 0x00, pci_slot_test_visitor, &ctx, &fn_count);
 
@@ -178,5 +179,56 @@ uint8_t pci_probe_slot_test() {
     KLOG_INFO("PCI_TEST",
               "probe_slot_test function count matches: probe %u, context %u.\n",
               fn_count, ctx.count);
+    return 1;
+}
+
+typedef struct pci_bus0_test_ctx {
+    uint32_t callback_count;
+} pci_bus0_test_ctx_t;
+
+static void pci_bus0_test_visitor(const pci_function_identity_t *id,
+                                  void *ctx) {
+    pci_bus0_test_ctx_t *test_ctx = (pci_bus0_test_ctx_t *)ctx;
+    test_ctx->callback_count++;
+
+    KLOG_INFO(
+        "PCI_TEST",
+        "bus0 visitor %02x:%02x.%u vendor=%04x device=%04x class=%02x "
+        "subclass=%02x progif=%02x rev=%02x hdr=%02x multi=%u layout=%02x\n",
+        id->bdf.bus, id->bdf.device, id->bdf.function, id->vendor_id,
+        id->device_id, id->class_code, id->subclass, id->prog_if,
+        id->revision_id, id->header_type,
+        pci_cfg_header_type_is_multifunctional(id->header_type),
+        pci_cfg_header_type_layout(id->header_type));
+}
+
+uint8_t pci_scan_bus0_test() {
+    pci_bus0_test_ctx_t ctx = {.callback_count = 0};
+    pci_probe_result_t res;
+    uint32_t total_found;
+
+    res = pci_scan_bus0(pci_bus0_test_visitor, &ctx, &total_found);
+
+    if (res == PCI_PROBE_ERROR) {
+        KLOG_ERROR("PCI_TEST", "scan_bus0_test failed to scan bus 00. "
+                               "BUS SCANNING ERROR.\n");
+        return 0;
+    }
+
+    KLOG_INFO("PCI_TEST",
+              "scan_bus0_test 00 result SUCCESS, Next comparing counts.\n");
+
+    if (total_found != ctx.callback_count) {
+        KLOG_ERROR("PCI_TEST",
+                   "scan_bus0_test mismatch total function count in bus 00. "
+                   "probe: %u, context %u.\n",
+                   total_found, ctx.callback_count);
+        return 0;
+    }
+
+    KLOG_INFO("PCI_TEST",
+              "scan_bus0_test total function count in bus 00 matches: probe "
+              "%u, context %u.\n",
+              total_found, ctx.callback_count);
     return 1;
 }

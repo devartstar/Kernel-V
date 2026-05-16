@@ -9,6 +9,7 @@ uint8_t pci_cfg_extract_test(void);
 uint8_t pci_cfg_decode_test(void);
 uint8_t pci_probe_function_test(void);
 uint8_t pci_probe_slot_test(void);
+uint8_t pci_scan_bus0_test(void);
 
 static inline void run_pci_tests(void) {
     uint8_t failed_count = 0;
@@ -39,6 +40,12 @@ static inline void run_pci_tests(void) {
 
     if (pci_probe_slot_test()) {
         KLOG_INFO("TEST", "PCI Config probe slot test passed.\n");
+    } else {
+        failed_count++;
+    }
+
+    if (pci_scan_bus0_test()) {
+        KLOG_INFO("TEST", "PCI Config scan bus0 test passed.\n");
     } else {
         failed_count++;
     }
