@@ -56,7 +56,7 @@ uint8_t pci_cfg_extract_test() {
     return 1;
 }
 
-uint8_t pci_cfg_decode_test(void) {
+uint8_t pci_cfg_decode_test() {
     pci_bdf_t bdf = {.bus = 0x00, .device = 0x00, .function = 0x00};
 
     uint32_t id_dword = pci_cfg_read32(bdf, PCI_CFG_VENDOR_ID);
@@ -125,5 +125,58 @@ uint8_t pci_probe_function_test() {
               pci_cfg_header_type_is_multifunctional(id.header_type),
               pci_cfg_header_type_layout(id.header_type));
 
+    return 1;
+}
+
+typedef struct pci_slot_test_ctx {
+    uint8_t count;
+} pci_slot_test_ctx_t;
+
+void pci_slot_test_visitor(const pci_function_identity_t *id, void *ctx) {
+    pci_slot_test_ctx_t *test_ctx = (pci_slot_test_ctx_t *)ctx;
+    test_ctx->count++;
+
+    KLOG_VERBOSE("PCI_TEST",
+                 "slot visitor %02x:%02x.%u vendor=%04x device=%04x class=%02x "
+                 "subclass=%02x hdr=%02x multi=%u\n",
+                 id->bdf.bus, id->bdf.device, id->bdf.function, id->vendor_id,
+                 id->device_id, id->class_code, id->subclass, id->header_type,
+                 pci_cfg_header_type_is_multifunctional(id->header_type));
+}
+
+uint8_t pci_probe_slot_test() {
+    pci_slot_test_ctx_t ctx = {.count = 0};
+    pci_probe_result_t res;
+    uint8_t fn_count = 0;
+
+    res = pci_probe_slot(0x00, 0x00, pci_slot_test_visitor, &ctx, &fn_count);
+
+    if (res == PCI_PROBE_ABSENT) {
+        KLOG_ERROR(
+            "PCI_TEST",
+            "probe_slot_test failed to probe slot 00:00. SLOT ABSENT.\n");
+        return 0;
+    }
+
+    if (res == PCI_PROBE_ERROR) {
+        KLOG_ERROR("PCI_TEST", "probe_slot_test failed to probe slot 00:00. "
+                               "SLOT PROBING ERROR.\n");
+        return 0;
+    }
+
+    KLOG_INFO("PCI_TEST",
+              "probe_slot_test 00:00 result SUCCESS, Next comparing counts.\n");
+
+    if (fn_count != ctx.count) {
+        KLOG_ERROR("PCI_TEST",
+                   "probe_slot_test mismatch function count reported: probe "
+                   "%u, context %u.\n",
+                   fn_count, ctx.count);
+        return 0;
+    }
+
+    KLOG_INFO("PCI_TEST",
+              "probe_slot_test function count matches: probe %u, context %u.\n",
+              fn_count, ctx.count);
     return 1;
 }

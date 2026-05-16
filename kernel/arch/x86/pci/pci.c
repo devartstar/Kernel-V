@@ -44,5 +44,82 @@ pci_probe_result_t pci_probe_function(pci_bdf_t bdf,
     out->revision_id = pci_cfg_read8(bdf, PCI_CFG_REVISION_ID);
     out->header_type = pci_cfg_read8(bdf, PCI_CFG_HEADER_TYPE);
 
-    return PCI_PROBE_PRESENT;
+    return PCI_PROBE_SUCCESS;
+}
+
+pci_probe_result_t pci_probe_slot(pci_bus_t bus, pci_device_t device,
+                                  pci_probe_visitor_fn visitor, void *ctx,
+                                  uint8_t *fn_found) {
+    pci_bdf_t bdf0;
+    pci_function_identity_t id0;
+    pci_probe_result_t res;
+
+    /* Check if input device and callback routine is valid */
+    if (!is_device_valid(device) || !visitor || !fn_found) {
+        KLOG_ERROR("PCI", "Input device or callback routine is not valid.\n");
+        return PCI_PROBE_ERROR;
+    }
+
+    /* Initialize the caller owner function found count */
+    *fn_found = 0;
+
+    /* Probe function 0 in the slot bus:device */
+    bdf0.bus = bus;
+    bdf0.device = device;
+    bdf0.function = 0;
+    res = pci_probe_function(bdf0, &id0);
+    if (res == PCI_PROBE_ABSENT) {
+        KLOG_WARN("PCI", "Function 0 absent at slot bus:device %02x:%02x\n",
+                  bdf0.bus, bdf0.device);
+        return PCI_PROBE_ABSENT;
+    }
+
+    if (res == PCI_PROBE_ERROR) {
+        KLOG_ERROR("PCI",
+                   "Failed to probe function 0 at slot bus:device %02x:%02x\n",
+                   bdf0.bus, bdf0.device);
+        return PCI_PROBE_ERROR;
+    }
+
+    /* Successfully probed function 0 - trigger callback routine */
+    visitor(&id0, ctx);
+    (*fn_found)++;
+
+    /* Read the bit 7 of Header type of the function 0 */
+    if (!pci_cfg_header_type_is_multifunctional(id0.header_type)) {
+        /* If slot is not multifunctional */
+        KLOG_ERROR("PCI", "Completed probing slot at bus:device %02x:%02x\n",
+                   bdf0.bus, bdf0.device);
+        return PCI_PROBE_SUCCESS;
+    }
+
+    /* If bit 7 is set scan all functions 1-7 */
+    for (pci_function_t fn = 1; fn < PCI_FUNCTION_PER_SLOT; fn++) {
+        pci_bdf_t bdf;
+        pci_function_identity_t id;
+
+        bdf.bus = bus;
+        bdf.device = device;
+        bdf.function = fn;
+        res = pci_probe_function(bdf, &id);
+
+        if (res == PCI_PROBE_ERROR) {
+            KLOG_ERROR(
+                "PCI",
+                "Failed to probe function %u at slot bus:device %02x:%02x\n",
+                bdf.function, bdf.bus, bdf.device);
+            return PCI_PROBE_ERROR;
+        }
+
+        if (res == PCI_PROBE_SUCCESS) {
+            KLOG_VERBOSE("PCI",
+                         "Suvvessfully probed Function %u at slot bus:device "
+                         "%02x:%02x\n",
+                         bdf.function, bdf.bus, bdf.device);
+            visitor(&id, ctx);
+            (*fn_found)++;
+        }
+    }
+
+    return PCI_PROBE_SUCCESS;
 }
