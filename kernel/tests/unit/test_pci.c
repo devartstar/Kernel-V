@@ -280,3 +280,56 @@ uint8_t pci_registry_bus0_test() {
         test_reg.count);
     return 1;
 }
+
+typedef struct pci_registry_dump_ctx {
+    uint32_t seen;
+} pci_registry_dump_ctx_t;
+
+void pci_registry_dump_test_visitor(pci_function_record_t *record, void *ctx) {
+    /* structure the memory into type pci_registry_dump_ctx */
+    pci_registry_dump_ctx_t *count = (pci_registry_dump_ctx_t *)ctx;
+
+    /* check for valid pointer to record and it should be present and pointer to
+     * context should be valid */
+    if (!record || !record->present || !count) {
+        KLOG_ERROR("PCI_TEST", "invalid input params for callback.\n");
+        return;
+    }
+
+    count->seen++;
+}
+
+uint8_t pci_dump_registry_test() {
+    pci_registry_t test_reg;
+    pci_registry_dump_ctx_t test_ctx = {.seen = 0};
+
+    /* enumerate bus 0 to populate the registr structure */
+    if (!pci_enumerate_bus0_into_registry(&test_reg)) {
+        KLOG_ERROR("PCI_TEST",
+                   "dump_registry_test: enumeration into registry failed.\n");
+        return 0;
+    }
+
+    /* dump the registry structure */
+    pci_dump_registry(&test_reg);
+
+    /* count the total number of function registered/dumped */
+    pci_registry_foreach(&test_reg, pci_registry_dump_test_visitor, &test_ctx);
+
+    /* sanity check for the functions dumped by registry matches the resitry
+     * record */
+    if (test_ctx.seen != test_reg.count) {
+        KLOG_ERROR(
+            "PCI_TEST",
+            "dump_registry_test: iteration count mismatch seen=%u red=%u.\n",
+            test_ctx.seen, test_reg.count);
+        return 0;
+    }
+
+    KLOG_INFO("PCI_TEST",
+              "dump_registry_test: dump successful and iteration count (%u) "
+              "verified.\n",
+              test_reg.count);
+
+    return 1;
+}

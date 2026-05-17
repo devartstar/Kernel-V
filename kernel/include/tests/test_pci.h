@@ -3,6 +3,7 @@
 
 #include "arch/x86/pci/pci.h"
 #include "arch/x86/pci/pci_cfg.h"
+#include "arch/x86/pci/pci_registry.h"
 
 uint8_t pci_cfg_smoke_test(void);
 uint8_t pci_cfg_extract_test(void);
@@ -11,6 +12,7 @@ uint8_t pci_probe_function_test(void);
 uint8_t pci_probe_slot_test(void);
 uint8_t pci_scan_bus0_test(void);
 uint8_t pci_registry_bus0_test(void);
+uint8_t pci_dump_registry_test(void);
 
 static inline void run_pci_tests(void) {
     uint8_t failed_count = 0;
@@ -53,6 +55,12 @@ static inline void run_pci_tests(void) {
 
     if (pci_registry_bus0_test()) {
         KLOG_INFO("TEST", "PCI Config reister bus0 test passed.\n");
+    } else {
+        failed_count++;
+    }
+
+    if (pci_dump_registry_test()) {
+        KLOG_INFO("TEST", "PCI Dump reistery of bus0 test passed.\n");
     } else {
         failed_count++;
     }
