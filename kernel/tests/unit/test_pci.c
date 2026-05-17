@@ -232,3 +232,51 @@ uint8_t pci_scan_bus0_test() {
               total_found, ctx.callback_count);
     return 1;
 }
+
+uint8_t pci_registry_bus0_test() {
+    pci_registry_t test_reg;
+
+    if (!pci_enumerate_bus0_into_registry(&test_reg)) {
+        KLOG_ERROR("PCI_TEST",
+                   "registry_bus0_test: enumeration into registry failed.\n");
+        return 0;
+    }
+
+    if (test_reg.count == 0) {
+        KLOG_ERROR("PCI_TEST", "registry_bus0_test: registry count is 0 after "
+                               "bus0 enumeration.\n");
+        return 0;
+    }
+
+    /* sanity check: iterate through all the registered functions. */
+    for (uint32_t i = 0; i < test_reg.count; i++) {
+        /* it entry added but not marked present. */
+        if (!test_reg.entries[i].present) {
+            KLOG_ERROR("PCI_TEST",
+                       "registry_bus0_test: entry %u is not marked present.\n",
+                       i);
+            return 0;
+        }
+
+        /* check for duplicate entries of a function identity. */
+        for (uint32_t j = i + 1; j < test_reg.count; j++) {
+            if (test_reg.entries[j].present &&
+                pci_bdf_is_equal(test_reg.entries[i].id.bdf,
+                                 test_reg.entries[j].id.bdf)) {
+                KLOG_ERROR("PCI_TEST",
+                           "registry_bus0_test: duplicate BDF %02x:%02x.%u "
+                           "at entries %u and %u.\n",
+                           test_reg.entries[i].id.bdf.bus,
+                           test_reg.entries[i].id.bdf.device,
+                           test_reg.entries[i].id.bdf.function, i, j);
+                return 0;
+            }
+        }
+    }
+
+    KLOG_INFO(
+        "PCI_TEST",
+        "registry_bus0_test: registry count=%u and BDF uniqueness verified.\n",
+        test_reg.count);
+    return 1;
+}
