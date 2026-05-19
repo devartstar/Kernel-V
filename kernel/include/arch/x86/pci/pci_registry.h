@@ -1,3 +1,6 @@
+#ifndef PCI_REGISTRY_H
+#define PCI_REGISTRY_H
+
 #include "arch/x86/pci/pci.h"
 #include "arch/x86/pci/pci_cfg.h"
 
@@ -59,7 +62,8 @@ uint8_t pci_registry_add(pci_registry_t *reg,
  * @id - pointer to the function identity to add to the registry context.
  * @ctx - pointer to the registry context.
  */
-static void pci_registry_fill_visitor(pci_function_identity_t *id, void *ctx) {
+static void pci_registry_fill_visitor(const pci_function_identity_t *id,
+                                      void *ctx) {
     /* organize the memory of the context from void into type
      * pci_registry_fill_ctx_t */
     pci_registry_fill_ctx_t *fill_ctx = (pci_registry_fill_ctx_t *)ctx;
@@ -99,3 +103,13 @@ uint8_t pci_enumerate_bus0_into_registry(pci_registry_t *reg);
  */
 void pci_registry_foreach(const pci_registry_t *reg,
                           pci_registry_visitor_fn visitor, void *ctx);
+
+/**
+ * pci_registry_find_bdf - Given an endpoint helper to find the registry entry
+ * reg - pointer to the registry structure.
+ * bdf - endpoint to search in the registry
+ */
+const pci_function_record_t *pci_registry_find_bdf(const pci_registry_t *reg,
+                                                   pci_bdf_t bdf);
+
+#endif PCI_REGISTRY_H

@@ -285,7 +285,8 @@ typedef struct pci_registry_dump_ctx {
     uint32_t seen;
 } pci_registry_dump_ctx_t;
 
-void pci_registry_dump_test_visitor(pci_function_record_t *record, void *ctx) {
+void pci_registry_dump_test_visitor(const pci_function_record_t *record,
+                                    void *ctx) {
     /* structure the memory into type pci_registry_dump_ctx */
     pci_registry_dump_ctx_t *count = (pci_registry_dump_ctx_t *)ctx;
 
@@ -311,7 +312,8 @@ uint8_t pci_dump_registry_test() {
     }
 
     /* dump the registry structure */
-    pci_dump_registry(&test_reg);
+    const pci_registry_t *test_reg_cpy = &test_reg;
+    pci_dump_registry(test_reg_cpy);
 
     /* count the total number of function registered/dumped */
     pci_registry_foreach(&test_reg, pci_registry_dump_test_visitor, &test_ctx);
@@ -330,6 +332,44 @@ uint8_t pci_dump_registry_test() {
               "dump_registry_test: dump successful and iteration count (%u) "
               "verified.\n",
               test_reg.count);
+
+    return 1;
+}
+
+uint8_t pci_basic_validation() {
+    pci_registry_t *test_reg;
+
+    /* add all the function endpoints to registry */
+    uint8_t success = pci_enumerate_bus0_into_registry(test_reg);
+    if (!success || (success && test_reg->count == 0)) {
+        KLOG_ERROR("PCI_TEST", "basic_validation: pci registration of "
+                               "functions under bus0 failed.\n");
+        return 0;
+    }
+
+    /* find a bdf in the registry entry */
+    pci_bdf_t bdf_to_find = {.bus = 0x00, .device = 0x00, .function = 0x00};
+    pci_function_record_t *rec;
+    rec = pci_registry_find_bdf(test_reg, bdf_to_find);
+    if (!rec) {
+        KLOG_ERROR(
+            "PCI_TEST",
+            "basic_validation: find utility provided with invalid record.\n");
+        return 0;
+    }
+
+    if (rec->id.vendor_id == PCI_INVALID_VENDOR_ID) {
+        KLOG_ERROR("PCI_TEST",
+                   "basic_valiation: found record at %0x2:%0x2.%u with invalid "
+                   "vendor id.\n",
+                   bdf_to_find.bus, bdf_to_find.device, bdf_to_find.function);
+        return 0;
+    }
+
+    /* log the registry record found */
+    pci_dump_registry(test_reg);
+    KLOG_INFO("PCI_TEST",
+              "basic_validation: successfully dumped the registry list.\n");
 
     return 1;
 }

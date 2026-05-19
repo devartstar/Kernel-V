@@ -8,7 +8,7 @@
  * @rec - registry record to dump.
  * @ctx - constext passed to the callback.
  */
-void pci_dump_record_visitor(pci_function_record_t *record, void *ctx);
+void pci_dump_record_visitor(const pci_function_record_t *record, void *ctx);
 
 /**
  * pci_dump_registry - helper routine to dump all the function registered in the

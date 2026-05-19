@@ -118,3 +118,30 @@ void pci_registry_foreach(const pci_registry_t *reg,
         }
     }
 }
+
+const pci_function_record_t *pci_registry_find_bdf(const pci_registry_t *reg,
+                                                   pci_bdf_t bdf) {
+    /* check if the pointer to the registry is valid */
+    if (!reg) {
+        KLOG_ERROR("PCI", "invalid registry pointer to find function.\n");
+    }
+
+    /* loop through all the entries of the registry to find function */
+    for (uint32_t i = 0; i < reg->count; i++) {
+        const pci_function_record_t *rec = &reg->entries[i];
+
+        if (!rec->present) {
+            continue;
+        }
+
+        if (pci_bdf_is_equal(rec->id.bdf, bdf)) {
+            KLOG_VERBOSE("PCI", "maching record found for bdf %02x:%02x.%u.\n",
+                         bdf.bus, bdf.device, bdf.function);
+            return rec;
+        }
+    }
+
+    KLOG_ERROR("PCI", "No matching record found for bdf %02x:%02x.%u.\n",
+               bdf.bus, bdf.device, bdf.function);
+    return NULL;
+}

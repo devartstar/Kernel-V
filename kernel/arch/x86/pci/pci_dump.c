@@ -1,7 +1,7 @@
 #include "arch/x86/pci/pci_dump.h"
 #include "lib/printk.h"
 
-void pci_dump_record_visitor(pci_function_record_t *record, void *ctx) {
+void pci_dump_record_visitor(const pci_function_record_t *record, void *ctx) {
     /* context unused */
     (void)ctx;
 
