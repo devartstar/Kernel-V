@@ -118,4 +118,4 @@ void pci_registry_foreach(const pci_registry_t *reg,
 const pci_function_record_t *pci_registry_find_bdf(const pci_registry_t *reg,
                                                    pci_bdf_t bdf);
 
-#endif PCI_REGISTRY_H
+#endif /* PCI_REGISTRY_H */

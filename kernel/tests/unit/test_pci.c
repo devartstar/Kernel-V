@@ -373,3 +373,42 @@ uint8_t pci_basic_validation() {
 
     return 1;
 }
+
+uint8_t pci_type0_raw_bars_test() {
+    pci_registry_t test_reg;
+    pci_bdf_t bdf_to_find = {.bus = 0x00, .device = 0x00, .function = 0x00};
+    const pci_function_record_t *test_record0;
+    pci_function_record_t *test_record;
+
+    /* enumerate bus0 and register the records */
+    if (!pci_enumerate_bus0_into_registry(&test_reg)) {
+        KLOG_ERROR("PCI_TEST", "type0_raw_bars_test: failed to enumrate bus 0 "
+                               "and add records to registry.\n");
+        return 0;
+    }
+
+    /* find a record from the registry using bdf */
+    test_record0 = pci_registry_find_bdf(&test_reg, bdf_to_find);
+    test_record = (pci_function_record_t *)test_record0;
+
+    /* read BAR raw bytes for that record */
+    if (pci_read_type0_bars_raw(test_record) != PCI_BAR_RAW_READ_OK) {
+        KLOG_ERROR("PCI_TEST",
+                  "type0_raw_bars_test: failed or skipped reading BAR raw "
+                  "bytes for %02x:%02x.%u.\n",
+                  bdf_to_find.bus, bdf_to_find.device, bdf_to_find.function);
+        return 0;
+    }
+
+    /* bump the BAR raw bytes read. */
+    KLOG_VERBOSE("PCI_TEST",
+                 "type0_raw_bars_test: ear BAR bytes for %02x:%02x.%u.\n",
+                 bdf_to_find.bus, bdf_to_find.device, bdf_to_find.function);
+    for (uint8_t i = 0; i < PCI_TYPE0_BAR_COUNT; i++) {
+        KLOG_VERBOSE("PCI_TEST", "BAR[%u]: raw_low:%08x, raw_high:%08x.\n",
+                     test_record->bars[i].index, test_record->bars[i].raw_lo,
+                     test_record->bars[i].raw_hi);
+    }
+
+    return 1;
+}

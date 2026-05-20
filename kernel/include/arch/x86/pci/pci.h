@@ -99,4 +99,4 @@ pci_probe_result_t pci_probe_slot(pci_bus_t bus, pci_device_t device,
 pci_probe_result_t pci_scan_bus0(pci_scan_visitor_fn visitor, void *ctx,
                                  uint32_t *fn_found);
 
-#endif PCI_H
+#endif /* PCI_H */

@@ -206,4 +206,4 @@ static inline uint8_t pci_dword_byte2(uint32_t value) {
 static inline uint8_t pci_dword_byte3(uint32_t value) {
     return (uint8_t)((value >> 24) & 0xFFu);
 }
-#endif PCI_CFG_H
+#endif /* PCI_CFG_H */
