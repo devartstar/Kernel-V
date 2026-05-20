@@ -42,7 +42,7 @@ LoadKernel:
     ; --- Read 2: Load next sectors to 0x1FE0:0x0000 (phys 0x1FE00) ---
     mov si, ReadPacket
     mov word[si], 0x10
-    mov word[si+2], 0x50            ; 80 more sectors = 320KB (total 175 = ~87KB headroom)
+    mov word[si+2], 0x7F            ; 80 more sectors = 320KB (total 175 = ~87KB headroom)
     mov word[si+4], 0x00            ; Offset 0x0000
     mov word[si+6], 0x1FE0          ; Segment 0x1FE0 -> phys 0x1FE00 (contiguous)
     mov dword[si+8], 0x88           ; LBA = 9 + 127 = 136 (0x88)

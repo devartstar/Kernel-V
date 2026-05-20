@@ -337,11 +337,11 @@ uint8_t pci_dump_registry_test() {
 }
 
 uint8_t pci_basic_validation() {
-    pci_registry_t *test_reg;
+    pci_registry_t test_reg;
 
     /* add all the function endpoints to registry */
-    uint8_t success = pci_enumerate_bus0_into_registry(test_reg);
-    if (!success || (success && test_reg->count == 0)) {
+    uint8_t success = pci_enumerate_bus0_into_registry(&test_reg);
+    if (!success || (success && test_reg.count == 0)) {
         KLOG_ERROR("PCI_TEST", "basic_validation: pci registration of "
                                "functions under bus0 failed.\n");
         return 0;
@@ -350,7 +350,7 @@ uint8_t pci_basic_validation() {
     /* find a bdf in the registry entry */
     pci_bdf_t bdf_to_find = {.bus = 0x00, .device = 0x00, .function = 0x00};
     pci_function_record_t *rec;
-    rec = pci_registry_find_bdf(test_reg, bdf_to_find);
+    rec = pci_registry_find_bdf(&test_reg, bdf_to_find);
     if (!rec) {
         KLOG_ERROR(
             "PCI_TEST",
@@ -367,7 +367,7 @@ uint8_t pci_basic_validation() {
     }
 
     /* log the registry record found */
-    pci_dump_registry(test_reg);
+    pci_dump_registry(&test_reg);
     KLOG_INFO("PCI_TEST",
               "basic_validation: successfully dumped the registry list.\n");
 
