@@ -2,15 +2,21 @@
 #define PCI_REGISTRY_H
 
 #include "arch/x86/pci/pci.h"
+#include "arch/x86/pci/pci_bar.h"
 #include "arch/x86/pci/pci_cfg.h"
 
 /**
  * id - indentity information for a function entry
  * present - reduntant info is function is present
+ * bars - array of information for each bar
+ * bars_valid - if the bars register has valid info then 1 else 0
  */
 typedef struct pci_function_record {
     pci_function_identity_t id;
     uint8_t present;
+
+    pci_bar_info_t bars[PCI_TYPE0_BAR_COUNT];
+    uint8_t bars_valid;
 } pci_function_record_t;
 
 /**

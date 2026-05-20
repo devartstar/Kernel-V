@@ -50,6 +50,14 @@ uint8_t pci_registry_add(pci_registry_t *reg,
     reg->entries[reg->count].id = *id;
     reg->entries[reg->count].present = 1;
     reg->count++;
+
+    /* initialize all the bars for the function id */
+    for (uint8_t i = 0; i < PCI_TYPE0_BAR_COUNT; i++) {
+        pci_bar_info_init(&reg->entries[reg->count].bars[i], i);
+    }
+    /* mark BAR valid as 0 since BAR info is just initialized and not updated */
+    reg->entries[reg->count].bars_valid = 0;
+
     return 1;
 }
 
