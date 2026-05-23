@@ -4,6 +4,7 @@
 #include "arch/x86/pci/pci.h"
 #include "arch/x86/pci/pci_bar.h"
 #include "arch/x86/pci/pci_cfg.h"
+#include "arch/x86/pci/pci_cmd.h"
 #include "arch/x86/pci/pci_dump.h"
 #include "arch/x86/pci/pci_registry.h"
 
@@ -17,6 +18,7 @@ uint8_t pci_registry_bus0_test(void);
 uint8_t pci_dump_registry_test(void);
 uint8_t pci_basic_validation(void);
 uint8_t pci_type0_raw_bars_test(void);
+uint8_t pci_command_rw_test(void);
 
 static inline void run_pci_tests(void) {
     uint8_t failed_count = 0;
@@ -76,6 +78,12 @@ static inline void run_pci_tests(void) {
     }
 
     if (pci_type0_raw_bars_test()) {
+        KLOG_INFO("TEST", "PCI RAW BAR reads test passed.\n");
+    } else {
+        failed_count++;
+    }
+
+    if (pci_command_rw_test()) {
         KLOG_INFO("TEST", "PCI RAW BAR reads test passed.\n");
     } else {
         failed_count++;

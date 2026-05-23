@@ -181,6 +181,68 @@ static inline uint8_t pci_cfg_read8(pci_bdf_t bdf, uint8_t reg_off) {
     return (uint16_t)((value >> shift) & 0xFF);
 }
 
+/* PCI Config Space Write Utilities */
+
+/**
+ * pci_cfg_write32 - utility to write 32 bits value at a registry offset
+ *
+ * @bdf - endpoint to write the value
+ * @reg_offset - offset in the config space to write
+ * @value - value to write at the offset
+ */
+static inline void pci_cfg_write32(pci_bdf_t bdf, uint8_t reg_off,
+                                   uint32_t value) {
+    uint32_t addr;
+
+    /* verify if the bdf endpoint is valid */
+    if (!is_bdf_valid(bdf)) {
+        KLOG_ERROR("PCI", "bdf endpoint is invalid.\n");
+        return;
+    }
+
+    /* build up the address to write command value */
+    addr = pci_cfg_addr_make(bdf, reg_off);
+
+    /* write to the command bits */
+    outl(PCI_CFG_ADDR_PORT, addr);
+    outl(PCI_CFG_DATA_PORT, value);
+}
+
+/**
+ * pci_cfg_write16 - utility to write 16 bits value at a registry offset
+ *
+ * @bdf - endpoint to write the value
+ * @reg_offset - offset in the config space to write
+ * @value - value to write at the offset
+ */
+static inline void pci_cfg_write16(pci_bdf_t bdf, uint8_t reg_offset,
+                                   uint16_t value) {
+    uint32_t dword;
+    uint8_t shift;
+
+    /* check registry ofset alignment */
+
+    if (reg_offset & 0x1) {
+        KLOG_ERROR(
+            "PCI",
+            "Incorrect alignment of config space offset (%0x8) to read16.\n",
+            reg_offset);
+        return;
+    }
+
+    /* since we only write at 32 bit granularity, ready and update the correct
+     * 16 bits */
+    dword = pci_cfg_read32(bdf, reg_offset);
+    shift = (uint8_t)((reg_offset & 0x2) * 8);
+
+    /* zero out the correct 16 bits before writing */
+    dword &= ~(((uint32_t)0xFFFF << shift));
+    /* update the correct 16 bits */
+    dword |= ((uint32_t)value << shift);
+
+    pci_cfg_write32(bdf, reg_offset, dword);
+}
+
 /* PCI Config Space Field Extractor */
 
 static inline uint16_t pci_dword_lo16(uint32_t value) {

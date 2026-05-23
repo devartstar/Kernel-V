@@ -405,3 +405,46 @@ uint8_t pci_type0_raw_bars_test() {
 
     return 1;
 }
+
+uint8_t pci_command_rw_test() {
+    pci_registry_t test_reg;
+    pci_bdf_t bdf = {.bus = 0x00, .device = 0x03, .function = 0x00};
+    const pci_function_record_t *test_rec;
+    uint16_t before, after;
+
+    /* enumerate bus 0 and update into its registry contents */
+    if (!pci_enumerate_bus0_into_registry(&test_reg)) {
+        KLOG_ERROR("PCI_TEST", "pci_command_rw_test: enumeration failed.\n");
+        return 0;
+    }
+
+    /* find the concerned bdf endpoint from the registry */
+    if (!pci_registry_find_bdf(&test_reg, bdf)) {
+        KLOG_ERROR("PCI_TEST",
+                   "pci_command_rw_test: target %02x:%02x.%u not found.\n",
+                   bdf.bus, bdf.device, bdf.function);
+        return 0;
+    }
+
+    before = pci_read_command(bdf);
+    pci_update_cmd_bits(bdf, PCI_CMD_BUS_MASTER, 0);
+    after = pci_read_command(bdf);
+
+    KLOG_INFO(
+        "PCI_TEST",
+        "pci_command_rw_test %02x:%02x.%u command before=%04x after=%04x\n",
+        bdf.bus, bdf.device, bdf.function, before, after);
+
+    /* check if the bits of bus master is updated */
+    if (!(after & PCI_CMD_BUS_MASTER)) {
+        KLOG_ERROR(
+            "PCI_TEST",
+            "pci_command_rw_test: bus master bit not set after update.\n");
+        return 0;
+    }
+
+    /* restore for test cleanup */
+    pci_write_command(bdf, before);
+
+    return 1;
+}
