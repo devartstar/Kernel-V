@@ -43,7 +43,7 @@
 
 #define PCI_TYPE0_BAR_COUNT 6
 
-/* List of PCI BAR register offsets */
+/* List of PCI BAR register byte offsets */
 #define PCI_CFG_BAR0 0x10u
 #define PCI_CFG_BAR1 0x14u
 #define PCI_CFG_BAR2 0x18u
@@ -133,7 +133,35 @@ static inline uint8_t pci_header_layout_is_type0(uint8_t header) {
     return pci_cfg_header_type_layout(header) == 0x00u;
 }
 
+/* === PCI BAR HELPERS START === */
+
+static inline uint8_t pci_bar_is_io(uint32_t raw_lo) {
+    return (raw_lo & PCI_BAR_KIND_IO) != 0;
+}
+
+static inline uint8_t pci_bar_is_mem64(uint32_t raw_lo) {
+    return (raw_lo & PCI_BAR_MEM_TYPE_MASK) == PCI_BAR_KIND_MEM64;
+}
+
+static inline uint8_t pci_bar_is_mem32(uint32_t raw_lo) {
+    return (raw_lo & PCI_BAR_MEM_TYPE_MASK) == PCI_BAR_KIND_MEM32;
+}
+
+static inline pci_bar_mem_is_prefetchable(uint32_t raw_lo) {
+    return (raw_lo & PCI_BAR_MEM_PREFETCHABLE);
+}
+
+/* === PCI BAR HELPERS END === */
+
 struct pci_function_record;
+
+/**
+ * pci_decode_type0_bars: given a type0 endpoint, decode and assign correct
+ * values to the BARs depending upon their type.
+ *
+ * record - type0 endpoint whose BARs we need to decode.
+ */
+void pci_decode_type0_bars(struct pci_function_record *record);
 
 pci_bar_raw_read_result_t
 pci_read_type0_bars_raw(struct pci_function_record *record);

@@ -43,4 +43,31 @@ static const char *pci_class_name(uint8_t class_code, uint8_t subclass) {
         return "Unknown";
     }
 }
+
+/**
+ * pci_bar_kind_name - convert enum to string for bar type.
+ */
+static const char *pci_bar_kind_name(pci_bar_kind_t kind) {
+    switch (kind) {
+    case PCI_BAR_KIND_IO:
+        return "io";
+    case PCI_BAR_KIND_MEM32:
+        return "mem32";
+    case PCI_BAR_KIND_MEM64:
+        return "mem64";
+    case PCI_BAR_KIND_UNUSED:
+        return "unused";
+    default:
+        return "unknown";
+    }
+}
+
+/**
+ * pci_dump_type0_bars - helper routine to dump all the bars for the type0
+ * endpoint
+ *
+ * @record - pointer to the type0 endpoint identifier.
+ */
+void pci_dump_type0_bars(const pci_function_record_t *record);
+
 #endif

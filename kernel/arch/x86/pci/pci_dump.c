@@ -38,3 +38,34 @@ void pci_dump_registry(const pci_registry_t *reg) {
     pci_registry_foreach(reg, pci_dump_record_visitor, NULL);
     KLOG_INFO("PCI", "===== PCI REGISTRY DUMP END =====\n", reg->count);
 }
+
+void pci_dump_type0_bars(const pci_function_record_t *record) {
+    /* check for function recoed validity */
+    if (!record || !record->present || !record->bars_valid) {
+        KLOG_ERROR(
+            "PCI",
+            "cannot dump BAR info because of invalid function record.\n");
+        return;
+    }
+
+    KLOG_INFO("PCI", "=== [%02x:%02x.%u] PCI BAR DUMP START ===\n",
+              record->id.bdf.bus, record->id.bdf.device,
+              record->id.bdf.function);
+    for (uint8_t i = 0; i < PCI_TYPE0_BAR_COUNT; i++) {
+        /* dump the BAR record */
+        pci_bar_info_t *bar = &record->bars[i];
+
+        KLOG_INFO("PCI",
+                  "\tBAR[%u] kind=%s present=%u raw_lo=%08x raw_hi=%08x "
+                  "base(low=0x%08x, high=0x%08x) prefetch=%u\n",
+                  bar->index, pci_bar_kind_name(bar->kind), bar->present,
+                  bar->raw_lo, bar->raw_hi,
+                  PRINT_UINT64_LO(bar->base & 0xFFFFFFFF),
+                  PRINT_UINT64_HI(bar->base >> 32), bar->prefetchable);
+    }
+    KLOG_INFO("PCI", "=== [%02x:%02x.%u] PCI BAR DUMP END ===\n",
+              record->id.bdf.bus, record->id.bdf.device,
+              record->id.bdf.function);
+
+    return;
+}

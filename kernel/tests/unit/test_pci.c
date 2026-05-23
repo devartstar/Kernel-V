@@ -394,21 +394,14 @@ uint8_t pci_type0_raw_bars_test() {
     /* read BAR raw bytes for that record */
     if (pci_read_type0_bars_raw(test_record) != PCI_BAR_RAW_READ_OK) {
         KLOG_ERROR("PCI_TEST",
-                  "type0_raw_bars_test: failed or skipped reading BAR raw "
-                  "bytes for %02x:%02x.%u.\n",
-                  bdf_to_find.bus, bdf_to_find.device, bdf_to_find.function);
+                   "type0_raw_bars_test: failed or skipped reading BAR raw "
+                   "bytes for %02x:%02x.%u.\n",
+                   bdf_to_find.bus, bdf_to_find.device, bdf_to_find.function);
         return 0;
     }
 
-    /* bump the BAR raw bytes read. */
-    KLOG_VERBOSE("PCI_TEST",
-                 "type0_raw_bars_test: ear BAR bytes for %02x:%02x.%u.\n",
-                 bdf_to_find.bus, bdf_to_find.device, bdf_to_find.function);
-    for (uint8_t i = 0; i < PCI_TYPE0_BAR_COUNT; i++) {
-        KLOG_VERBOSE("PCI_TEST", "BAR[%u]: raw_low:%08x, raw_high:%08x.\n",
-                     test_record->bars[i].index, test_record->bars[i].raw_lo,
-                     test_record->bars[i].raw_hi);
-    }
+    /* dump the BAR raw bytes read. */
+    pci_dump_type0_bars(test_record0);
 
     return 1;
 }

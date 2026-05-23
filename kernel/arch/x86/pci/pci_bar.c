@@ -74,3 +74,71 @@ pci_read_type0_bars_raw(pci_function_record_t *record) {
 
     return PCI_BAR_RAW_READ_OK;
 }
+
+void pci_decode_type0_bars(struct pci_function_record *record) {
+    /* check for validity of the record */
+    if (!record || !record->present || !record->bars_valid) {
+        KLOG_ERROR("PCI", "Invalid function record to decode.\n");
+        return;
+    }
+
+    /* assign values to all bar info */
+    for (uint8_t i = 0; i < PCI_TYPE0_BAR_COUNT; i++) {
+        pci_bar_info_t *bar_info = &record->bars[i];
+
+        bar_info->present = 0;
+        bar_info->kind = PCI_BAR_KIND_UNUSED;
+        bar_info->prefetchable = 0;
+        bar_info->base = 0;
+
+        /* BAR register shouldbe non zero to decode */
+        if (bar_info->raw_lo == 0) {
+            continue;
+        }
+
+        /* check and assign proper valie if IO bar */
+        if (pci_bar_is_io(bar_info->raw_lo)) {
+            bar_info->present = 1;
+            bar_info->kind = PCI_BAR_KIND_IO;
+            bar_info->base =
+                (uint64_t)(bar_info->raw_lo & PCI_BAR_IO_BASE_MASK);
+            continue;
+        }
+
+        /* check and assign proper value if MEM32 bar */
+        if (pci_bar_is_mem32(bar_info->raw_lo)) {
+            bar_info->present = 1;
+            bar_info->kind = PCI_BAR_KIND_MEM32;
+            bar_info->base =
+                (uint64_t)(bar_info->raw_lo & PCI_BAR_MEM_BASE_MASK);
+            bar_info->prefetchable =
+                pci_bar_mem_is_prefetchable(bar_info->raw_lo);
+            continue;
+        }
+
+        /* check and assign proper value if MEM4 bar */
+        if (pci_bar_is_mem64(bar_info->raw_lo)) {
+            uint32_t lo = (bar_info->raw_lo & PCI_BAR_MEM_BASE_MASK);
+            uint32_t hi = bar_info->raw_hi;
+
+            bar_info->present = 1;
+            bar_info->kind = PCI_BAR_KIND_MEM64;
+            bar_info->base = lo | (hi << 32);
+            bar_info->prefetchable = pci_bar_mem_is_prefetchable(lo);
+
+            if (i + 1 < PCI_TYPE0_BAR_COUNT) {
+                /* this bas has no independent significance */
+                pci_bar_info_t *partner_bar = &record->bars[i + 1];
+                partner_bar->present = 0;
+                partner_bar->kind = PCI_BAR_KIND_UNUSED;
+                partner_bar->prefetchable = 0;
+                partner_bar->base = 0;
+            }
+
+            i++;
+            continue;
+        }
+
+        /* Other BAR encoding is marked as unsed */
+    }
+}
