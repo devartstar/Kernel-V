@@ -69,3 +69,56 @@ void pci_dump_type0_bars(const pci_function_record_t *record) {
 
     return;
 }
+
+void pci_dump_record_resources(const pci_function_record_t *rec) {
+    if (!rec || !rec->present) {
+        return;
+    }
+
+    KLOG_INFO("PCI",
+              "[%02x:%02x.%u] vendor=%04x device=%04x class=%02x subclass=%02x "
+              "progif=%02x rev=%02x hdr=%02x\n",
+              rec->id.bdf.bus, rec->id.bdf.device, rec->id.bdf.function,
+              rec->id.vendor_id, rec->id.device_id, rec->id.class_code,
+              rec->id.subclass, rec->id.prog_if, rec->id.revision_id,
+              rec->id.header_type);
+
+    if (rec->cmd_status_valid) {
+        KLOG_INFO("PCI",
+                  "\tcmd=%04x status=%04x io_en=%u mem_en=%u busm_en=%u\n",
+                  rec->cmd_status.command, rec->cmd_status.status,
+                  (rec->cmd_status.command & PCI_CMD_IO_SPACE) != 0,
+                  (rec->cmd_status.command & PCI_CMD_MEM_SPACE) != 0,
+                  (rec->cmd_status.command & PCI_CMD_BUS_MASTER) != 0);
+    }
+
+    if (rec->bars_valid) {
+        for (uint8_t i = 0; i < PCI_TYPE0_BAR_COUNT; i++) {
+            const pci_bar_info_t *bar = &rec->bars[i];
+
+            KLOG_INFO("PCI",
+                      "\tBAR[%u] kind=%s present=%u raw_lo=%08x raw_hi=%08x "
+                      "base=%016llx prefetch=%u\n",
+                      bar->index, pci_bar_kind_name(bar->kind), bar->present,
+                      bar->raw_lo, bar->raw_hi, (unsigned long long)bar->base,
+                      bar->prefetchable);
+        }
+    }
+}
+
+void pci_dump_registry_resources(const pci_registry_t *reg) {
+    if (!reg) {
+        return;
+    }
+
+    KLOG_INFO("PCI", "=== PCI RESOURCE DUMP START (count=%u) ===\n",
+              reg->count);
+
+    for (uint32_t i = 0; i < reg->count; i++) {
+        if (reg->entries[i].present) {
+            pci_dump_record_resources(&reg->entries[i]);
+        }
+    }
+
+    KLOG_INFO("PCI", "=== PCI RESOURCE DUMP END ===\n", reg->count);
+}

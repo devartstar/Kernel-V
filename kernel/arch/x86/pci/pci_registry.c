@@ -153,3 +153,42 @@ const pci_function_record_t *pci_registry_find_bdf(const pci_registry_t *reg,
                bdf.bus, bdf.device, bdf.function);
     return NULL;
 }
+
+uint8_t pci_enrich_registry_resources(pci_registry_t *reg) {
+    if (!reg) {
+        KLOG_ERROR("PCI",
+                   "Enrich registry failed. Invalid reference to registry.\n");
+        return 0;
+    }
+
+    for (uint8_t i = 0; i < reg->count; i++) {
+        pci_function_record_t *record = &reg->entries[i];
+
+        /* check if valid record to decode */
+        if (!record->present) {
+            continue;
+        }
+
+        /* decode the BAR entries */
+        if (!pci_enrich_record_bars(record)) {
+            KLOG_ERROR("PCI",
+                       "Enriching registry failed. BAR enrichment failed for "
+                       "%02x:%02x.%u.\n",
+                       record->id.bdf.bus, record->id.bdf.device,
+                       record->id.bdf.function);
+            return 0;
+        }
+
+        /* decode the command and status bytes */
+        if (!pci_enrich_reocrd_cmd_status(record)) {
+            KLOG_ERROR("PCI",
+                       "Enriching registry failed. Command/Status enrichment "
+                       "failed for %02x:%02x.%u.\n",
+                       record->id.bdf.bus, record->id.bdf.device,
+                       record->id.bdf.function);
+            return 0;
+        }
+    }
+
+    return 1;
+}

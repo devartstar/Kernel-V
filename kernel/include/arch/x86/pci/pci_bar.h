@@ -166,4 +166,13 @@ void pci_decode_type0_bars(struct pci_function_record *record);
 pci_bar_raw_read_result_t
 pci_read_type0_bars_raw(struct pci_function_record *record);
 
+/**
+ * pci_enrich_record_bars - read the raw bytes from the BAR and decode and store
+ * in the function record entry.
+ * @record - pointer to the function record to decode BAR bytes
+ *
+ * @return 1 for valid decoding else 0
+ */
+uint8_t pci_enrich_record_bars(struct pci_function_record *record);
+
 #endif /* PCI_BAR_H */

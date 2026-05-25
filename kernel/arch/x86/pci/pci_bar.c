@@ -142,3 +142,33 @@ void pci_decode_type0_bars(struct pci_function_record *record) {
         /* Other BAR encoding is marked as unsed */
     }
 }
+
+uint8_t pci_enrich_record_bars(struct pci_function_record *record) {
+    pci_bar_raw_read_result_t result;
+
+    /* check validity of the reference to the record */
+    if (!record || !record->present) {
+        KLOG_ERROR(
+            "PCI",
+            "BAR decoding failed. Invalid reference to function record.\n");
+        return 0;
+    }
+
+    /* read the raw bytes of the BAR */
+    result = pci_read_type0_bars_raw(record);
+    if (result == PCI_BAR_RAW_READ_ERROR) {
+        KLOG_ERROR("PCI", "BAR decoding failed. Failed reading BAR bytes.\n");
+        return 0;
+    }
+
+    if (result == PCI_BAR_RAW_READ_SKIPPED) {
+        KLOG_VERBOSE("PCI", "BAR decoding skipped. Skipped BAR reading.\n");
+        record->bars_valid = 0;
+        return 0;
+    }
+
+    /* successfully read the BAR bytes. Next decode them. */
+    pci_decode_type0_bars(record);
+    record->bars_valid = 1;
+    return 1;
+}

@@ -107,4 +107,14 @@ static inline void pci_enable_device_io(pci_bdf_t bdf) {
                         0);
 }
 
+struct pci_function_record;
+
+/**
+ * pci_enrich_reocrd_cmd_status - read the command and status bytes and decode.
+ * @record - reference to the record to read and decode.
+ *
+ * @return 1 for successful decode else 0
+ */
+uint8_t pci_enrich_reocrd_cmd_status(struct pci_function_record *record);
+
 #endif /* PCI_CMD_H */

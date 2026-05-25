@@ -20,6 +20,7 @@ uint8_t pci_basic_validation(void);
 uint8_t pci_type0_raw_bars_test(void);
 uint8_t pci_command_rw_test(void);
 uint8_t pci_enable_policy_test(void);
+uint8_t pci_registry_resource_test(void);
 
 static inline void run_pci_tests(void) {
     uint8_t failed_count = 0;
@@ -92,6 +93,12 @@ static inline void run_pci_tests(void) {
 
     if (pci_enable_policy_test()) {
         KLOG_INFO("TEST", "PCI Command policy enablement test passed.\n");
+    } else {
+        failed_count++;
+    }
+
+    if (pci_registry_resource_test()) {
+        KLOG_INFO("TEST", "PCI Registry resources test passed.\n");
     } else {
         failed_count++;
     }

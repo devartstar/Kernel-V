@@ -505,3 +505,50 @@ uint8_t pci_enable_policy_test() {
 
     return 1;
 }
+
+uint8_t pci_registry_resource_test(void) {
+    pci_registry_t reg;
+    pci_bdf_t nic_bdf = {.bus = 0x00, .device = 0x03, .function = 0x00};
+    const pci_function_record_t *nic;
+
+    if (pci_enumerate_bus0_into_registry(&reg) < 0) {
+        KLOG_ERROR("PCI_TEST",
+                   "pci_registry_resource_test: enumeration failed.\n");
+        return 0;
+    }
+
+    if (pci_enrich_registry_resources(&reg) < 0) {
+        KLOG_ERROR("PCI_TEST",
+                   "pci_registry_resource_test: enrichment failed.\n");
+        return 0;
+    }
+
+    pci_dump_registry_resources(&reg);
+
+    nic = pci_registry_find_bdf(&reg, nic_bdf);
+    if (!nic) {
+        KLOG_ERROR(
+            "PCI_TEST",
+            "pci_registry_resource_test: target %02x:%02x.%u not found.\n",
+            nic_bdf.bus, nic_bdf.device, nic_bdf.function);
+        return 0;
+    }
+
+    if (!nic->cmd_status_valid) {
+        KLOG_ERROR(
+            "PCI_TEST",
+            "pci_registry_resource_test: NIC command/status not cached.\n");
+        return 0;
+    }
+
+    if (!nic->bars_valid) {
+        KLOG_ERROR("PCI_TEST",
+                   "pci_registry_resource_test: NIC BAR state not decoded.\n");
+        return 0;
+    }
+
+    KLOG_INFO("PCI_TEST",
+              "pci_registry_resource_test: success for %02x:%02x.%u\n",
+              nic_bdf.bus, nic_bdf.device, nic_bdf.function);
+    return 1;
+}

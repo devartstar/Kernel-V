@@ -70,4 +70,15 @@ static const char *pci_bar_kind_name(pci_bar_kind_t kind) {
  */
 void pci_dump_type0_bars(const pci_function_record_t *record);
 
+/**
+ * pci_dump_record_resource - dump entries of a function record
+ * @rec - reference to the function record to dump.
+ */
+void pci_dump_record_resources(const pci_function_record_t *rec);
+
+/**
+ * pci_dump_registry_resources - dump all entries of the pci registry structure.
+ * @reg - reference to the pci registry structure.
+ */
+void pci_dump_registry_resources(const pci_registry_t *reg);
 #endif

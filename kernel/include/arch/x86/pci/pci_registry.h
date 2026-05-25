@@ -4,12 +4,15 @@
 #include "arch/x86/pci/pci.h"
 #include "arch/x86/pci/pci_bar.h"
 #include "arch/x86/pci/pci_cfg.h"
+#include "arch/x86/pci/pci_cmd.h"
 
 /**
  * id - indentity information for a function entry
  * present - reduntant info is function is present
  * bars - array of information for each bar
  * bars_valid - if the bars register has valid info then 1 else 0
+ * cmd_status - contains the 16 bit command and status of the config space
+ * cmd_status_valid - if the entry of cmd status is valid for this record
  */
 typedef struct pci_function_record {
     pci_function_identity_t id;
@@ -18,7 +21,8 @@ typedef struct pci_function_record {
     pci_bar_info_t bars[PCI_TYPE0_BAR_COUNT];
     uint8_t bars_valid;
 
-    /* todo: also include command status info */
+    pci_command_status_info_t cmd_status;
+    uint8_t cmd_status_valid;
 } pci_function_record_t;
 
 /**
@@ -100,7 +104,7 @@ static void pci_registry_fill_visitor(const pci_function_identity_t *id,
  *
  * @return - 1: success and 0:failure
  */
-uint8_t pci_enumerate_bus0_into_registry(pci_registry_t *reg);
+uint8_t pci_eumerate_bus0_into_registry(pci_registry_t *reg);
 
 /**
  * pci_registry_foreach - For all the registry entries that are present. invoke
@@ -119,5 +123,14 @@ void pci_registry_foreach(const pci_registry_t *reg,
  */
 const pci_function_record_t *pci_registry_find_bdf(const pci_registry_t *reg,
                                                    pci_bdf_t bdf);
+
+/**
+ * pci_enrich_registry_resources - for all the function record in the registry.
+ * read and decode the coomand, status bytes and the BAR entries.
+ * @reg - reference to the registry to store decoded values
+ *
+ * @return - 1 for success else 0
+ */
+uint8_t pci_enrich_registry_resources(pci_registry_t *reg);
 
 #endif /* PCI_REGISTRY_H */
