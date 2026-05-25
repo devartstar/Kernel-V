@@ -17,6 +17,8 @@ typedef struct pci_function_record {
 
     pci_bar_info_t bars[PCI_TYPE0_BAR_COUNT];
     uint8_t bars_valid;
+
+    /* todo: also include command status info */
 } pci_function_record_t;
 
 /**

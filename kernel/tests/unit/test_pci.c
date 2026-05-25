@@ -448,3 +448,60 @@ uint8_t pci_command_rw_test() {
 
     return 1;
 }
+
+uint8_t pci_enable_policy_test() {
+    pci_registry_t test_reg;
+    const pci_function_record_t *test_record;
+    pci_bdf_t bdf_to_find = {.bus = 0x00, .device = 0x03, .function = 0x00};
+    uint16_t cmd_read_before, cmd_read_after_mem, cmd_read_after_bm;
+
+    /* enumerate bus 0 and update into its registry contents */
+    if (!pci_enumerate_bus0_into_registry(&test_reg)) {
+        KLOG_ERROR("PCI_TEST", "enable_policy_test: enumeration failed.\n");
+        return 0;
+    }
+
+    /* find the concerned bdf endpoint from the registry */
+    if (!pci_registry_find_bdf(&test_reg, bdf_to_find)) {
+        KLOG_ERROR("PCI_TEST",
+                   "enable_policy_test: target %02x:%02x.%u not found.\n",
+                   bdf_to_find.bus, bdf_to_find.device, bdf_to_find.function);
+        return 0;
+    }
+
+    /* read the command bits from the bdf */
+    cmd_read_before = pci_read_command(bdf_to_find);
+
+    /* set the bits to enable mem space access */
+    pci_command_enable_mem_space(bdf_to_find);
+
+    /* read and verify the command bits */
+    cmd_read_after_mem = pci_read_command(bdf_to_find);
+    if (!(cmd_read_after_mem & PCI_CMD_MEM_SPACE)) {
+        KLOG_ERROR("PCI_TEST",
+                   "pci_enable_policy_test: MEM_SPACE bit not set.\n");
+        return 0;
+    }
+
+    /* set the bits to enable busmaster for enabling dma */
+    pci_enable_bus_master(bdf_to_find);
+
+    /* read and verify the bus master bits */
+    cmd_read_after_bm = pci_read_command(bdf_to_find);
+    if ((cmd_read_after_bm & PCI_CMD_BUS_MASTER) == 0) {
+        KLOG_ERROR("PCI_TEST",
+                   "pci_enable_policy_test: BUS_MASTER bit not set.\n");
+        return 0;
+    }
+
+    KLOG_INFO("PCI_TEST",
+              "pci_enable_policy_test %02x:%02x.%u cmd before=%04x "
+              "after_mem=%04x after_bm=%04x\n",
+              bdf_to_find.bus, bdf_to_find.device, bdf_to_find.function,
+              cmd_read_before, cmd_read_after_mem, cmd_read_after_bm);
+
+    /* Restore original command register for test cleanliness */
+    pci_write_command(bdf_to_find, cmd_read_before);
+
+    return 1;
+}

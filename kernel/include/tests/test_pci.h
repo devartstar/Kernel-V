@@ -19,6 +19,7 @@ uint8_t pci_dump_registry_test(void);
 uint8_t pci_basic_validation(void);
 uint8_t pci_type0_raw_bars_test(void);
 uint8_t pci_command_rw_test(void);
+uint8_t pci_enable_policy_test(void);
 
 static inline void run_pci_tests(void) {
     uint8_t failed_count = 0;
@@ -85,6 +86,12 @@ static inline void run_pci_tests(void) {
 
     if (pci_command_rw_test()) {
         KLOG_INFO("TEST", "PCI RAW BAR reads test passed.\n");
+    } else {
+        failed_count++;
+    }
+
+    if (pci_enable_policy_test()) {
+        KLOG_INFO("TEST", "PCI Command policy enablement test passed.\n");
     } else {
         failed_count++;
     }

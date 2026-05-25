@@ -1,6 +1,14 @@
 #ifndef PCI_CMD_H
 #define PCI_CMD_H
 
+/**
+ * PCI Config space command bits
+ * Bit 0 - I/O Space enable. Only I/O BARs (BAR bit 0 set) are concerned about
+ * this bit Bit 1 - Memory Space enable. Only I/O BARs (BAR bit 1/2 set) are
+ * concerned about this bit. Bit 2 - DMA permission bit. if this bit is off,
+ * system is not supposed to do RW into system memory.
+ */
+
 #include "arch/x86/pci/pci_cfg.h"
 #include "stdint.h"
 
@@ -59,6 +67,44 @@ static inline void pci_update_cmd_bits(pci_bdf_t bdf, uint16_t set_mask,
     command = (uint16_t)(command & (uint16_t)(~clear_mask));
 
     pci_write_command(bdf, command);
+}
+
+static inline uint8_t pci_command_has_bits(pci_bdf_t bdf, uint16_t mask) {
+    return (pci_read_command(bdf) & mask) == mask;
+}
+
+static inline void pci_command_enable_io_space(pci_bdf_t bdf) {
+    pci_update_cmd_bits(bdf, PCI_CMD_IO_SPACE, 0);
+}
+
+static inline void pci_command_disable_io_space(pci_bdf_t bdf) {
+    pci_update_cmd_bits(bdf, 0, PCI_CMD_IO_SPACE);
+}
+
+static inline void pci_command_enable_mem_space(pci_bdf_t bdf) {
+    pci_update_cmd_bits(bdf, PCI_CMD_MEM_SPACE, 0);
+}
+
+static inline void pci_command_disable_mem_space(pci_bdf_t bdf) {
+    pci_update_cmd_bits(bdf, 0, PCI_CMD_MEM_SPACE);
+}
+
+static inline void pci_enable_bus_master(pci_bdf_t bdf) {
+    pci_update_cmd_bits(bdf, PCI_CMD_BUS_MASTER, 0);
+}
+
+static inline void pci_disable_bus_master(pci_bdf_t bdf) {
+    pci_update_cmd_bits(bdf, 0, PCI_CMD_BUS_MASTER);
+}
+
+static inline void pci_enable_device_mmio(pci_bdf_t bdf) {
+    pci_update_cmd_bits(bdf, (uint16_t)(PCI_CMD_MEM_SPACE | PCI_CMD_BUS_MASTER),
+                        0);
+}
+
+static inline void pci_enable_device_io(pci_bdf_t bdf) {
+    pci_update_cmd_bits(bdf, (uint16_t)(PCI_CMD_IO_SPACE | PCI_CMD_BUS_MASTER),
+                        0);
 }
 
 #endif /* PCI_CMD_H */
