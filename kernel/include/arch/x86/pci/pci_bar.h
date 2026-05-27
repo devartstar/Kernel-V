@@ -136,19 +136,19 @@ static inline uint8_t pci_header_layout_is_type0(uint8_t header) {
 /* === PCI BAR HELPERS START === */
 
 static inline uint8_t pci_bar_is_io(uint32_t raw_lo) {
-    return (raw_lo & PCI_BAR_KIND_IO) != 0;
+    return (raw_lo & PCI_BAR_IO_SPACE) != 0;
 }
 
 static inline uint8_t pci_bar_is_mem64(uint32_t raw_lo) {
-    return (raw_lo & PCI_BAR_MEM_TYPE_MASK) == PCI_BAR_KIND_MEM64;
+    return (raw_lo & PCI_BAR_MEM_TYPE_MASK) == PCI_BAR_MEM_TYPE_64;
 }
 
 static inline uint8_t pci_bar_is_mem32(uint32_t raw_lo) {
-    return (raw_lo & PCI_BAR_MEM_TYPE_MASK) == PCI_BAR_KIND_MEM32;
+    return (raw_lo & PCI_BAR_MEM_TYPE_MASK) == PCI_BAR_MEM_TYPE_32;
 }
 
-static inline pci_bar_mem_is_prefetchable(uint32_t raw_lo) {
-    return (raw_lo & PCI_BAR_MEM_PREFETCHABLE);
+static inline uint8_t pci_bar_mem_is_prefetchable(uint32_t raw_lo) {
+    return (raw_lo & PCI_BAR_MEM_PREFETCHABLE) != 0;
 }
 
 /* === PCI BAR HELPERS END === */

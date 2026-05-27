@@ -123,8 +123,9 @@ void pci_decode_type0_bars(struct pci_function_record *record) {
 
             bar_info->present = 1;
             bar_info->kind = PCI_BAR_KIND_MEM64;
-            bar_info->base = lo | (hi << 32);
-            bar_info->prefetchable = pci_bar_mem_is_prefetchable(lo);
+            bar_info->base = (uint64_t)lo | ((uint64_t)hi << 32);
+            bar_info->prefetchable =
+                pci_bar_mem_is_prefetchable(bar_info->raw_lo);
 
             if (i + 1 < PCI_TYPE0_BAR_COUNT) {
                 /* this bas has no independent significance */

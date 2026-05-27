@@ -98,10 +98,11 @@ void pci_dump_record_resources(const pci_function_record_t *rec) {
 
             KLOG_INFO("PCI",
                       "\tBAR[%u] kind=%s present=%u raw_lo=%08x raw_hi=%08x "
-                      "base=%016llx prefetch=%u\n",
+                      "base(low=0x%08x, high=0x%08x) prefetch=%u\n",
                       bar->index, pci_bar_kind_name(bar->kind), bar->present,
-                      bar->raw_lo, bar->raw_hi, (unsigned long long)bar->base,
-                      bar->prefetchable);
+                      bar->raw_lo, bar->raw_hi,
+                      PRINT_UINT64_LO(bar->base),
+                      PRINT_UINT64_HI(bar->base), bar->prefetchable);
         }
     }
 }
