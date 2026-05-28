@@ -58,10 +58,16 @@ pci_read_type0_bars_raw(pci_function_record_t *record) {
 
             /* BARi+1 is consumes as upper half of 64 bit BARi */
             i++;
-        } else {
+        } else if ((raw_low & PCI_BAR_IO_SPACE) == 0 &&
+                   (raw_low & PCI_BAR_MEM_TYPE_MASK) == PCI_BAR_KIND_MEM32) {
             KLOG_VERBOSE("PCI",
                          "[%02x:%02x.%u] BAR[%u] is a memory 32bit BAR. [low "
                          "bits:%08x]\n",
+                         record->id.bdf.bus, record->id.bdf.device,
+                         record->id.bdf.function, i, raw_low);
+
+        } else {
+            KLOG_VERBOSE("PCI", "[%02x:%02x.%u] BAR[%u] [low bits:%08x]\n",
                          record->id.bdf.bus, record->id.bdf.device,
                          record->id.bdf.function, i, raw_low);
         }
