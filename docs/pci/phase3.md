@@ -359,7 +359,42 @@ You can compare the kernel’s decoded BAR view against external tooling and exp
 
 ---
 
-# Subphase 3.8 — Phase 3 Validation and Known Limits
+# Subphase 3.8 - Capabilty Data model
+## Subphase 3.C1 — Capability data model and retained-state contract.
+This subphase defines what a discovered PCI capability becomes inside the kernel before we walk anything. The PCI function record already retains identity, BAR state, and command/status state. It now needs a stable place to retain capability-list state as well. The kernel must store at least:
+- whether capability walking has been performed
+- whether the function advertises a capability list
+- how many capability records were discovered
+- one retained entry per discovered capability, with raw header facts
+- The exit criterion for this subphase is that a pci_function_record_t can represent capability state even before the walker exists.
+
+## Subphase 3.C2 — Safe conventional capability walker.
+This is the first real parser. It should: 
+- read the Status register capability-list bit
+- determine whether the function is even eligible for capability walking
+- read the first pointer from the standard capabilities pointer location
+- walk the linked list one node at a time
+- stop safely on malformed conditions such as null, misalignment, out-of-range offsets, loops, or excessive count
+This subphase must stay strictly inside conventional PCI config space, which means first 256 bytes only. No PCIe extended capability space yet. The exit criterion is that the kernel can truthfully say “this function has N capabilities at these offsets with these IDs.”
+
+## Subphase 3.C3 — Capability classification and common ID decode.
+Once raw capability records are retained, the PCI core should classify the common ones so the registry becomes driver-useful. At this stage you do not enable anything yet. You only recognize and label capability types such as:
+- Power Management
+- MSI
+- MSI-X
+- PCI Express
+- Vendor-Specific
+The exit criterion is that later code can inspect a retained record and ask “does this function advertise MSI?” without rescanning config space.
+
+## Subphase 3.C4 — Capability dump, validation, and Phase 3 closure.
+This is the inspection layer. Add a dump that prints, per function:
+whether capability lists are present
+- capability count
+- each capability’s ID, offset, and next pointer
+- optional decoded name for known capability IDs
+Then add one end-to-end validator that enumerates bus 0, enriches BAR/resource state, enriches capability state, looks up one concrete endpoint, verifies its retained capability state, and dumps the result. The exit criterion is that Phase 3 can be frozen with a documented contract: BAR/resource discovery plus conventional capability discovery.
+
+# Subphase 3.9 — Phase 3 Validation and Known Limits
 
 ## Purpose
 

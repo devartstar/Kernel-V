@@ -63,6 +63,31 @@ static const char *pci_bar_kind_name(pci_bar_kind_t kind) {
 }
 
 /**
+ * pci_capability_kind_name - convert enum to capability name
+ */
+static const char *pci_capability_kind_name(pci_cap_kind_t kind) {
+    switch (kind) {
+    case PCI_CAP_ID_PM:
+        return "PM";
+
+    case PCI_CAP_ID_MSI:
+        return "MSI";
+
+    case PCI_CAP_ID_MSIX:
+        return "MSIX";
+
+    case PCI_CAP_ID_PCIEXP:
+        return "PCIEXP";
+
+    case PCI_CAP_ID_VENDOR:
+        return "VENDOR";
+
+    default:
+        return "UNKNOWN";
+    }
+}
+
+/**
  * pci_dump_type0_bars - helper routine to dump all the bars for the type0
  * endpoint
  *
@@ -77,8 +102,17 @@ void pci_dump_type0_bars(const pci_function_record_t *record);
 void pci_dump_record_resources(const pci_function_record_t *rec);
 
 /**
- * pci_dump_registry_resources - dump all entries of the pci registry structure.
+ * pci_dump_registry_resources - dump all entries of the pci registry
+ * structure.
  * @reg - reference to the pci registry structure.
  */
 void pci_dump_registry_resources(const pci_registry_t *reg);
+
+/**
+ * pci_dump_record_capabilities - dump all the capability info in the
+ * function record
+ * @rec - pointer to the function record
+ */
+void pci_dump_record_capabilities(const pci_function_record_t *rec);
+
 #endif

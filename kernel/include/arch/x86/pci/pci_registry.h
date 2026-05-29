@@ -3,6 +3,7 @@
 
 #include "arch/x86/pci/pci.h"
 #include "arch/x86/pci/pci_bar.h"
+#include "arch/x86/pci/pci_cap.h"
 #include "arch/x86/pci/pci_cfg.h"
 #include "arch/x86/pci/pci_cmd.h"
 
@@ -13,6 +14,10 @@
  * bars_valid - if the bars register has valid info then 1 else 0
  * cmd_status - contains the 16 bit command and status of the config space
  * cmd_status_valid - if the entry of cmd status is valid for this record
+ * caps - array of function capability information
+ * caps_present - 1 if the header stats capability present for function
+ * caps_valid - 1 if the cpabilities have been iterated
+ * caps_count - number of capabilities discovered and populated in caps
  */
 typedef struct pci_function_record {
     pci_function_identity_t id;
@@ -23,6 +28,11 @@ typedef struct pci_function_record {
 
     pci_command_status_info_t cmd_status;
     uint8_t cmd_status_valid;
+
+    pci_capability_info_t caps[PCI_CAP_MAX_PER_FUNCTION];
+    uint8_t caps_present;
+    uint8_t caps_valid;
+    uint8_t cap_count;
 } pci_function_record_t;
 
 /**
@@ -104,7 +114,7 @@ static void pci_registry_fill_visitor(const pci_function_identity_t *id,
  *
  * @return - 1: success and 0:failure
  */
-uint8_t pci_eumerate_bus0_into_registry(pci_registry_t *reg);
+uint8_t pci_enumerate_bus0_into_registry(pci_registry_t *reg);
 
 /**
  * pci_registry_foreach - For all the registry entries that are present. invoke

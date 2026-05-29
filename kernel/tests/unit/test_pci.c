@@ -1,5 +1,8 @@
 #include "tests/test_pci.h"
 
+/* Single shared registry to avoid 64KB-per-instance BSS bloat */
+static pci_registry_t test_reg;
+
 uint8_t pci_cfg_smoke_test() {
     pci_bdf_t bdf = {.bus = 0x00, .device = 0x0, .function = 0x00};
 
@@ -234,7 +237,6 @@ uint8_t pci_scan_bus0_test() {
 }
 
 uint8_t pci_registry_bus0_test() {
-    pci_registry_t test_reg;
 
     if (!pci_enumerate_bus0_into_registry(&test_reg)) {
         KLOG_ERROR("PCI_TEST",
@@ -301,7 +303,6 @@ void pci_registry_dump_test_visitor(const pci_function_record_t *record,
 }
 
 uint8_t pci_dump_registry_test() {
-    pci_registry_t test_reg;
     pci_registry_dump_ctx_t test_ctx = {.seen = 0};
 
     /* enumerate bus 0 to populate the registr structure */
@@ -337,7 +338,6 @@ uint8_t pci_dump_registry_test() {
 }
 
 uint8_t pci_basic_validation() {
-    pci_registry_t test_reg;
 
     /* add all the function endpoints to registry */
     uint8_t success = pci_enumerate_bus0_into_registry(&test_reg);
@@ -375,7 +375,6 @@ uint8_t pci_basic_validation() {
 }
 
 uint8_t pci_type0_raw_bars_test() {
-    pci_registry_t test_reg;
     pci_bdf_t bdf_to_find = {.bus = 0x00, .device = 0x00, .function = 0x00};
     const pci_function_record_t *test_record0;
     pci_function_record_t *test_record;
@@ -406,8 +405,40 @@ uint8_t pci_type0_raw_bars_test() {
     return 1;
 }
 
+uint8_t pci_type0_raw_capabilities_test() {
+    pci_bdf_t bdf_to_find = {.bus = 0x00, .device = 0x00, .function = 0x00};
+    const pci_function_record_t *test_record0;
+    pci_function_record_t *test_record;
+
+    /* enumerate bus0 and register the records */
+    if (!pci_enumerate_bus0_into_registry(&test_reg)) {
+        KLOG_ERROR("PCI_TEST",
+                   "type0_raw_capabilities_test: failed to enumrate bus 0 "
+                   "and add records to registry.\n");
+        return 0;
+    }
+
+    /* find a record from the registry using bdf */
+    test_record0 = pci_registry_find_bdf(&test_reg, bdf_to_find);
+    test_record = (pci_function_record_t *)test_record0;
+
+    /* iterate thru the capabilities list raw bytes for that record */
+    if (!pci_capability_enrich_records(test_record)) {
+        KLOG_ERROR(
+            "PCI_TEST",
+            "type0_raw_capabilities_test: failed reading capabilities raw "
+            "bytes for %02x:%02x.%u.\n",
+            bdf_to_find.bus, bdf_to_find.device, bdf_to_find.function);
+        return 0;
+    }
+
+    /* dump the capabilities info bytes read. */
+    pci_dump_record_capabilities(test_record0);
+
+    return 1;
+}
+
 uint8_t pci_command_rw_test() {
-    pci_registry_t test_reg;
     pci_bdf_t bdf = {.bus = 0x00, .device = 0x03, .function = 0x00};
     const pci_function_record_t *test_rec;
     uint16_t before, after;
@@ -450,7 +481,6 @@ uint8_t pci_command_rw_test() {
 }
 
 uint8_t pci_enable_policy_test() {
-    pci_registry_t test_reg;
     const pci_function_record_t *test_record;
     pci_bdf_t bdf_to_find = {.bus = 0x00, .device = 0x03, .function = 0x00};
     uint16_t cmd_read_before, cmd_read_after_mem, cmd_read_after_bm;
@@ -507,25 +537,25 @@ uint8_t pci_enable_policy_test() {
 }
 
 uint8_t pci_registry_resource_test(void) {
-    pci_registry_t reg;
+    pci_registry_t *reg = &test_reg;
     pci_bdf_t nic_bdf = {.bus = 0x00, .device = 0x03, .function = 0x00};
     const pci_function_record_t *nic;
 
-    if (pci_enumerate_bus0_into_registry(&reg) < 0) {
+    if (!pci_enumerate_bus0_into_registry(reg)) {
         KLOG_ERROR("PCI_TEST",
                    "pci_registry_resource_test: enumeration failed.\n");
         return 0;
     }
 
-    if (pci_enrich_registry_resources(&reg) < 0) {
+    if (!pci_enrich_registry_resources(reg)) {
         KLOG_ERROR("PCI_TEST",
                    "pci_registry_resource_test: enrichment failed.\n");
         return 0;
     }
 
-    pci_dump_registry_resources(&reg);
+    pci_dump_registry_resources(reg);
 
-    nic = pci_registry_find_bdf(&reg, nic_bdf);
+    nic = pci_registry_find_bdf(reg, nic_bdf);
     if (!nic) {
         KLOG_ERROR(
             "PCI_TEST",

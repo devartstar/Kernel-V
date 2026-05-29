@@ -188,6 +188,16 @@ uint8_t pci_enrich_registry_resources(pci_registry_t *reg) {
                        record->id.bdf.function);
             return 0;
         }
+
+        /* decode the capability list for the record */
+        if (!pci_capability_enrich_records(record)) {
+            KLOG_ERROR("PCI",
+                       "Enriching registry failed. Capability list enrichment "
+                       "failed for  %02x:%02x.%u.\n",
+                       record->id.bdf.bus, record->id.bdf.device,
+                       record->id.bdf.function);
+            return 0;
+        }
     }
 
     return 1;

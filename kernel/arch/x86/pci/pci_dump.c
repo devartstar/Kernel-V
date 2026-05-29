@@ -70,6 +70,28 @@ void pci_dump_type0_bars(const pci_function_record_t *record) {
     return;
 }
 
+void pci_dump_record_capabilities(const pci_function_record_t *rec) {
+    if (!rec || !rec->present || !rec->caps_valid) {
+        return;
+    }
+
+    KLOG_INFO("PCI", "[%02x:%02x.%u] caps_present=%u cap_count=%u\n",
+              rec->id.bdf.bus, rec->id.bdf.device, rec->id.bdf.function,
+              rec->caps_present, rec->cap_count);
+
+    for (uint8_t i = 0; i < rec->cap_count; i++) {
+        const pci_capability_info_t *cap = &rec->caps[i];
+
+        if (!cap->present) {
+            continue;
+        }
+
+        KLOG_INFO(
+            "PCI", "  CAP[%u] id=0x%02x kind=%s offset=0x%02x next=0x%02x\n", i,
+            cap->id, pci_capability_kind_name(cap->id), cap->offset, cap->next);
+    }
+}
+
 void pci_dump_record_resources(const pci_function_record_t *rec) {
     if (!rec || !rec->present) {
         return;
@@ -100,9 +122,26 @@ void pci_dump_record_resources(const pci_function_record_t *rec) {
                       "\tBAR[%u] kind=%s present=%u raw_lo=%08x raw_hi=%08x "
                       "base(low=0x%08x, high=0x%08x) prefetch=%u\n",
                       bar->index, pci_bar_kind_name(bar->kind), bar->present,
-                      bar->raw_lo, bar->raw_hi,
-                      PRINT_UINT64_LO(bar->base),
+                      bar->raw_lo, bar->raw_hi, PRINT_UINT64_LO(bar->base),
                       PRINT_UINT64_HI(bar->base), bar->prefetchable);
+        }
+    }
+
+    if (rec->caps_valid) {
+        KLOG_INFO("PCI", "  caps_present=%u cap_count=%u\n", rec->caps_present,
+                  rec->cap_count);
+
+        for (uint8_t i = 0; i < rec->cap_count; i++) {
+            const pci_capability_info_t *cap = &rec->caps[i];
+
+            if (!cap->present) {
+                continue;
+            }
+
+            KLOG_INFO("PCI",
+                      "  CAP[%u] id=0x%02x kind=%s offset=0x%02x next=0x%02x\n",
+                      i, cap->id, pci_capability_kind_name(cap->kind),
+                      cap->offset, cap->next);
         }
     }
 }
