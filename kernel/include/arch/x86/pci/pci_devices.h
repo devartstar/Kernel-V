@@ -1,7 +1,7 @@
 #ifndef PCI_DEVICES_H
 #define PCI_DEVICES_H
 
-#include "arch/x86/pci/pci_registry.h"
+#include "arch/x86/pci/pci_record_registry.h"
 #include "core/device.h"
 
 /**

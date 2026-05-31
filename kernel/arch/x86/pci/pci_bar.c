@@ -1,6 +1,6 @@
 #include "arch/x86/pci/pci_bar.h"
 #include "arch/x86/pci/pci_cfg.h"
-#include "arch/x86/pci/pci_registry.h"
+#include "arch/x86/pci/pci_record_registry.h"
 
 pci_bar_raw_read_result_t
 pci_read_type0_bars_raw(pci_function_record_t *record) {

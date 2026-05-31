@@ -1,5 +1,5 @@
 #include "arch/x86/pci/pci_cmd.h"
-#include "arch/x86/pci/pci_registry.h"
+#include "arch/x86/pci/pci_record_registry.h"
 
 uint8_t pci_enrich_reocrd_cmd_status(struct pci_function_record *record) {
     /* verify the validity of the function record to decode */

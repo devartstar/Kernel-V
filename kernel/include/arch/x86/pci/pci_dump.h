@@ -1,7 +1,7 @@
 #ifndef PCI_DUMP_H
 #define PCI_DUMP_H
 
-#include "arch/x86/pci/pci_registry.h"
+#include "arch/x86/pci/pci_record_registry.h"
 
 /**
  * pci_dump_record_visitor - callback for dumping all pci records.
@@ -11,11 +11,11 @@
 void pci_dump_record_visitor(const pci_function_record_t *record, void *ctx);
 
 /**
- * pci_dump_registry - helper routine to dump all the function registered in the
- * registry.
+ * pci_dump_record_registry - helper routine to dump all the function registered
+ * in the registry.
  * @reg - pointer to the registry structure.
  */
-void pci_dump_registry(const pci_registry_t *reg);
+void pci_dump_record_registry(const pci_record_registry_t *reg);
 
 /**
  * pci_class_name - decode the class name based on class and subclass bits
@@ -102,11 +102,11 @@ void pci_dump_type0_bars(const pci_function_record_t *record);
 void pci_dump_record_resources(const pci_function_record_t *rec);
 
 /**
- * pci_dump_registry_resources - dump all entries of the pci registry
+ * pci_dump_record_registry_resources - dump all entries of the pci registry
  * structure.
  * @reg - reference to the pci registry structure.
  */
-void pci_dump_registry_resources(const pci_registry_t *reg);
+void pci_dump_record_registry_resources(const pci_record_registry_t *reg);
 
 /**
  * pci_dump_record_capabilities - dump all the capability info in the

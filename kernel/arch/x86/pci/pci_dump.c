@@ -26,7 +26,7 @@ void pci_dump_record_visitor(const pci_function_record_t *record, void *ctx) {
               pci_cfg_header_type_layout(id->header_type));
 }
 
-void pci_dump_registry(const pci_registry_t *reg) {
+void pci_dump_record_registry(const pci_record_registry_t *reg) {
     /* check if pointer to the registry is valid */
     if (!reg) {
         KLOG_ERROR("PCI", "invalide pointer to the registry structure.\n");
@@ -35,7 +35,7 @@ void pci_dump_registry(const pci_registry_t *reg) {
 
     KLOG_INFO("PCI", "===== PCI REGISTRY DUMP (%u entries) =====\n",
               reg->count);
-    pci_registry_foreach(reg, pci_dump_record_visitor, NULL);
+    pci_record_registry_foreach(reg, pci_dump_record_visitor, NULL);
     KLOG_INFO("PCI", "===== PCI REGISTRY DUMP END =====\n", reg->count);
 }
 
@@ -146,7 +146,7 @@ void pci_dump_record_resources(const pci_function_record_t *rec) {
     }
 }
 
-void pci_dump_registry_resources(const pci_registry_t *reg) {
+void pci_dump_record_registry_resources(const pci_record_registry_t *reg) {
     if (!reg) {
         return;
     }

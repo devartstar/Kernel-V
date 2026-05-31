@@ -4,10 +4,10 @@
 #include "arch/x86/pci/pci_cfg.h"
 #include "arch/x86/pci/pci_cmd.h"
 #include "arch/x86/pci/pci_dump.h"
-#include "arch/x86/pci/pci_registry.h"
+#include "arch/x86/pci/pci_record_registry.h"
 
 /* Single shared registry to avoid 64KB-per-instance BSS bloat */
-static pci_registry_t test_reg;
+static pci_record_registry_t test_reg;
 
 uint8_t pci_cfg_smoke_test() {
     pci_bdf_t bdf = {.bus = 0x00, .device = 0x0, .function = 0x00};
@@ -244,7 +244,7 @@ uint8_t pci_scan_bus0_test() {
 
 uint8_t pci_registry_bus0_test() {
 
-    if (!pci_enumerate_bus0_into_registry(&test_reg)) {
+    if (!pci_enumerate_bus0_into_record_registry(&test_reg)) {
         KLOG_ERROR("PCI_TEST",
                    "registry_bus0_test: enumeration into registry failed.\n");
         return 0;
@@ -312,18 +312,19 @@ uint8_t pci_dump_registry_test() {
     pci_registry_dump_ctx_t test_ctx = {.seen = 0};
 
     /* enumerate bus 0 to populate the registr structure */
-    if (!pci_enumerate_bus0_into_registry(&test_reg)) {
+    if (!pci_enumerate_bus0_into_record_registry(&test_reg)) {
         KLOG_ERROR("PCI_TEST",
                    "dump_registry_test: enumeration into registry failed.\n");
         return 0;
     }
 
     /* dump the registry structure */
-    const pci_registry_t *test_reg_cpy = &test_reg;
-    pci_dump_registry(test_reg_cpy);
+    const pci_record_registry_t *test_reg_cpy = &test_reg;
+    pci_dump_record_registry(test_reg_cpy);
 
     /* count the total number of function registered/dumped */
-    pci_registry_foreach(&test_reg, pci_registry_dump_test_visitor, &test_ctx);
+    pci_record_registry_foreach(&test_reg, pci_registry_dump_test_visitor,
+                                &test_ctx);
 
     /* sanity check for the functions dumped by registry matches the resitry
      * record */
@@ -346,7 +347,7 @@ uint8_t pci_dump_registry_test() {
 uint8_t pci_basic_validation() {
 
     /* add all the function endpoints to registry */
-    uint8_t success = pci_enumerate_bus0_into_registry(&test_reg);
+    uint8_t success = pci_enumerate_bus0_into_record_registry(&test_reg);
     if (!success || (success && test_reg.count == 0)) {
         KLOG_ERROR("PCI_TEST", "basic_validation: pci registration of "
                                "functions under bus0 failed.\n");
@@ -356,7 +357,7 @@ uint8_t pci_basic_validation() {
     /* find a bdf in the registry entry */
     pci_bdf_t bdf_to_find = {.bus = 0x00, .device = 0x00, .function = 0x00};
     pci_function_record_t *rec;
-    rec = pci_registry_find_bdf(&test_reg, bdf_to_find);
+    rec = pci_record_registry_find_bdf(&test_reg, bdf_to_find);
     if (!rec) {
         KLOG_ERROR(
             "PCI_TEST",
@@ -373,7 +374,7 @@ uint8_t pci_basic_validation() {
     }
 
     /* log the registry record found */
-    pci_dump_registry(&test_reg);
+    pci_dump_record_registry(&test_reg);
     KLOG_INFO("PCI_TEST",
               "basic_validation: successfully dumped the registry list.\n");
 
@@ -386,14 +387,14 @@ uint8_t pci_type0_raw_bars_test() {
     pci_function_record_t *test_record;
 
     /* enumerate bus0 and register the records */
-    if (!pci_enumerate_bus0_into_registry(&test_reg)) {
+    if (!pci_enumerate_bus0_into_record_registry(&test_reg)) {
         KLOG_ERROR("PCI_TEST", "type0_raw_bars_test: failed to enumrate bus 0 "
                                "and add records to registry.\n");
         return 0;
     }
 
     /* find a record from the registry using bdf */
-    test_record0 = pci_registry_find_bdf(&test_reg, bdf_to_find);
+    test_record0 = pci_record_registry_find_bdf(&test_reg, bdf_to_find);
     test_record = (pci_function_record_t *)test_record0;
 
     /* read BAR raw bytes for that record */
@@ -417,7 +418,7 @@ uint8_t pci_type0_raw_capabilities_test() {
     pci_function_record_t *test_record;
 
     /* enumerate bus0 and register the records */
-    if (!pci_enumerate_bus0_into_registry(&test_reg)) {
+    if (!pci_enumerate_bus0_into_record_registry(&test_reg)) {
         KLOG_ERROR("PCI_TEST",
                    "type0_raw_capabilities_test: failed to enumrate bus 0 "
                    "and add records to registry.\n");
@@ -425,7 +426,7 @@ uint8_t pci_type0_raw_capabilities_test() {
     }
 
     /* find a record from the registry using bdf */
-    test_record0 = pci_registry_find_bdf(&test_reg, bdf_to_find);
+    test_record0 = pci_record_registry_find_bdf(&test_reg, bdf_to_find);
     test_record = (pci_function_record_t *)test_record0;
 
     /* iterate thru the capabilities list raw bytes for that record */
@@ -450,13 +451,13 @@ uint8_t pci_command_rw_test() {
     uint16_t before, after;
 
     /* enumerate bus 0 and update into its registry contents */
-    if (!pci_enumerate_bus0_into_registry(&test_reg)) {
+    if (!pci_enumerate_bus0_into_record_registry(&test_reg)) {
         KLOG_ERROR("PCI_TEST", "pci_command_rw_test: enumeration failed.\n");
         return 0;
     }
 
     /* find the concerned bdf endpoint from the registry */
-    if (!pci_registry_find_bdf(&test_reg, bdf)) {
+    if (!pci_record_registry_find_bdf(&test_reg, bdf)) {
         KLOG_ERROR("PCI_TEST",
                    "pci_command_rw_test: target %02x:%02x.%u not found.\n",
                    bdf.bus, bdf.device, bdf.function);
@@ -492,13 +493,13 @@ uint8_t pci_enable_policy_test() {
     uint16_t cmd_read_before, cmd_read_after_mem, cmd_read_after_bm;
 
     /* enumerate bus 0 and update into its registry contents */
-    if (!pci_enumerate_bus0_into_registry(&test_reg)) {
+    if (!pci_enumerate_bus0_into_record_registry(&test_reg)) {
         KLOG_ERROR("PCI_TEST", "enable_policy_test: enumeration failed.\n");
         return 0;
     }
 
     /* find the concerned bdf endpoint from the registry */
-    if (!pci_registry_find_bdf(&test_reg, bdf_to_find)) {
+    if (!pci_record_registry_find_bdf(&test_reg, bdf_to_find)) {
         KLOG_ERROR("PCI_TEST",
                    "enable_policy_test: target %02x:%02x.%u not found.\n",
                    bdf_to_find.bus, bdf_to_find.device, bdf_to_find.function);
@@ -543,25 +544,25 @@ uint8_t pci_enable_policy_test() {
 }
 
 uint8_t pci_registry_resource_test(void) {
-    pci_registry_t *reg = &test_reg;
+    pci_record_registry_t *reg = &test_reg;
     pci_bdf_t nic_bdf = {.bus = 0x00, .device = 0x03, .function = 0x00};
     const pci_function_record_t *nic;
 
-    if (!pci_enumerate_bus0_into_registry(reg)) {
+    if (!pci_enumerate_bus0_into_record_registry(reg)) {
         KLOG_ERROR("PCI_TEST",
                    "pci_registry_resource_test: enumeration failed.\n");
         return 0;
     }
 
-    if (!pci_enrich_registry_resources(reg)) {
+    if (!pci_enrich_record_registry_resources(reg)) {
         KLOG_ERROR("PCI_TEST",
                    "pci_registry_resource_test: enrichment failed.\n");
         return 0;
     }
 
-    pci_dump_registry_resources(reg);
+    pci_dump_record_registry_resources(reg);
 
-    nic = pci_registry_find_bdf(reg, nic_bdf);
+    nic = pci_record_registry_find_bdf(reg, nic_bdf);
     if (!nic) {
         KLOG_ERROR(
             "PCI_TEST",

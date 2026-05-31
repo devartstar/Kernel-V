@@ -1,6 +1,6 @@
 #include "arch/x86/pci/pci_cap.h"
 #include "arch/x86/pci/pci_dump.h"
-#include "arch/x86/pci/pci_registry.h"
+#include "arch/x86/pci/pci_record_registry.h"
 
 void pci_capability_state_init(struct pci_function_record *rec) {
     /* check if pointer to function record is valid */

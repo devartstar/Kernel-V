@@ -56,7 +56,7 @@ LoadKernel:
     ; --- Read 3: final 3 sectors to 0x2FC0:0x0000 (phys 0x2FC00) ---
     mov si, ReadPacket
     mov word [si], 0x10
-    mov word [si+2], 3
+    mov word [si+2], 127
     mov word [si+4], 0x0000
     mov word [si+6], 0x2FC0          ; phys 0x2FC00
     mov dword [si+8], 263            ; 136 + 127

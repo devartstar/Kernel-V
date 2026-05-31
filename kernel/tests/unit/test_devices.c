@@ -2,10 +2,10 @@
 #include "arch/x86/pci/pci_cfg.h"
 #include "arch/x86/pci/pci_devices.h"
 #include "arch/x86/pci/pci_driver.h"
-#include "arch/x86/pci/pci_registry.h"
+#include "arch/x86/pci/pci_record_registry.h"
 
 /* Single shared registry to avoid 64KB-per-instance BSS bloat */
-static pci_registry_t test_reg;
+static pci_record_registry_t test_reg;
 
 /**
  * pci_dummy_driver_probe - driver call when the driver entry matches
@@ -43,14 +43,14 @@ uint8_t device_pci_driver_match_test(void) {
     pci_device_t *pci_test_dev;
 
     /* enumerate bus 0 into registry */
-    if (!pci_enumerate_bus0_into_registry(&test_reg)) {
+    if (!pci_enumerate_bus0_into_record_registry(&test_reg)) {
         KLOG_ERROR("DEVICE_TEST", "pci_driver_match_test failed. Failed to "
                                   "probe bus0 into registry.\n");
         return 0;
     }
 
     /* find a specific record from registry */
-    test_rec_const = pci_registry_find_bdf(&test_reg, bdf);
+    test_rec_const = pci_record_registry_find_bdf(&test_reg, bdf);
     if (!test_rec_const) {
         KLOG_ERROR("DEVICE_TEST",
                    "pci_driver_match_test failed. Failed to find record in "

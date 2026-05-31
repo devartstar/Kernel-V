@@ -1,7 +1,7 @@
-#include "arch/x86/pci/pci_registry.h"
+#include "arch/x86/pci/pci_record_registry.h"
 #include "lib/printk.h"
 
-void pci_registry_init(pci_registry_t *reg) {
+void pci_record_registry_init(pci_record_registry_t *reg) {
     /* check if pointer to registery structure is valid */
     if (!reg) {
         KLOG_ERROR("PCI", "invalid pointer to registry structure.\n");
@@ -16,8 +16,8 @@ void pci_registry_init(pci_registry_t *reg) {
     }
 }
 
-uint8_t pci_registry_add(pci_registry_t *reg,
-                         const pci_function_identity_t *id) {
+uint8_t pci_record_registry_add(pci_record_registry_t *reg,
+                                const pci_function_identity_t *id) {
     /* check if pointer to registry and function id to add is valid*/
     if (!reg || !id) {
         KLOG_ERROR(
@@ -58,11 +58,19 @@ uint8_t pci_registry_add(pci_registry_t *reg,
     /* mark BAR valid as 0 since BAR info is just initialized and not updated */
     reg->entries[reg->count].bars_valid = 0;
 
+    /* intialize all the capabilities in the function */
+    for (uint8_t i = 0; i < PCI_CAP_MAX_PER_FUNCTION; i++) {
+        pci_capability_info_init(&reg->entries[reg->count].caps[i]);
+    }
+    reg->entries[reg->count].cap_count = 0;
+    reg->entries[reg->count].caps_present = 0;
+    reg->entries[reg->count].caps_valid = 0;
+
     return 1;
 }
 
-uint8_t pci_enumerate_bus0_into_registry(pci_registry_t *reg) {
-    pci_registry_fill_ctx_t reg_ctx;
+uint8_t pci_enumerate_bus0_into_record_registry(pci_record_registry_t *reg) {
+    pci_record_registry_fill_ctx_t reg_ctx;
     pci_probe_result_t result;
     uint32_t discovered = 0;
 
@@ -73,13 +81,14 @@ uint8_t pci_enumerate_bus0_into_registry(pci_registry_t *reg) {
     }
 
     /* initialize the registry context for callback */
-    pci_registry_init(reg);
+    pci_record_registry_init(reg);
     reg_ctx.registry = reg;
     reg_ctx.inserted = 0;
     reg_ctx.errors = 0;
 
     /* scan bus0 for identifying all functions */
-    result = pci_scan_bus0(pci_registry_fill_visitor, &reg_ctx, &discovered);
+    result =
+        pci_scan_bus0(pci_record_registry_fill_visitor, &reg_ctx, &discovered);
     if (result == PCI_PROBE_ERROR) {
         KLOG_ERROR("PCI", "scanning bus 0 failed.\n");
         return 0;
@@ -110,8 +119,9 @@ uint8_t pci_enumerate_bus0_into_registry(pci_registry_t *reg) {
     return 1;
 }
 
-void pci_registry_foreach(const pci_registry_t *reg,
-                          pci_registry_visitor_fn visitor, void *ctx) {
+void pci_record_registry_foreach(const pci_record_registry_t *reg,
+                                 pci_record_registry_visitor_fn visitor,
+                                 void *ctx) {
     /* check if the input pointers are valid */
     if (!reg || !visitor) {
         KLOG_ERROR(
@@ -127,8 +137,8 @@ void pci_registry_foreach(const pci_registry_t *reg,
     }
 }
 
-const pci_function_record_t *pci_registry_find_bdf(const pci_registry_t *reg,
-                                                   pci_bdf_t bdf) {
+const pci_function_record_t *
+pci_record_registry_find_bdf(const pci_record_registry_t *reg, pci_bdf_t bdf) {
     /* check if the pointer to the registry is valid */
     if (!reg) {
         KLOG_ERROR("PCI", "invalid registry pointer to find function.\n");
@@ -154,7 +164,7 @@ const pci_function_record_t *pci_registry_find_bdf(const pci_registry_t *reg,
     return NULL;
 }
 
-uint8_t pci_enrich_registry_resources(pci_registry_t *reg) {
+uint8_t pci_enrich_record_registry_resources(pci_record_registry_t *reg) {
     if (!reg) {
         KLOG_ERROR("PCI",
                    "Enrich registry failed. Invalid reference to registry.\n");
