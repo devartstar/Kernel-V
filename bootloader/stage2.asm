@@ -12,7 +12,7 @@ Start:
     cmp bx, 0xAA55
     jne NotSupported
 
-    ; ReadPacket - 16 Bytes.
+    ; ReadPacket
     ; si = *ReadPacket
     ; [si]              - to store the size of Read Packet
     ; [si+1]            - Reserved (must be 0)
@@ -25,28 +25,42 @@ Start:
     ; INT 0x13/AH=42h can only load up to 64KB (127 sectors) per call
     ; due to segment:offset limits.  Split into two reads.
 LoadKernel:
-    ; --- Read 1: Load first 127 sectors to 0x1000:0x0000 (phys 0x10000) ---
+    ; --- Read 1: first 127 sectors to 0x1000:0x0000 (phys 0x10000) ---
     mov si, ReadPacket
-    mov word[si], 0x10
-    mov word[si+2], 0x7F            ; 127 sectors = 0xFE00 bytes
-    mov word[si+4], 0x00            ; Offset 0x0000
-    mov word[si+6], 0x1000          ; Segment 0x1000 -> phys 0x10000
-    mov dword[si+8], 0x09           ; LBA 9
-    mov dword[si+12], 0x00
+    mov word [si], 0x10
+    mov word [si+2], 127
+    mov word [si+4], 0x0000
+    mov word [si+6], 0x1000          ; phys 0x10000
+    mov dword [si+8], 9              ; starting LBA
+    mov dword [si+12], 0
 
     mov ah, 0x42
     mov dl, 0x80
     int 0x13
     jc ReadError
 
-    ; --- Read 2: Load next sectors to 0x1FE0:0x0000 (phys 0x1FE00) ---
+    ; --- Read 2: next 127 sectors to 0x1FE0:0x0000 (phys 0x1FE00) ---
     mov si, ReadPacket
-    mov word[si], 0x10
-    mov word[si+2], 0x7F            ; 80 more sectors = 320KB (total 175 = ~87KB headroom)
-    mov word[si+4], 0x00            ; Offset 0x0000
-    mov word[si+6], 0x1FE0          ; Segment 0x1FE0 -> phys 0x1FE00 (contiguous)
-    mov dword[si+8], 0x88           ; LBA = 9 + 127 = 136 (0x88)
-    mov dword[si+12], 0x00
+    mov word [si], 0x10
+    mov word [si+2], 127
+    mov word [si+4], 0x0000
+    mov word [si+6], 0x1FE0          ; phys 0x1FE00
+    mov dword [si+8], 136            ; 9 + 127
+    mov dword [si+12], 0
+
+    mov ah, 0x42
+    mov dl, 0x80
+    int 0x13
+    jc ReadError
+
+    ; --- Read 3: final 3 sectors to 0x2FC0:0x0000 (phys 0x2FC00) ---
+    mov si, ReadPacket
+    mov word [si], 0x10
+    mov word [si+2], 3
+    mov word [si+4], 0x0000
+    mov word [si+6], 0x2FC0          ; phys 0x2FC00
+    mov dword [si+8], 263            ; 136 + 127
+    mov dword [si+12], 0
 
     mov ah, 0x42
     mov dl, 0x80

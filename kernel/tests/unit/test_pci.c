@@ -1,4 +1,10 @@
 #include "tests/test_pci.h"
+#include "arch/x86/pci/pci.h"
+#include "arch/x86/pci/pci_bar.h"
+#include "arch/x86/pci/pci_cfg.h"
+#include "arch/x86/pci/pci_cmd.h"
+#include "arch/x86/pci/pci_dump.h"
+#include "arch/x86/pci/pci_registry.h"
 
 /* Single shared registry to avoid 64KB-per-instance BSS bloat */
 static pci_registry_t test_reg;

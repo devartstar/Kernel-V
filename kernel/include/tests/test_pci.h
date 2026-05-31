@@ -1,12 +1,8 @@
 #ifndef TEST_PCI_H
 #define TEST_PCI_H
 
-#include "arch/x86/pci/pci.h"
-#include "arch/x86/pci/pci_bar.h"
-#include "arch/x86/pci/pci_cfg.h"
-#include "arch/x86/pci/pci_cmd.h"
-#include "arch/x86/pci/pci_dump.h"
-#include "arch/x86/pci/pci_registry.h"
+#include "lib/printk.h"
+#include "stdint.h"
 
 uint8_t pci_cfg_smoke_test(void);
 uint8_t pci_cfg_extract_test(void);

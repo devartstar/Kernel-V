@@ -24,6 +24,14 @@ typedef struct pci_device {
 void pci_device_make_name(char *buf, uint32_t buf_size,
                           const pci_function_record_t *rec);
 
+/**
+ * pci_device_init - initialize a PCI device object.
+ * @pdevice - reference to he device object to initliaze
+ * @rec - reference to pci function recoed.
+ * @pparent_device - reference to the parent device object.
+ *
+ * @return 1 for successful initialization else 0.
+ */
 uint8_t pci_device_init(pci_device_t *pdevice, pci_function_record_t *rec,
                         device_t *pparent_device);
 

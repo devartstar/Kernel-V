@@ -18,7 +18,7 @@ uint8_t pci_device_init(pci_device_t *pci_dev, pci_function_record_t *rec,
     char name[DEVICE_NAME_MAX];
 
     /* check for validity of input args */
-    if (!pci_dev || !parent_dev || !rec->present) {
+    if (!pci_dev || !rec || !rec->present) {
         KLOG_ERROR("PCI",
                    "Error intializing PCI device. Invalid argumens passed.\n");
         return 0;

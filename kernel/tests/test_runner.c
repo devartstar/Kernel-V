@@ -2,6 +2,7 @@
 #include "core/kernel.h"
 #include "lib/printk.h"
 #include "tests/nested_irq.h"
+#include "tests/test_devices.h"
 #include "tests/test_irq.h"
 #include "tests/test_mmio.h"
 #include "tests/test_pci.h"
@@ -47,6 +48,7 @@ void run_kernel_tests(void) {
     run_spinlock_tests();
     run_irq_tests();
     run_pci_tests();
+    run_devices_tests();
 
     KLOG_VERBOSE("TEST", "Unit Tests Complete.\n");
     tests_run = true;
