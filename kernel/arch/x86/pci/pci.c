@@ -47,7 +47,7 @@ pci_probe_result_t pci_probe_function(pci_bdf_t bdf,
     return PCI_PROBE_SUCCESS;
 }
 
-pci_probe_result_t pci_probe_slot(pci_bus_t bus, pci_device_t device,
+pci_probe_result_t pci_probe_slot(pci_bus_num_t bus, pci_device_num_t device,
                                   pci_probe_visitor_fn visitor, void *ctx,
                                   uint32_t *fn_found) {
     pci_bdf_t bdf0;
@@ -94,7 +94,7 @@ pci_probe_result_t pci_probe_slot(pci_bus_t bus, pci_device_t device,
     }
 
     /* If bit 7 is set scan all functions 1-7 */
-    for (pci_function_t fn = 1; fn < PCI_FUNCTION_PER_SLOT; fn++) {
+    for (pci_function_num_t fn = 1; fn < PCI_FUNCTION_PER_SLOT; fn++) {
         pci_bdf_t bdf;
         pci_function_identity_t id;
 
@@ -141,7 +141,7 @@ pci_probe_result_t pci_scan_bus0(pci_scan_visitor_fn visitor, void *ctx,
 
     (*fn_found) = 0;
 
-    for (pci_device_t dev = 0; dev < PCI_DEVICES_PER_BUS; dev++) {
+    for (pci_device_num_t dev = 0; dev < PCI_DEVICES_PER_BUS; dev++) {
         uint32_t fn_count_in_slot = 0;
         pci_probe_result_t res;
 

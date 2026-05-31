@@ -46,7 +46,7 @@ typedef void (*pci_probe_visitor_fn)(const pci_function_identity_t *id,
                                      void *ctx);
 
 /* Check if function is the first entry of the slot */
-static inline uint8_t pci_func_is_zero(pci_function_t func) {
+static inline uint8_t pci_func_is_zero(pci_function_num_t func) {
     return func == 0;
 }
 
@@ -84,7 +84,7 @@ pci_probe_result_t pci_probe_function(pci_bdf_t bdf,
  *
  * @return - status if the of slot scan. -1: absent, 0: error, 1: success.
  */
-pci_probe_result_t pci_probe_slot(pci_bus_t bus, pci_device_t device,
+pci_probe_result_t pci_probe_slot(pci_bus_num_t bus, pci_device_num_t device,
                                   pci_probe_visitor_fn visitor, void *ctx,
                                   uint32_t *fn_found);
 

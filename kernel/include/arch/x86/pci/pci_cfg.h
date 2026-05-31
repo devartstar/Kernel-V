@@ -68,21 +68,21 @@
 #define PCI_CFG_FUNC_MASK 0x07u
 #define PCI_CFG_REG_MASK 0xFCu
 
-typedef uint8_t pci_bus_t;
-typedef uint8_t pci_device_t;
-typedef uint8_t pci_function_t;
+typedef uint8_t pci_bus_num_t;
+typedef uint8_t pci_device_num_t;
+typedef uint8_t pci_function_num_t;
 
 typedef struct pci_bdf {
-    pci_bus_t bus;
-    pci_device_t device;
-    pci_function_t function;
+    pci_bus_num_t bus;
+    pci_device_num_t device;
+    pci_function_num_t function;
 } pci_bdf_t;
 
-static inline uint8_t is_device_valid(pci_device_t device) {
+static inline uint8_t is_device_valid(pci_device_num_t device) {
     return device < 32;
 }
 
-static inline uint8_t is_function_valid(pci_function_t function) {
+static inline uint8_t is_function_valid(pci_function_num_t function) {
     return function < 8;
 }
 

@@ -75,17 +75,6 @@ int printk(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 void printk_init(void);
 
 /**
- * my_vsnprintf - Internal formatting function to generate the final string
- * after parsing arguments.
- * @buf - buffer to write formatted string
- * @size - size of the buffer
- * @fmt - format string
- * @args - variable argument list
- * @returns number of characters written
- */
-int my_vsnprintf(char *buf, size_t size, const char *fmt, va_list args);
-
-/**
  * ringbuf_write - Write a string to the ring buffer.
  * @str - string to write.
  * @str_len - length of the string.

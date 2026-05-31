@@ -1,6 +1,7 @@
 #ifndef LIB_STRING_H
 #define LIB_STRING_H
 
+#include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -22,4 +23,28 @@ int strcmp(const char *s1, const char *s2);
 char *strrchr(const char *s, int c);
 void *memcpy(void *dst, const void *src, size_t n);
 void strappend(char *dest, char *src);
+
+/**
+ * my_vsnprintf - utility that actuall formats the string using the string
+ * formatter fmt and arguments passed.
+ * @buf - string buffer to store the formatted string
+ * @size - maximum size of string buffer
+ * @fmt - format specifier string
+ * @args - values to insert in format specifier to generate formatted string.
+ *
+ * @return - length of the formatted string.
+ */
+int my_vsnprintf(char *buf, size_t size, const char *fmt, va_list args);
+
+/**
+ * my_snprint - strinf formatter based on the fmt and the arguments passed using
+ * my_vsnprintf.
+ * @buf - string buffer to store the formatted string
+ * @size - maximum size of string buffer
+ * @fmt - format specifier string
+ * @args - values to insert in format specifier to generate formatted string.
+ *
+ * @return - length of the formatted string.
+ */
+int my_snprintf(char *buf, size_t size, const char *fmt, ...);
 #endif /* LIB_STRING_H */
