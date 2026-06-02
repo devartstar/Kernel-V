@@ -2,6 +2,7 @@
 #include "arch/x86/pci/pci_cfg.h"
 #include "arch/x86/pci/pci_devices.h"
 #include "arch/x86/pci/pci_driver.h"
+#include "arch/x86/pci/pci_driver_api.h"
 #include "arch/x86/pci/pci_driver_registry.h"
 #include "arch/x86/pci/pci_record_registry.h"
 
@@ -137,5 +138,106 @@ uint8_t device_pci_driver_registry_bind_test(void) {
               "pdevice_pci_driver_registry_bind_test successfully bound test "
               "driver %s to test device.\n",
               pci_dummy_driver.name);
+    return 1;
+}
+
+uint8_t device_pci_driver_api_test(void) {
+    pci_record_registry_t *reg = &test_record_reg;
+    pci_bdf_t nic_bdf = {.bus = 0x00, .device = 0x03, .function = 0x00};
+    const pci_function_record_t *nic_const;
+    pci_function_record_t *nic;
+    pci_device_t dev;
+    const pci_bar_info_t *bar0;
+    const pci_bar_info_t *io_bar;
+    const pci_command_status_info_t *cmd_before;
+    const pci_command_status_info_t *cmd_after;
+
+    if (!pci_enumerate_bus0_into_record_registry(reg)) {
+        KLOG_ERROR("DEVICE_TEST",
+                   "device_pci_driver_api_test failed: enumeration failed.\n");
+        return 0;
+    }
+
+    if (!pci_enrich_record_registry_resources(reg)) {
+        KLOG_ERROR("DEVICE_TEST",
+                   "device_pci_driver_api_test failed: enrichment failed.\n");
+        return 0;
+    }
+
+    nic_const = pci_record_registry_find_bdf(reg, nic_bdf);
+    if (!nic_const) {
+        KLOG_ERROR("DEVICE_TEST",
+                   "device_pci_driver_api_test failed: target %02x:%02x.%u not "
+                   "found.\n",
+                   nic_bdf.bus, nic_bdf.device, nic_bdf.function);
+        return 0;
+    }
+
+    nic = (pci_function_record_t *)nic_const;
+
+    if (!pci_device_init(&dev, nic, NULL)) {
+        KLOG_ERROR("DEVICE_TEST", "device_pci_driver_api_test failed: device "
+                                  "initialization failed.\n");
+        return 0;
+    }
+
+    KLOG_VERBOSE("DEVICE_TEST",
+                 "device_pci_driver_api_test: reading bar and cmd info.\n");
+    bar0 = pci_device_get_bar(&dev, 0);
+    io_bar = pci_device_get_bar_kind(&dev, PCI_BAR_KIND_IO);
+    cmd_before = pci_device_get_cmd_status(&dev);
+
+    KLOG_INFO("DEVICE_TEST", "BAR0: %08x, %u.\n", bar0, bar0->present);
+
+    if (!bar0 || !bar0->present) {
+        KLOG_ERROR("DEVICE_TEST",
+                   "device_pci_driver_api_test failed: BAR0 missing.\n");
+        return 0;
+    }
+
+    KLOG_INFO("DEVICE_TEST", "IO BAR: %08x, %u.\n", io_bar, io_bar->present);
+
+    if (!io_bar || !io_bar->present) {
+        KLOG_ERROR("DEVICE_TEST",
+                   "device_pci_driver_api_test failed: IO BAR missing.\n");
+        return 0;
+    }
+
+    if (!cmd_before) {
+        KLOG_ERROR(
+            "DEVICE_TEST",
+            "device_pci_driver_api_test failed: Command & Status missing.\n");
+        return 0;
+    }
+
+    if (!pci_device_enable_bus_master(&dev)) {
+        KLOG_ERROR(
+            "DEVICE_TEST",
+            "device_pci_driver_api_test failed: Enabling bus master failed.\n");
+        return 0;
+    }
+
+    KLOG_VERBOSE("DEVICE_TEST",
+                 "device_pci_driver_api_test: updating command info.\n");
+    cmd_after = pci_device_get_cmd_status(&dev);
+
+    if (!cmd_after) {
+        KLOG_ERROR("DEVICE_TEST", "device_pci_driver_api_test failed: Command "
+                                  "& Status refresh failed.\n");
+        return 0;
+    }
+
+    if ((cmd_after->command & PCI_CMD_BUS_MASTER) == 0) {
+        KLOG_ERROR("DEVICE_TEST", "device_pci_driver_api_test failed: Command "
+                                  "bus master bit set failed.\n");
+        return 0;
+    }
+
+    KLOG_INFO("DEVICE_TEST",
+              "device_pci_driver_api_test success:"
+              "\n\tBAR0=%08x, IO_BAR=%08x, cmd_before=%04x, cmd_after=%04x.\n",
+              (uint32_t)bar0->base, (uint32_t)io_bar->base, cmd_before->command,
+              cmd_after->command);
+
     return 1;
 }

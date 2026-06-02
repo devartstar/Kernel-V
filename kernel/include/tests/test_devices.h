@@ -6,6 +6,7 @@
 
 uint8_t device_pci_driver_match_test(void);
 uint8_t device_pci_driver_registry_bind_test(void);
+uint8_t device_pci_driver_api_test(void);
 
 static inline void run_devices_tests(void) {
     uint8_t failed_count = 0;
@@ -22,10 +23,16 @@ static inline void run_devices_tests(void) {
         failed_count++;
     }
 
+    if (device_pci_driver_api_test()) {
+        KLOG_INFO("TEST", "DEVICE pci driver api test passed.\n");
+    } else {
+        failed_count++;
+    }
+
     if (failed_count > 0) {
         KLOG_ERROR("TEST", "Devices tests failed count %u.\n", failed_count);
     } else {
-        KLOG_INFO("TEST", "All Devicestests passed.\n");
+        KLOG_INFO("TEST", "All Devices tests passed.\n");
     }
 }
 
