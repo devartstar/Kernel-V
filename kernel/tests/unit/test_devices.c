@@ -2,10 +2,12 @@
 #include "arch/x86/pci/pci_cfg.h"
 #include "arch/x86/pci/pci_devices.h"
 #include "arch/x86/pci/pci_driver.h"
+#include "arch/x86/pci/pci_driver_registry.h"
 #include "arch/x86/pci/pci_record_registry.h"
 
 /* Single shared registry to avoid 64KB-per-instance BSS bloat */
-static pci_record_registry_t test_reg;
+static pci_record_registry_t test_record_reg;
+static pci_driver_registry_t test_driver_reg;
 
 /**
  * pci_dummy_driver_probe - driver call when the driver entry matches
@@ -43,14 +45,14 @@ uint8_t device_pci_driver_match_test(void) {
     pci_device_t *pci_test_dev;
 
     /* enumerate bus 0 into registry */
-    if (!pci_enumerate_bus0_into_record_registry(&test_reg)) {
+    if (!pci_enumerate_bus0_into_record_registry(&test_record_reg)) {
         KLOG_ERROR("DEVICE_TEST", "pci_driver_match_test failed. Failed to "
                                   "probe bus0 into registry.\n");
         return 0;
     }
 
     /* find a specific record from registry */
-    test_rec_const = pci_record_registry_find_bdf(&test_reg, bdf);
+    test_rec_const = pci_record_registry_find_bdf(&test_record_reg, bdf);
     if (!test_rec_const) {
         KLOG_ERROR("DEVICE_TEST",
                    "pci_driver_match_test failed. Failed to find record in "
@@ -96,5 +98,44 @@ uint8_t device_pci_driver_match_test(void) {
 
     KLOG_INFO("DEVICE_TEST", "pci_driver_match_test passed. Successfully "
                              "probed matched driver routine.\n");
+    return 1;
+}
+
+uint8_t device_pci_driver_registry_bind_test(void) {
+    uint16_t bound_count = 0;
+
+    /* enumerate and fill up the test record registry */
+    if (!pci_enumerate_bus0_into_record_registry(&test_record_reg)) {
+        KLOG_ERROR("DEVICE_TEST",
+                   "device_pci_driver_registry_bind_test failed. Failed to "
+                   "probe bus0 into registry.\n");
+        return 0;
+    }
+
+    /* initialize the pci driver registry */
+    pci_driver_registry_init(&test_driver_reg);
+
+    /* register the dummy test driver */
+    if (!pci_driver_registry_add(&test_driver_reg, &pci_dummy_driver)) {
+        KLOG_ERROR("DEVICE_TEST",
+                   "pdevice_pci_driver_registry_bind_test failed. Failed to "
+                   "add test driver to registry.\n");
+        return 0;
+    }
+
+    /* bind all drivers to the devices */
+    bound_count = pci_probe_and_bind_all(&test_record_reg, &test_driver_reg);
+    if (bound_count <= 0) {
+        KLOG_ERROR("DEVICE_TEST",
+                   "pdevice_pci_driver_registry_bind_test failed. No drivers "
+                   "bound, expected test driver %s to bind.\n",
+                   pci_dummy_driver.name);
+        return 0;
+    }
+
+    KLOG_INFO("DEVICE_TEST",
+              "pdevice_pci_driver_registry_bind_test successfully bound test "
+              "driver %s to test device.\n",
+              pci_dummy_driver.name);
     return 1;
 }
