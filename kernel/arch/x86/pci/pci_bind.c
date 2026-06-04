@@ -27,11 +27,15 @@ bind_device_result_t pci_bind_device(pci_driver_registry_t *reg,
         uint8_t probe_res;
 
         if (!driver) {
+            KLOG_VERBOSE("PCI_BIND", "probe failed. Driver ref is invalid.\n");
             continue;
         }
 
         /* check if the driver detail matches with device detail */
         if (!pci_driver_matches(driver, dev)) {
+            KLOG_VERBOSE(
+                "PCI_BIND",
+                "probe failed. No matching Device to bound to Driver .\n");
             continue;
         }
 

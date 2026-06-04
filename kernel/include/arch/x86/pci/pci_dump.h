@@ -20,72 +20,17 @@ void pci_dump_record_registry(const pci_record_registry_t *reg);
 /**
  * pci_class_name - decode the class name based on class and subclass bits
  */
-static const char *pci_class_name(uint8_t class_code, uint8_t subclass) {
-    switch (class_code) {
-    case 0x01:
-        return "Mass storage";
-    case 0x02:
-        return "Network controller";
-    case 0x03:
-        return "Display controller";
-    case 0x06:
-        switch (subclass) {
-        case 0x00:
-            return "Host bridge";
-        case 0x01:
-            return "ISA bridge";
-        case 0x04:
-            return "PCI-to-PCI bridge";
-        default:
-            return "Bridge device";
-        }
-    default:
-        return "Unknown";
-    }
-}
+const char *pci_class_name(uint8_t class_code, uint8_t subclass);
 
 /**
  * pci_bar_kind_name - convert enum to string for bar type.
  */
-static const char *pci_bar_kind_name(pci_bar_kind_t kind) {
-    switch (kind) {
-    case PCI_BAR_KIND_IO:
-        return "io";
-    case PCI_BAR_KIND_MEM32:
-        return "mem32";
-    case PCI_BAR_KIND_MEM64:
-        return "mem64";
-    case PCI_BAR_KIND_UNUSED:
-        return "unused";
-    default:
-        return "unknown";
-    }
-}
+const char *pci_bar_kind_name(pci_bar_kind_t kind);
 
 /**
- * pci_capability_kind_name - convert enum to capability name
+ * pci_capability_kind_name - convert capability kind enum to string.
  */
-static const char *pci_capability_kind_name(pci_cap_kind_t kind) {
-    switch (kind) {
-    case PCI_CAP_ID_PM:
-        return "PM";
-
-    case PCI_CAP_ID_MSI:
-        return "MSI";
-
-    case PCI_CAP_ID_MSIX:
-        return "MSIX";
-
-    case PCI_CAP_ID_PCIEXP:
-        return "PCIEXP";
-
-    case PCI_CAP_ID_VENDOR:
-        return "VENDOR";
-
-    default:
-        return "UNKNOWN";
-    }
-}
+const char *pci_capability_kind_name(pci_cap_kind_t kind);
 
 /**
  * pci_dump_type0_bars - helper routine to dump all the bars for the type0

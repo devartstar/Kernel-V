@@ -1,6 +1,37 @@
 #include "arch/x86/pci/pci_record_registry.h"
 #include "lib/printk.h"
 
+/**
+ * pci_record_registry_fill_visitor - callback routine when a function is
+ * discovered, it adds function identity to registry context.
+ *
+ * @id - pointer to the function identity to add to the registry context.
+ * @ctx - pointer to the registry context.
+ */
+static void pci_record_registry_fill_visitor(const pci_function_identity_t *id,
+                                             void *ctx) {
+    /* organize the memory of the context from void into type
+     * pci_record_registry_fill_ctx_t */
+    pci_record_registry_fill_ctx_t *fill_ctx =
+        (pci_record_registry_fill_ctx_t *)ctx;
+
+    /* check for valid pointers in the registry context and id to be registered
+     */
+    if (!fill_ctx || !fill_ctx->registry || !id) {
+        KLOG_ERROR(
+            "PCI",
+            "invalid registry context or entries or id to be registered.\n");
+        return;
+    }
+
+    /* add the function id to the registry */
+    if (pci_record_registry_add(fill_ctx->registry, id)) {
+        fill_ctx->inserted++;
+    } else {
+        fill_ctx->errors++;
+    }
+}
+
 void pci_record_registry_init(pci_record_registry_t *reg) {
     /* check if pointer to registery structure is valid */
     if (!reg) {

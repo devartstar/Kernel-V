@@ -1,5 +1,63 @@
 #include "arch/x86/pci/pci_dump.h"
+#include "arch/x86/pci/pci_driver.h"
 #include "lib/printk.h"
+
+const char *pci_class_name(uint8_t class_code, uint8_t subclass) {
+    switch (class_code) {
+    case 0x01:
+        return "Mass storage";
+    case 0x02:
+        return "Network controller";
+    case 0x03:
+        return "Display controller";
+    case 0x06:
+        switch (subclass) {
+        case 0x00:
+            return "Host bridge";
+        case 0x01:
+            return "ISA bridge";
+        case 0x04:
+            return "PCI-to-PCI bridge";
+        default:
+            return "Bridge device";
+        }
+    default:
+        return "Unknown";
+    }
+}
+
+const char *pci_bar_kind_name(pci_bar_kind_t kind) {
+    switch (kind) {
+    case PCI_BAR_KIND_IO:
+        return "io";
+    case PCI_BAR_KIND_MEM32:
+        return "mem32";
+    case PCI_BAR_KIND_MEM64:
+        return "mem64";
+    case PCI_BAR_KIND_UNUSED:
+        return "unused";
+    default:
+        return "unknown";
+    }
+}
+
+const char *pci_capability_kind_name(pci_cap_kind_t kind) {
+    switch (kind) {
+    case PCI_CAP_KIND_PM:
+        return "PM";
+    case PCI_CAP_KIND_MSI:
+        return "MSI";
+    case PCI_CAP_KIND_MSIX:
+        return "MSIX";
+    case PCI_CAP_KIND_PCIEXP:
+        return "PCIEXP";
+    case PCI_CAP_KIND_VENDOR:
+        return "VENDOR";
+    case PCI_CAP_KIND_UNKNOWN:
+    default:
+        return "UNKNOWN";
+    }
+}
 
 void pci_dump_record_visitor(const pci_function_record_t *record, void *ctx) {
     /* context unused */
@@ -88,7 +146,7 @@ void pci_dump_record_capabilities(const pci_function_record_t *rec) {
 
         KLOG_INFO(
             "PCI", "  CAP[%u] id=0x%02x kind=%s offset=0x%02x next=0x%02x\n", i,
-            cap->id, pci_capability_kind_name(cap->id), cap->offset, cap->next);
+            cap->id, pci_capability_kind_name(cap->kind), cap->offset, cap->next);
     }
 }
 

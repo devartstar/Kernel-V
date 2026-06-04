@@ -1,9 +1,9 @@
 #ifndef PCI_DRIVER_API_H
 #define PCI_DRIVER_API_H
 
-#include "arch/x86/pci/pci_bar.h";
-#include "arch/x86/pci/pci_cmd.h";
-#include "arch/x86/pci/pci_devices.h";
+#include "arch/x86/pci/pci_bar.h"
+#include "arch/x86/pci/pci_cmd.h"
+#include "arch/x86/pci/pci_devices.h"
 
 /**
  * pci_device_get_bar - given a pci device and the BAR index, helper to get the

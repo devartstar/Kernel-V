@@ -3,10 +3,27 @@
 
 #include "arch/x86/pci/pci.h"
 #include "arch/x86/pci/pci_bar.h"
-#include "arch/x86/pci/pci_bind.h"
 #include "arch/x86/pci/pci_cap.h"
 #include "arch/x86/pci/pci_cfg.h"
 #include "arch/x86/pci/pci_cmd.h"
+
+/* Forward declaration to avoid circular include with pci_bind.h */
+struct pci_driver;
+
+/**
+ * pci_bind_state - the state of the driver attached to a function record.
+ * @driver - ref. to the driver assigned to the associated device with the
+ * record.
+ * @driver_data - ref. to the data stored by the driver.
+ * @bound - 1 if the device associated with the record is bounded.
+ * @probe_failed - 1 if probing the driver failed.
+ */
+typedef struct pci_bind_state {
+    const struct pci_driver *driver;
+    void *driver_data;
+    uint8_t bound;
+    uint8_t probe_failed;
+} pci_bind_state_t;
 
 /**
  * id - indentity information for a function entry
@@ -79,37 +96,6 @@ void pci_record_registry_init(pci_record_registry_t *reg);
  */
 uint8_t pci_record_registry_add(pci_record_registry_t *reg,
                                 const pci_function_identity_t *id);
-
-/**
- * pci_record_registry_fill_visitor - callback routine when a function is
- * discovered, it adds function identity to registry context.
- *
- * @id - pointer to the function identity to add to the registry context.
- * @ctx - pointer to the registry context.
- */
-static void pci_record_registry_fill_visitor(const pci_function_identity_t *id,
-                                             void *ctx) {
-    /* organize the memory of the context from void into type
-     * pci_record_registry_fill_ctx_t */
-    pci_record_registry_fill_ctx_t *fill_ctx =
-        (pci_record_registry_fill_ctx_t *)ctx;
-
-    /* check for valid pointers in the registry context and id to be registered
-     */
-    if (!fill_ctx || !fill_ctx->registry || !id) {
-        KLOG_ERROR(
-            "PCI",
-            "invalid registry context or entries or id to be registered.\n");
-        return;
-    }
-
-    /* add the function id to the registry */
-    if (pci_record_registry_add(fill_ctx->registry, id)) {
-        fill_ctx->inserted++;
-    } else {
-        fill_ctx->errors++;
-    }
-}
 
 /**
  * pci_enumerate_bus0_into_record_registry - scan all slots and functions in bus

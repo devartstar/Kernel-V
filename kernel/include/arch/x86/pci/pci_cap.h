@@ -190,7 +190,7 @@ pci_capability_find_kind(const struct pci_function_record *rec,
  *
  * @return 1 if capacity matching kind found else 0
  */
-static uint8_t
+static inline uint8_t
 pci_capability_of_kind_present(const struct pci_function_record *rec,
                                pci_cap_kind_t kind) {
     return pci_capability_find_kind(rec, kind) != NULL;

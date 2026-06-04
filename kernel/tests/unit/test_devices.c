@@ -1,4 +1,5 @@
 #include "tests/test_devices.h"
+#include "arch/x86/pci/pci_bind.h"
 #include "arch/x86/pci/pci_cfg.h"
 #include "arch/x86/pci/pci_devices.h"
 #include "arch/x86/pci/pci_driver.h"
@@ -318,8 +319,8 @@ static uint8_t pci_dummy_e1000_device_probe(pci_device_t *device) {
 
 static const pci_driver_t pci_dummy_e1000_driver = {
     .name = "dummy_e1000_driver",
-    .device_id = 0x8086,
-    .vendor_id = 0x100e,
+    .device_id = 0x100e,
+    .vendor_id = 0x8086,
     .probe = pci_dummy_e1000_device_probe,
 };
 
