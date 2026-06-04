@@ -49,7 +49,7 @@ else
 # Case 2 & 3: Debug or Release - Run normal kernel
 run: $(DISK_IMG) ## Build and run kernel in QEMU
 	$(ECHO) "Starting QEMU..."
-	$(Q)$(QEMU) -drive format=raw,file=$< -serial file:serial.log -display curses
+	$(Q)$(QEMU) $(QEMU_DRIVE_FLAGS)$< $(QEMU_SERIAL) $(QEMU_DISPLAY) $(QEMU_EXTRA)
 endif
 
 run-debug: $(DISK_IMG) ## Build and run in QEMU with debug output

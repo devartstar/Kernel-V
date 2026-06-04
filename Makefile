@@ -8,6 +8,15 @@ PROJECT_NAME := Kernel-V
 VERSION := 0.7.1
 BUILD_DATE := $(shell date +%Y-%m-%d)
 
+# Default QEMU settings
+QEMU_DRIVE_FLAGS ?= -drive format=raw,file=
+QEMU_DISPLAY ?= -display curses
+QEMU_SERIAL ?= -serial file:serial.log
+QEMU_EXTRA ?=
+
+# Machine specific overrrides
+-include local.mk
+
 # --- Build Configuration ---
 BUILD_TYPE ?= unknown
 VERBOSE ?= 0
@@ -45,6 +54,13 @@ endif
 # --- Default Target ---
 .DEFAULT_GOAL := help
 
+# --- Local Configs ---
+qemu: ## Show local qemu configuration
+	@echo "Qemu Flags: $(QEMU_DRIVE_FLAGS)"
+	@echo "Qemu Display: $(QEMU_DISPLAY)"
+	@echo "Qemu Serial: $(QEMU_SERIAL)"
+	@echo "Qemu Extra: $(QEMU_EXTRA)"
+
 # --- Help System ---
 help: ## Show this help message
 	@echo "$(PROJECT_NAME) v$(VERSION) - Advanced Build System"
@@ -76,7 +92,7 @@ help: ## Show this help message
 	@echo "  make BUILD_TYPE=debug run  Build and run in debug mode"
 	@echo "  make test-unit VERBOSE=1   Run unit tests with verbose output"
 
-.PHONY: help
+.PHONY: help qemu
 
 # make menuconfig
 # BUILD RELEASE:

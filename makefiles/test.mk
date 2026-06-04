@@ -94,7 +94,6 @@ endif
 	@echo "======================================================================"
 
 ### RUN PHASE ###
-
 test-run: ## Run the built test kernel
 	@echo "======================================================================"
 	@echo "                    KERNEL-V TEST RUNNER"
@@ -102,19 +101,19 @@ test-run: ## Run the built test kernel
 ifeq ($(CONFIG_TESTS_UNIT)$(CONFIG_TESTS_INTEGRATION), yy)
 	@echo "==> Running Combined Test Suite"
 	@echo "    • Tests will run sequentially in single QEMU session"
-	@echo "    • Exit QEMU (Ctrl+Alt+G, then Ctrl+C) when tests complete"
+	@echo "    • Exit QEMU when tests complete"
 	@echo ""
-	$(Q)$(QEMU) -drive format=raw,file=$(DISK_TEST_IMG) -serial file:serial.log -display curses
+	$(Q)$(QEMU) $(QEMU_DRIVE_FLAGS)$(DISK_TEST_IMG) $(QEMU_SERIAL) $(QEMU_DISPLAY) $(QEMU_EXTRA)
 else ifeq ($(CONFIG_TESTS_UNIT), y)
 	@echo "==> Running Unit Tests"
-	@echo "    • Testing: panik, printk functionality" 
+	@echo "    • Testing: panik, printk functionality"
 	@echo ""
-	$(Q)$(QEMU) -drive format=raw,file=$(DISK_UNIT_TEST_IMG) -serial file:serial.log -display curses
+	$(Q)$(QEMU) $(QEMU_DRIVE_FLAGS)$(DISK_UNIT_TEST_IMG) $(QEMU_SERIAL) $(QEMU_DISPLAY) $(QEMU_EXTRA)
 else ifeq ($(CONFIG_TESTS_INTEGRATION), y)
 	@echo "==> Running Integration Tests"
 	@echo "    • Testing: process management"
 	@echo ""
-	$(Q)$(QEMU) -drive format=raw,file=$(DISK_INTEGRATION_IMG) -serial file:serial.log -display curses
+	$(Q)$(QEMU) $(QEMU_DRIVE_FLAGS)$(DISK_INTEGRATION_IMG) $(QEMU_SERIAL) $(QEMU_DISPLAY) $(QEMU_EXTRA)
 else
 	@echo "==> No tests enabled or built!"
 	@echo "    Run 'make test-build' first"
