@@ -40,6 +40,13 @@ bind_device_result_t pci_bind_device(pci_driver_registry_t *reg,
         /* Probing failed */
         if (!probe_res) {
             dev->device.state = DEVICE_STATE_PROBE_FAILED;
+
+            /* Update the bind data in the function record */
+            dev->record->bind_state.driver = driver;
+            dev->record->bind_state.driver_data = NULL;
+            dev->record->bind_state.bound = 0;
+            dev->record->bind_state.probe_failed = 1;
+
             KLOG_ERROR(
                 "PCI_BIND",
                 "probe failed: driver = %s, device = %s, probe result = %d.\n",
@@ -54,6 +61,13 @@ bind_device_result_t pci_bind_device(pci_driver_registry_t *reg,
             "PCI_BIND",
             "probe success:  driver = %s, device = %s, probe result = %d.\n",
             driver->name, dev->device.name, probe_res);
+
+        /* Update the bind data in the function record */
+        dev->record->bind_state.driver = driver;
+        dev->record->bind_state.driver_data = dev->device.driver_data;
+        dev->record->bind_state.bound = 1;
+        dev->record->bind_state.probe_failed = 0;
+
         return PCI_BIND_PASSED;
     }
 

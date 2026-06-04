@@ -13,6 +13,21 @@ typedef enum bind_device_result {
 } bind_device_result_t;
 
 /**
+ * pci_bind_state - the state of the driver attached to a function record.
+ * @driver - ref. to the driver assigned to the associated device with the
+ * record.
+ * @driver_data - ref. to the data stored by the driver.
+ * @bound - 1 if the device associated with the record is bounded.
+ * @probe_failed - 1 if probing the driver failed.
+ */
+typedef struct pci_bind_state {
+    const pci_driver_t *driver;
+    void *driver_data;
+    uint8_t bound;
+    uint8_t probe_failed;
+} pci_bind_state_t;
+
+/**
  * pci_bind_device - for a given device lookup the driver registry and based on
  * matching critera (eg. same vendor/device id) assign driver to the device.
  * @reg - Ref. to the registry of drivers.

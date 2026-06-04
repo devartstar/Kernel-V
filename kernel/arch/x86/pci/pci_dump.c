@@ -144,6 +144,18 @@ void pci_dump_record_resources(const pci_function_record_t *rec) {
                       cap->offset, cap->next);
         }
     }
+
+    if (rec->bind_state.driver) {
+        KLOG_INFO("PCI",
+                  "  bind: bound=%u probe_failed=%u driver=%s driver_data=%p\n",
+                  rec->bind_state.bound, rec->bind_state.probe_failed,
+                  rec->bind_state.driver->name, rec->bind_state.driver_data);
+    } else {
+        KLOG_INFO(
+            "PCI",
+            "  bind: bound=0 probe_failed=0 driver=(none) driver_data=%p\n",
+            rec->bind_state.driver_data);
+    }
 }
 
 void pci_dump_record_registry_resources(const pci_record_registry_t *reg) {

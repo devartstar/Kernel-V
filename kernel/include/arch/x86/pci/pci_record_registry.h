@@ -3,6 +3,7 @@
 
 #include "arch/x86/pci/pci.h"
 #include "arch/x86/pci/pci_bar.h"
+#include "arch/x86/pci/pci_bind.h"
 #include "arch/x86/pci/pci_cap.h"
 #include "arch/x86/pci/pci_cfg.h"
 #include "arch/x86/pci/pci_cmd.h"
@@ -33,6 +34,8 @@ typedef struct pci_function_record {
     uint8_t caps_present;
     uint8_t caps_valid;
     uint8_t cap_count;
+
+    pci_bind_state_t bind_state;
 } pci_function_record_t;
 
 /**
