@@ -53,7 +53,7 @@ LoadKernel:
     int 0x13
     jc ReadError
 
-    ; --- Read 3: final 3 sectors to 0x2FC0:0x0000 (phys 0x2FC00) ---
+    ; --- Read 3: final 35 sectors to 0x2FC0:0x0000 (phys 0x2FC00) ---
     mov si, ReadPacket
     mov word [si], 0x10
     mov word [si+2], 127

@@ -8,6 +8,7 @@ uint8_t device_pci_driver_match_test(void);
 uint8_t device_pci_driver_registry_bind_test(void);
 uint8_t device_pci_driver_api_test(void);
 uint8_t device_pci_device_driver_test(void);
+uint8_t device_pci_device_registry_materialize(void);
 
 static inline void run_devices_tests(void) {
     uint8_t failed_count = 0;
@@ -32,6 +33,13 @@ static inline void run_devices_tests(void) {
 
     if (device_pci_device_driver_test()) {
         KLOG_INFO("TEST", "DEVICE pci device <> driver link test passed.\n");
+    } else {
+        failed_count++;
+    }
+
+    if (device_pci_device_registry_materialize()) {
+        KLOG_INFO("TEST",
+                  "DEVICE pci device registry materialize test passed.\n");
     } else {
         failed_count++;
     }

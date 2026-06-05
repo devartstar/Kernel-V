@@ -26,6 +26,7 @@ void pci_device_make_name(char *buf, uint32_t buf_size,
 
 /**
  * pci_device_init - initialize a PCI device object.
+ * Note: device object doesnt contain any valid information except device main.
  * @pdevice - reference to he device object to initliaze
  * @rec - reference to pci function recoed.
  * @pparent_device - reference to the parent device object.

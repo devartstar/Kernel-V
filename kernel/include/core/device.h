@@ -21,7 +21,7 @@ typedef enum device_bus_type {
  * @FAILED - device is discovered, driver matched but probing failed
  */
 typedef enum device_state {
-    DEVICE_STATE_EMPTY = 0,
+    DEVICE_STATE_EMPTY = 0, /* default */
     DEVICE_STATE_DISCOVERED,
     DEVICE_STATE_BOUND,
     DEVICE_STATE_PROBE_FAILED,

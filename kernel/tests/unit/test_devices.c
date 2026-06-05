@@ -1,6 +1,7 @@
 #include "tests/test_devices.h"
 #include "arch/x86/pci/pci_bind.h"
 #include "arch/x86/pci/pci_cfg.h"
+#include "arch/x86/pci/pci_device_registry.h"
 #include "arch/x86/pci/pci_devices.h"
 #include "arch/x86/pci/pci_driver.h"
 #include "arch/x86/pci/pci_driver_api.h"
@@ -44,7 +45,7 @@ uint8_t device_pci_driver_match_test(void) {
     pci_bdf_t bdf = {.bus = 0x00, .device = 0x03, .function = 0x00};
     const pci_function_record_t *test_rec_const;
     pci_function_record_t *test_rec;
-    pci_device_t *pci_test_dev;
+    pci_device_t pci_test_dev;
 
     /* enumerate bus 0 into registry */
     if (!pci_enumerate_bus0_into_record_registry(&test_record_reg)) {
@@ -59,15 +60,14 @@ uint8_t device_pci_driver_match_test(void) {
         KLOG_ERROR("DEVICE_TEST",
                    "pci_driver_match_test failed. Failed to find record in "
                    "registry for %02x:%02x.%u.\n",
-                   test_rec_const->id.bdf.bus, test_rec_const->id.bdf.device,
-                   test_rec_const->id.bdf.function);
+                   bdf.bus, bdf.device, bdf.function);
         return 0;
     }
 
     test_rec = (pci_function_record_t *)test_rec_const;
 
     /* Initalize the pci device object with the record entry for bdf */
-    if (!pci_device_init(pci_test_dev, test_rec, NULL)) {
+    if (!pci_device_init(&pci_test_dev, test_rec, NULL)) {
         KLOG_ERROR(
             "DEVICE_TEST",
             "pci_driver_match_test failed. Failed to initialize device object"
@@ -78,7 +78,7 @@ uint8_t device_pci_driver_match_test(void) {
     }
 
     /* check if device matches with the dummy driver */
-    if (!pci_driver_matches(&pci_dummy_driver, pci_test_dev)) {
+    if (!pci_driver_matches(&pci_dummy_driver, &pci_test_dev)) {
         KLOG_ERROR("DEVICE_TEST",
                    "pci_driver_match_test failed. Failed to match driver with "
                    "similar vendor (%04x) device (%04x) id for %02x:%02x.%u.\n",
@@ -89,7 +89,7 @@ uint8_t device_pci_driver_match_test(void) {
     }
 
     /* invoke the driver probe routine */
-    if (!pci_dummy_driver.probe(pci_test_dev)) {
+    if (!pci_dummy_driver.probe(&pci_test_dev)) {
         KLOG_ERROR("DEVICE_TEST",
                    "pci_driver_match_test failed. Failed to invoke driver "
                    "probe routine for %02x:%02x.%u.\n",
@@ -423,6 +423,115 @@ uint8_t device_pci_device_driver_test(void) {
               "pci_device_driver_test passed. success bound_count=%d "
               "target=%02x:%02x.%u\n",
               bound_count, bdf.bus, bdf.device, bdf.function);
+
+    return 1;
+}
+
+uint8_t device_pci_device_registry_materialize(void) {
+
+    pci_record_registry_t *record_registry = &test_record_reg;
+    pci_device_registry_t device_registry;
+    const pci_bdf_t bdf = {.bus = 0x00, .device = 0x03, .function = 0x00};
+    pci_device_t *device;
+
+    /** BUILDS UP THE RECORD REGISTRY
+     * 1. Probe all the devices in bus 0. Probe all the function in each device.
+     * 2. In probe function it reads the value from the config space and
+     * populates the function identity field of the function record.
+     * 3. If a function has valid entries a call back add the function identity
+     * of function record in the registry. other fields of function record -
+     * like BAR, command status, capabilities are jsut intialized to default.
+     * 4. While probing slot, check if its a multifunctional slot. ie.
+     * (bridge)device has multiple functions.
+     * 5. If multifunctional - then probe all the functions 1-7 for that slot.
+     * They all will be added to registry too.
+     * 6. NOTE: We just have populated the function identity in the function
+     * record of the registry. Need to enrich BAR/command/capabilities values
+     * registry_ctx
+     * -> pointer to the registry. Registry contains array of function records.
+     * -> Number of function records successfully insterted in the registry.
+     * -> Number of function records unsuccessfull in inserting in registry.
+     */
+    if (!pci_enumerate_bus0_into_record_registry(record_registry)) {
+        KLOG_ERROR("DEVICE_TEST",
+                   "pci_device_registry_materialize failed. Failed to "
+                   "enumerate bus0 into registry.\n");
+        return 0;
+    }
+
+    /** ENRICH THE RECORD REGISTRY
+     * 1. for each record entry in the registry it will decode the bits from the
+     * config space and update the structs with meaningful value.
+     * 2. Decode and update the BAR information for each record.
+     * 3. Decode and update the Command/Status bits for each record.
+     * 4. Decode and update the Capability list for each record.
+     */
+    if (!pci_enrich_record_registry_resources(record_registry)) {
+        KLOG_ERROR("DEVICE_TEST",
+                   "pci_device_registry_materialize failed. Failed to "
+                   "enrich the registry record.\n");
+        return 0;
+    }
+
+    /** BUILD DEVICE REGISTRY FROM RECORD REGISTRY
+     * 1. initialize the device registry.
+     * 2. for each record entry in the registry initalize a device object with
+     * the device name format "pci-bus:device:function"
+     * 3. add the device object in the device registry.
+     */
+    if (!pci_device_registry_materialize_from_record_registry(
+            &device_registry, record_registry, NULL)) {
+        KLOG_ERROR("DEVICE_TEST",
+                   "pci_device_registry_materialize failed. failed to "
+                   "materialize device registry using the record registry.\n");
+        return 0;
+    }
+
+    /* check if we were able to assign a device registry entry for all records
+     * in record registry */
+    if (device_registry.count != record_registry->count) {
+        KLOG_ERROR(
+            "DEVICE_TEST",
+            "pci_device_registry_materialize failed. mismatch between device "
+            "registry entries (%u) vs record registry entries (%u).\n",
+            device_registry.count, record_registry->count);
+        return 0;
+    }
+
+    /* find the device object from the device registry */
+    device = pci_device_registry_find_bdf(&device_registry, bdf);
+    if (!device) {
+        KLOG_ERROR("DEVICE_TEST",
+                   "pci_device_registry_materialize failed. failed to find "
+                   "device with bdf [%02x:%0x.%u] in registry.\n",
+                   bdf.bus, bdf.device, bdf.function);
+        return 0;
+    }
+
+    /* checks:
+     * 1. bus type of device should be PCI.
+     * 2. state of the device should be descovered, not probed since we havent
+     * invoked probed just initialized device object into registry.
+     * 3. Record associated with the device should not be null and bus data
+     * should not ref. the record yet.
+     * 4. driver information should not be present since we havent probed and
+     * attached driver yet.
+     */
+    if (device->device.bus_type != DEVICE_BUS_PCI ||
+        device->device.state != DEVICE_STATE_DISCOVERED ||
+        device->record == NULL || device->device.bus_data != device->record ||
+        device->device.driver_data != NULL ||
+        device->device.bound_driver != NULL) {
+        KLOG_ERROR(
+            "DEVICE_TEST",
+            "pci_device_registry_materialize failed. invariant mismatch.\n");
+        return 0;
+    }
+
+    KLOG_INFO("DEVICE_TEST",
+              "pci_device_registry_materialize succeeded. device registry has "
+              "entries count %u and in which found device named %s.\n",
+              device_registry.count, device->device.name);
 
     return 1;
 }
