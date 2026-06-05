@@ -1,0 +1,123 @@
+# -----------------------------------------------
+
+menu "Kernel Configuration"
+
+config 64BIT
+	bool "Build for 64 bits"
+	default n
+
+config SMP
+	bool "Enable SMP (Systematic Multi-Processing)"
+	default n
+
+choice
+	prompt "Build Type"
+	default BUILD_RELEASE
+
+config BUILD_RELEASE
+	bool "Release build (optimized, fewer checks)"
+
+config BUILD_DEBUG
+	bool "Debug build (less optimization, more checks)"
+
+endchoice
+
+endmenu
+
+# -----------------------------------------------
+
+menu "Tracing Options"
+
+config TRACE_LEVEL
+	int "Kernel Tracing Levels [0-4]"
+	range 0 4
+	default 3
+	help
+		Set the kernel tracing verbosity level.
+		0 = No Trace
+		1 = Errors
+		2 = Warnings
+		3 = Info
+		4 = Debug
+	
+endmenu
+
+# -----------------------------------------------
+
+if BUILD_DEBUG
+
+menu "Testing Options"
+
+config BUILD_TEST
+    bool "Enable Test Suite"
+    default n
+    help
+        Enable test modules for debugging and validation.
+        This includes unit tests and integration tests.
+
+config TESTS_UNIT
+    tristate "Enable Unit Testing"
+	depends on BUILD_TEST
+    default y
+    help
+        Enable unit tests for core kernel functions like
+        panik, printk, and basic functionality.
+
+config TESTS_INTEGRATION
+    tristate "Enable Integration Testing"
+	depends on BUILD_TEST
+    default y
+    help
+        Enable integration tests for process management
+        and system-level functionality.
+
+endmenu
+
+# -----------------------------------------------
+
+menu "Debugging Options"
+
+config DEBUG_IDT_GDT
+	tristate "Enable debugging on IDT & GDT"
+	default y
+
+config DEBUG_TSS
+	tristate "Enable debugging on TSS stack"
+	default n
+
+config DEBUG_MEMORY
+	tristate "Enable Memory Management debugging"
+	default y
+
+config DEBUG_PAGING
+	tristate "Enable Paging debugging"
+	default y
+
+config DEBUG_STACK_HEAP
+	tristate "Enable Stack Management debugging"
+	default y
+
+config DEBUG_PROCESS_MGMT
+	tristate "Enable Process Management debugging"
+	default y
+
+menu "Debug Intrrupts"
+
+config DEBUG_IRQ
+	tristate "Enable Debugging IRQs"
+	default n
+
+config DEBUG_IRQ_LIST
+	string "IRQ list to debug"
+	depends on DEBUG_IRQ	
+	default ""
+	help
+		Bitmap of the Interrupt Vectors to debug
+		Eg. 0-255 to enable debugging for all
+			0-30,40,50-100 (no spaces)
+
+endmenu
+
+endmenu
+
+endif

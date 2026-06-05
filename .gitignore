@@ -1,1 +1,11 @@
 build/
+.config
+.config.old
+kernel/include/kconfig.h
+kernel/include/proc/proc_offset_asm.h
+kernel/lib/proc_offset_generator
+build.log
+errors.log
+warnings.log
+.cache/
+serial.log

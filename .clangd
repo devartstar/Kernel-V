@@ -1,0 +1,6 @@
+CompileFlags:
+  Add:
+    - -ffreestanding
+    - -fno-builtin
+    - -nostdlib
+

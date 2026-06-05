@@ -1,132 +1,281 @@
-# Kernel-V Phase 3: Memory Management
+## Kernel version 0.7.4 enhancement plans
 
-## Overview
+### Phase A — Formalize the process model
+This phase is now more important than before.
+#### A1. Add process identity fields to PCB
+Add:
+- proc_type_t type
+- int32_t exit_code
+- uint8_t has_exited
+Also normalize user-process metadata:
+user_entry
+user_code_start
+user_code_size
 
-This phase builds core memory management systems for the kernel, including physical memory tracking, paging support, and dynamic heap allocation. The system is designed to be modular, extensible, and production-quality.
+Reason:
+Your current PCB knows too little about what the process is and what it owns.
 
----
+#### A2. Classify all process creation paths
 
-## 1. Memory Map Parsing (e820 Interface)
+Make the kernel explicitly distinguish:
 
-**Objective:** Parse the memory map provided by the BIOS using the e820 interface to identify usable and reserved regions.
+PROC_TYPE_BOOTSTRAP → kernel_main
+PROC_TYPE_IDLE
+PROC_TYPE_KERNEL
+PROC_TYPE_USER
 
-**Features:**
+Reason:
+Your code currently has at least four semantically different process kinds, but the PCB does not express that.
 
-* Interface with bootloader to receive e820 map
-* Parse and store memory regions: base address, length, type
-* Display parsed memory regions at boot
-* Classify regions as:
+#### A3. Split creation APIs
 
-  * Available
-  * Reserved
-  * ACPI
-  * Unusable
+Instead of one path plus tests, define:
 
-**Implementation:**
+proc_create_kernel(...)
+userproc_create_from_blob(...)
 
-* `src/memory/memmap.c` and `memmap.h`
-* Exported memory descriptor table to kernel
-* Logs on-screen with type decoding
+Reason:
+Your current user process launch logic in test_usermode_process() already contains the exact ingredients of a constructor. It should become one.
 
----
+#### A4. Make exit semantics real
 
-## 2. Physical Page Frame Allocator (Bitmap-Based)
+Refactor sys_exit() so it:
 
-**Objective:** Implement a physical frame allocator using a bitmap, where each bit represents one 4KiB frame.
+records exit_code
+marks has_exited
+sets PROC_TERMINATED
+yields
+never returns
 
-**Features:**
+Reason:
+Current exit works operationally, but not yet as a real lifecycle primitive.
 
-* Allocates and frees physical frames
-* Marks reserved regions as unavailable
-* Lazy bitmap initialization based on e820
+#### A5. Make cleanup type-aware
 
-**API:**
+Split cleanup into:
 
-* `void* pmm_alloc_frame()`
-* `void  pmm_free_frame(void*)`
+idle cleanup: never
+bootstrap cleanup: special / none for now
+kernel cleanup: free kernel-owned resources only
+user cleanup: free user mappings + kernel stack + PCB-owned resources
 
-**Implementation:**
+Reason:
+Your current proc_free() is too generic for the architecture you’re building.
 
-* `src/memory/pmm.c` and `pmm.h`
-* Debug logs and assertions for safety
-* Integration with memory map for usable regions
+### Phase B — Turn user process launch into a subsystem
 
----
+This phase should now come earlier and more explicitly than before.
 
-## 3. Paging and Virtual Memory Initialization
+#### B1. Extract test_usermode_process() into userproc_create_from_blob()
 
-**Objective:** Enable x86 paging to provide virtual memory abstraction.
+Right now your test helper is already 80% of a loader.
 
-**Features:**
+Move this logic into a real function.
 
-* Identity map kernel regions
-* Set up page directory and page tables
-* Enable MMU by writing to CR3 and CR0
-* Add stub for page fault handler
+It should:
 
-**Implementation:**
+allocate PCB
+assign PROC_TYPE_USER
+create kernel stack
+map user stack
+map user code
+copy blob
+populate user metadata
+prepare process for ring 3 entry
 
-* `src/memory/paging.c` and `paging.h`
-* `init_paging()` to construct mappings
-* VGA, kernel code/data, heap are mapped
-* Page fault ISR for diagnostics
+Reason:
+This removes hand-written user launch logic from tests and makes it reusable.
 
----
+#### B2. Introduce a user process entry wrapper
 
-## 4. Kernel Heap and Dynamic Allocator
+Normal kernel threads start at thread_entry_wrapper().
+User processes should get an analogous controlled launch path.
 
-**Objective:** Provide `kmalloc`/`kfree` for dynamic memory use in kernel.
+Something like:
 
-**Features:**
+kernel thread starts
+wrapper sets up/enters user mode
+from then on process behaves as user process
 
-* Simple bump or stack allocator
-* Aligns allocations to word/page boundaries
-* Tracks allocated blocks (optionally with metadata)
-* Configurable heap region (start and max end)
+Reason:
+Right now switch_to_usermode() is called directly from a test helper. That should become a defined execution path.
 
-**API:**
+#### B3. Support multiple user blobs cleanly
 
-* `void* kmalloc(size_t size)`
-* `void  kfree(void* ptr)`
+Once blob-based creation is a real API, let tests launch:
 
-**Implementation:**
+user_hello
+user_syscall_test
+user_exit_test
 
-* `src/memory/heap.c` and `heap.h`
-* Allocator grows using physical frame allocator
-* Optional debug features (block sizes, tags)
+Reason:
+You are ready to move from “one stub proving int 0x80 works” to “user program test suite.”
 
----
+### Phase C — Harden the syscall layer
 
-## 5. Innovation and Custom Enhancements
+This phase changes from “clean syscall subsystem” to “make syscall subsystem safe enough to grow.”
 
-**Objective:** Add unique, differentiating features to make the kernel memory system more usable, educational, or powerful.
+#### C1. Keep canonical syscall ABI/header
 
-**Ideas:**
+This part of your earlier plan still stands.
 
-* **Memory Visualizer:** Real-time VGA visualization of memory regions
-* **Reference Counters:** Track frame usage over time
-* **Fault Logger:** Capture stack trace on page faults
-* **Region Tagging:** Label memory blocks (DMA-safe, device-owned, etc.)
-* **Guard Pages:** Use unmapped guard pages to detect overflows
+Keep:
 
-**Implementation:**
+syscall enum in one header
+table registration centralized
 
-* Add feature toggles in config headers
-* Modularize enhancements into separate files (`memviz.c`, `guard.c`, etc.)
-* Document rationale and benefit of each feature
+That is already mostly in place.
 
----
+#### C2. Add user pointer validation helpers
 
-## References
+Before adding richer syscalls, add helpers like:
 
-* **The Design of the UNIX Operating System – Maurice Bach:** Ch. 2.2, 9
-* **Advanced Programming in the UNIX Environment (APUE):** Ch. 7.8, 7.11
+user_ptr_valid(ptr)
+user_range_valid(ptr, len)
 
----
+Use them first in:
 
-## Developer Notes
+sys_write
 
-* Place memory modules in `src/memory/`
-* Shared kernel state and interfaces go in `include/kernel/`
-* Enable debug macros to trace memory flow
-* Write tests in the boot/early init phase to validate allocators
+Reason:
+Current sys_write() trusts user memory blindly.
+
+#### C3. Harden sys_write()
+
+Add:
+
+user range validation
+bounded copy
+possibly page-by-page safe access later
+
+Reason:
+This is the first syscall that crosses user-memory boundary. It should be your model for safe syscall design.
+
+#### C4. Add syscall tracing toggle
+
+You already have excellent logs. Formalize them behind a trace flag.
+
+Reason:
+You have enough logs now that selective visibility matters.
+
+#### C5. Add explicit syscall return/error convention
+
+Keep ENOSYS, but normalize all syscall return behavior:
+
+non-negative success
+negative error codes
+no mixed conventions
+
+Reason:
+You’re about to add more syscalls; now is the time to freeze conventions.
+
+### Phase D — Parent/child and process observability
+
+This phase should come before exec and far before ELF.
+
+#### D1. Add parent-child semantics
+
+You already have parent in PCB. Start using it.
+
+When user process is created:
+
+set parent properly
+record exit code on termination
+
+#### D2. Add wait() / waitpid() minimal version
+
+This is the natural next syscall after exit().
+
+Reason:
+Exit without wait means dead processes are only kernel-internal artifacts.
+Wait makes process lifecycle observable.
+
+#### D3. Add zombie state if needed
+
+Right now you only have:
+
+NEW
+READY
+RUNNING
+WAITING
+TERMINATED
+
+You may soon need:
+
+PROC_ZOMBIE
+
+Reason:
+If parent must read child exit code before cleanup, terminated-vs-cleaned-up should be separated.
+
+I would not add it immediately unless you implement wait(), but it’s coming.
+
+### Phase E — Program loading evolution
+
+Only after A–D are solid.
+
+#### E1. Keep flat binary loader, but make it reusable
+
+Right now blob loading is fine.
+
+#### E2. Add second user program
+
+This is the best bridge milestone before ELF.
+
+#### E3. Add exec model
+
+Only after you can create/wait/exit cleanly.
+
+#### E4. Move to ELF loading
+
+Only once flat-binary process lifecycle is clean.
+
+Reason:
+ELF is not just “better loading.” It depends on a stable user process abstraction.
+
+### Folder Structure
+```
+kernel/
+├── arch/                    # Architecture-specific code
+│   └── x86/
+│       ├── boot/           # Boot and initialization
+│       ├── cpu/            # CPU management (GDT, IDT, TSS)
+│       ├── interrupt/      # Interrupt handling
+│       └── memory/         # Architecture-specific memory management
+├── core/                   # Core kernel functionality
+│   ├── init/              # Kernel initialization
+│   ├── panic/             # Panic handling
+│   └── debug/             # Debug utilities
+├── drivers/                # Device drivers
+│   ├── char/              # Character devices
+│   ├── block/             # Block devices
+│   └── video/             # Video devices
+├── fs/                     # File system support
+├── include/                # Header files (organized by subsystem)
+│   ├── arch/
+│   ├── core/
+│   ├── drivers/
+│   ├── mm/
+│   ├── proc/
+│   └── lib/
+├── ipc/                    # Inter-process communication
+├── lib/                    # Kernel library functions
+│   ├── string/            # String manipulation
+│   ├── printf/            # Formatted printing
+│   └── data_structures/   # Data structures (lists, trees, etc.)
+├── mm/                     # Memory management
+│   ├── physical/          # Physical memory management
+│   ├── virtual/           # Virtual memory management
+│   └── allocators/        # Memory allocators
+├── net/                    # Network stack
+├── proc/                   # Process and task management
+│   ├── scheduler/         # Scheduling algorithms
+│   ├── context/           # Context switching
+│   └── sync/              # Synchronization primitives
+├── security/               # Security subsystem
+├── time/                   # Time management
+└── tests/                  # Testing framework (empty for now)
+    ├── unit/              # Unit tests
+    ├── integration/       # Integration tests
+    └── framework/         # Testing framework code
+```
+### Testing Framework
