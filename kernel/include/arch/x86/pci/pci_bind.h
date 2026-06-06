@@ -1,6 +1,7 @@
 #ifndef PCI_BIND_H
 #define PCI_BIND_H
 
+#include "arch/x86/pci/pci_device_registry.h"
 #include "arch/x86/pci/pci_driver_registry.h"
 #include "core/device.h"
 
@@ -28,12 +29,12 @@ bind_device_result_t pci_bind_device(pci_driver_registry_t *reg,
 /*
  * pci_probe_and_bind_all - for all devices and for all drivers, bind them all
  * based on matching criteria.
- * @record_reg - Ref. to the registry of device function records.
- * @driver_reg - Ref. to the registry of driver.
+ * @device_reg - Ref. to the registry of device objects.
+ * @driver_reg - Ref. to the registry of driver objects.
  *
  * @return - count of number of devices got attached to drivers.
  */
-uint8_t pci_probe_and_bind_all(pci_record_registry_t *record_reg,
+uint8_t pci_probe_and_bind_all(pci_device_registry_t *device_reg,
                                pci_driver_registry_t *driver_reg);
 
 #endif /* PCI_BIND_H */

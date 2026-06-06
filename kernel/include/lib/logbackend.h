@@ -1,4 +1,5 @@
 #include <stddef.h>
+#include <stdint.h>
 
 /* Pointer to a function which takes input - log string and length and returns
  * void */
