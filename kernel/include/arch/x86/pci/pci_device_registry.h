@@ -6,6 +6,12 @@
 #define PCI_MAX_DEVICE_OBJECTS PCI_MAX_FUNCTIONS_BUS0
 
 /**
+ * Callback to be invoked while iterating thru the registry
+ */
+typedef void (*pci_device_registry_visitor_fn)(const pci_device_t *device,
+                                               void *ctx);
+
+/**
  * pci_device_registry - a registry for device objects initialized.
  * device - array of device objects. Storing data as device_registry stores the
  * ownership of the driver object instead of referencing the ownership from
@@ -55,5 +61,23 @@ pci_device_t *pci_device_registry_find_bdf(pci_device_registry_t *reg,
 uint8_t pci_device_registry_materialize_from_record_registry(
     pci_device_registry_t *dev_reg, pci_record_registry_t *rec_reg,
     device_t *parent);
+
+/**
+ * pci_device_registry_foreach - iterate thru all the entries in the device
+ * registry and invoke the visitor function.
+ */
+void pci_device_registry_foreach(const pci_device_registry_t *reg,
+                                 pci_device_registry_visitor_fn visitor,
+                                 void *ctx);
+
+pci_device_t *pci_device_registry_find_vendor_device(pci_device_registry_t *reg,
+                                                     uint16_t vendor_id,
+                                                     uint16_t device_id);
+
+pci_device_t *pci_device_registry_find_bound_vendor_device(
+    pci_device_registry_t *reg, uint16_t vendor_id, uint16_t device_id);
+
+uint32_t pci_device_registry_state_count(const pci_device_registry_t *reg,
+                                         device_state_t state);
 
 #endif /* PCI_DEVICE_REGISTRY_H */

@@ -1,6 +1,7 @@
 #ifndef PCI_DUMP_H
 #define PCI_DUMP_H
 
+#include "arch/x86/pci/pci_device_registry.h"
 #include "arch/x86/pci/pci_record_registry.h"
 
 /**
@@ -59,5 +60,23 @@ void pci_dump_record_registry_resources(const pci_record_registry_t *reg);
  * @rec - pointer to the function record
  */
 void pci_dump_record_capabilities(const pci_function_record_t *rec);
+
+/**
+ * pci_dump_device_visitor - visitor routine to dump a device object
+ * @dev - ref. to the device object to dump
+ * @ctx - more info to dump
+ *
+ * @return void
+ */
+void pci_dump_device_visitor(const pci_device_t *dev, void *ctx);
+
+/**
+ * pci_dump_device_registry - utility to iterate and dump each device object in
+ * the device registry
+ * @reg - ref. to the device registry to dump
+ *
+ * @return void
+ */
+void pci_dump_device_registry(const pci_device_registry_t *reg);
 
 #endif

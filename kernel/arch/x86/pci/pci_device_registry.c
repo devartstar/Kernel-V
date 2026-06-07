@@ -123,3 +123,85 @@ uint8_t pci_device_registry_materialize_from_record_registry(
                  "successfully materialized device reg. from record. reg.\n");
     return 1;
 }
+
+void pci_device_registry_foreach(const pci_device_registry_t *reg,
+                                 pci_device_registry_visitor_fn visitor,
+                                 void *ctx) {
+    if (!reg || !visitor) {
+        KLOG_ERROR("DEVICE", "Failed iterating the device registry. Invalid "
+                             "ref to input args.\n");
+        return;
+    }
+
+    for (uint8_t i = 0; i < reg->count; i++) {
+        const pci_device_t *dev = &reg->devices[i];
+        if (!dev->record || !dev->record->present) {
+            continue;
+        }
+        visitor(dev, ctx);
+    }
+}
+
+pci_device_t *pci_device_registry_find_vendor_device(pci_device_registry_t *reg,
+                                                     uint16_t vendor_id,
+                                                     uint16_t device_id) {
+    if (!reg) {
+        return NULL;
+    }
+
+    for (uint32_t i = 0; i < reg->count; i++) {
+        pci_device_t *pdev = &reg->devices[i];
+
+        if (!pdev->record) {
+            continue;
+        }
+
+        if (pdev->record->id.vendor_id == vendor_id &&
+            pdev->record->id.device_id == device_id) {
+            return pdev;
+        }
+    }
+
+    return NULL;
+}
+
+pci_device_t *pci_device_registry_find_bound_vendor_device(
+    pci_device_registry_t *reg, uint16_t vendor_id, uint16_t device_id) {
+    if (!reg) {
+        return NULL;
+    }
+
+    for (uint32_t i = 0; i < reg->count; i++) {
+        pci_device_t *pdev = &reg->devices[i];
+
+        if (!pdev->record) {
+            continue;
+        }
+
+        if (pdev->record->id.vendor_id == vendor_id &&
+            pdev->record->id.device_id == device_id &&
+            pdev->device.state == DEVICE_STATE_BOUND) {
+            return pdev;
+        }
+    }
+
+    return NULL;
+}
+
+uint32_t pci_device_registry_state_count(const pci_device_registry_t *reg,
+                                         device_state_t state) {
+    if (!reg) {
+        KLOG_ERROR("PCI", "Failed to cound devices in state %s.\n",
+                   device_state_name(state));
+        return 0;
+    }
+
+    uint8_t state_count[DEVICE_STATE_COUNT] = {0};
+
+    pci_device_registry_foreach(reg, pci_device_state_match, state_count);
+
+    KLOG_INFO("PCI", "Count of devices in the state %s is %u.\n",
+              device_state_name(state), state_count[state]);
+
+    return state_count[state];
+}

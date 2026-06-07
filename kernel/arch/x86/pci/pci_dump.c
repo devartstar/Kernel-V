@@ -144,9 +144,10 @@ void pci_dump_record_capabilities(const pci_function_record_t *rec) {
             continue;
         }
 
-        KLOG_INFO(
-            "PCI", "  CAP[%u] id=0x%02x kind=%s offset=0x%02x next=0x%02x\n", i,
-            cap->id, pci_capability_kind_name(cap->kind), cap->offset, cap->next);
+        KLOG_INFO("PCI",
+                  "  CAP[%u] id=0x%02x kind=%s offset=0x%02x next=0x%02x\n", i,
+                  cap->id, pci_capability_kind_name(cap->kind), cap->offset,
+                  cap->next);
     }
 }
 
@@ -231,4 +232,44 @@ void pci_dump_record_registry_resources(const pci_record_registry_t *reg) {
     }
 
     KLOG_INFO("PCI", "=== PCI RESOURCE DUMP END ===\n", reg->count);
+}
+
+void pci_dump_device_visitor(const pci_device_t *dev, void *ctx) {
+    (void)ctx;
+    const char *driver_name = "(none)";
+
+    if (!dev || !dev->record) {
+        KLOG_ERROR("PCI_DEVICE_DUMP",
+                   "device dump failed. invalid device ref.\n");
+        return;
+    }
+
+    if (dev->device.bound_driver) {
+        driver_name = ((const pci_driver_t *)dev->device.bound_driver)->name;
+    }
+
+    KLOG_INFO("PCI_DEVICE_DUMP",
+              "[%s] bdf=%02x:%02x.%u vendor=%04x device=%04x state=%s "
+              "driver=%s driver_data=%p\n",
+              dev->device.name, dev->record->id.bdf.bus,
+              dev->record->id.bdf.device, dev->record->id.bdf.function,
+              dev->record->id.vendor_id, dev->record->id.device_id,
+              device_state_name(dev->device.state), driver_name,
+              dev->device.driver_data);
+}
+
+void pci_dump_device_registry(const pci_device_registry_t *reg) {
+    if (!reg) {
+        KLOG_ERROR("PCI_DEVICE_DUMP",
+                   "Device registry dump failed. invalid ref to dev reg.\n");
+        return;
+    }
+
+    KLOG_INFO("PCI_DEVICE_DUMP",
+              "=== PCI DEVICE REGISTRY DUMP START (count=%u) ===\n",
+              reg->count);
+
+    pci_device_registry_foreach(reg, pci_dump_device_visitor, NULL);
+
+    KLOG_INFO("PCI_DEVICE_DUMP", "=== PCI DEVICE REGISTRY DUMP END ===\n");
 }

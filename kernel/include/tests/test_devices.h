@@ -8,7 +8,8 @@ uint8_t device_pci_driver_match_test(void);
 uint8_t device_pci_driver_api_test(void);
 uint8_t device_pci_driver_registry_bind_test(void);
 uint8_t device_pci_device_driver_test(void);
-uint8_t device_pci_device_registry_materialize(void);
+uint8_t device_pci_device_registry_materialize_test(void);
+uint8_t device_pci_device_registry_lookup_test(void);
 
 static inline void run_devices_tests(void) {
     uint8_t failed_count = 0;
@@ -28,7 +29,7 @@ static inline void run_devices_tests(void) {
     }
 
     /* create record reg and enrich it. Create a device reg from it */
-    if (device_pci_device_registry_materialize()) {
+    if (device_pci_device_registry_materialize_test()) {
         KLOG_INFO("TEST",
                   "DEVICE pci device registry materialize test passed.\n");
     } else {
@@ -50,6 +51,12 @@ static inline void run_devices_tests(void) {
      */
     if (device_pci_device_driver_test()) {
         KLOG_INFO("TEST", "DEVICE pci device <> driver link test passed.\n");
+    } else {
+        failed_count++;
+    }
+
+    if (device_pci_device_registry_lookup_test()) {
+        KLOG_INFO("TEST", "DEVICE pci device registry lookup test passed.\n");
     } else {
         failed_count++;
     }

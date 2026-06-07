@@ -25,7 +25,14 @@ typedef enum device_state {
     DEVICE_STATE_DISCOVERED,
     DEVICE_STATE_BOUND,
     DEVICE_STATE_PROBE_FAILED,
+
+    DEVICE_STATE_COUNT,
 } device_state_t;
+
+/**
+ * device_state_name - convert device state to string.
+ */
+const char *device_state_name(device_state_t state);
 
 /**
  * device - struct which stores the device information
