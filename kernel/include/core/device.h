@@ -37,7 +37,8 @@ typedef enum device_state {
  * @parent - Ref to the parent device
  * @bus_data - Ref to Data owned by the bus layer. For PCI devices it will
  * reference the function record.
- * @driver_data - Ref to Data owned by the bound driver after successful
+ * @driver_data - Ref to Data owned by the bound driver after successful.
+ * intialized post successful probe and preserver by bus core.
  * probing.
  * @bound_driver - Ref to the bus specific Device Driver object. Unused for now.
  */
@@ -98,6 +99,39 @@ static inline void device_set_state(device_t *device, device_state_t state) {
     }
 
     device->state = state;
+}
+
+/**
+ * device_set_driver_data - helper to set the ref of the driver data to the
+ * device
+ * @device - device object in which to set the driver info.
+ * @dricer_data - ref. to the driver data to be set.
+ */
+static inline void device_set_driver_data(device_t *device, void *driver_data) {
+    if (!device) {
+        KLOG_ERROR(
+            "DEVICE",
+            "Failed ot set the driver data to device. Invalid input args.\n");
+        return;
+    }
+
+    device->driver_data = driver_data;
+}
+
+/**
+ * device_get_driver_data - helper to get the ref to the driver data of a
+ * device.
+ * @device - device object of which we need driver data.
+ */
+static inline void *device_get_driver_data(device_t *device) {
+    if (!device) {
+        KLOG_ERROR(
+            "DEVICE",
+            "Failed ot get the driver data of device. Invalid input args.\n");
+        return NULL;
+    }
+
+    return device->driver_data;
 }
 
 #endif /* CORE_DEVICE_H */

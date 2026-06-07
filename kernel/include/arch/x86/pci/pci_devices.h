@@ -36,4 +36,38 @@ void pci_device_make_name(char *buf, uint32_t buf_size,
 uint8_t pci_device_init(pci_device_t *pdevice, pci_function_record_t *rec,
                         device_t *pparent_device);
 
+/**
+ * pci_device_set_driver_data - helper to set the ref of the driver data to the
+ * device
+ * @device - device object in which to set the driver info.
+ * @dricer_data - ref. to the driver data to be set.
+ */
+static inline void pci_device_set_driver_data(pci_device_t *device,
+                                              void *driver_data) {
+    if (!device) {
+        KLOG_ERROR(
+            "PCI_DEVICE",
+            "Failed ot set the driver data to device. Invalid input args.\n");
+        return;
+    }
+
+    device->device.driver_data = driver_data;
+}
+
+/**
+ * pci_device_get_driver_data - helper to get the ref to the driver data of a
+ * device.
+ * @device - device object of which we need driver data.
+ */
+static inline void *pci_device_get_driver_data(pci_device_t *device) {
+    if (!device) {
+        KLOG_ERROR(
+            "PCI_DEVICE",
+            "Failed ot get the driver data of device. Invalid input args.\n");
+        return NULL;
+    }
+
+    return device->device.driver_data;
+}
+
 #endif /* PCI_DEVICES_H */

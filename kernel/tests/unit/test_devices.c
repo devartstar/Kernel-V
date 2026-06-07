@@ -48,11 +48,20 @@ static const pci_driver_t pci_dummy_driver = {
 
 /** *** START: TEST DRIVER 2 *** */
 
+/* dummy driver data info */
+typedef struct pci_dummy_e1000_driver_data {
+    uint32_t mmio_bar_base;
+    uint32_t io_bar_base;
+    uint8_t bus_master_enabled;
+} pci_dummy_e1000_driver_data_t;
+
 static uint8_t pci_dummy_e1000_device_probe(pci_device_t *device) {
     const pci_bar_info_t *bar0;
     const pci_bar_info_t *io_bar;
     const pci_command_status_info_t *cmd_status_before;
     const pci_command_status_info_t *cmd_status_after;
+
+    pci_dummy_e1000_driver_data_t data;
 
     /* check if the reference to the device is valid */
     if (!device || !device->record->present) {
@@ -114,6 +123,12 @@ static uint8_t pci_dummy_e1000_device_probe(pci_device_t *device) {
                device->device.name, (uint32_t)bar0->base,
                (uint32_t)io_bar->base, cmd_status_before->command,
                cmd_status_after->command);
+
+    data.mmio_bar_base = bar0->base;
+    data.io_bar_base = io_bar->base;
+    data.bus_master_enabled = 1;
+
+    pci_device_set_driver_data(device, &data);
 
     return 1;
 }
@@ -489,8 +504,10 @@ uint8_t device_pci_device_driver_test(void) {
     pci_driver_registry_t *driver_registry = &test_driver_reg;
     pci_device_registry_t *device_registry = &test_device_reg;
     const pci_device_t *device_const;
+    const pci_device_t *device;
     uint8_t bound_count = 0;
     const pci_bdf_t bdf = {.bus = 0x00, .device = 0x03, .function = 0x00};
+    pci_dummy_e1000_driver_data_t *data;
 
     /** BUILDS UP THE RECORD REGISTRY
      * 1. Probe all the devices in bus 0. Probe all the function in each device.
@@ -586,6 +603,7 @@ uint8_t device_pci_device_driver_test(void) {
 
     /* try to find a record with bdf to find */
     device_const = pci_device_registry_find_bdf(device_registry, bdf);
+    device = (pci_device_t *)device_const;
     if (!device_const) {
         KLOG_ERROR("DEVICE_TEST",
                    "pci_device_driver_test failed. Failed to find record for "
@@ -612,10 +630,24 @@ uint8_t device_pci_device_driver_test(void) {
         return 0;
     }
 
-    KLOG_INFO("DEVICE_TEST",
-              "pci_device_driver_test passed. success bound driver %s to "
-              "device %s.\n",
-              pci_dummy_e1000_driver.name, device_const->device.name);
+    /* Device should have updates the driver_data field during probe */
+    if (device_const->device.driver_data == NULL) {
+        KLOG_ERROR("DEVICE_TEST",
+                   "pci_device_driver_test failed. Device %s is not associated "
+                   "with a valid driver data.\n",
+                   device_const->device.name);
+        return 0;
+    }
+
+    data = (pci_dummy_e1000_driver_data_t *)pci_device_get_driver_data(device);
+
+    KLOG_INFO(
+        "DEVICE_TEST",
+        "pci_device_driver_test passed. success bound driver %s to device %s. "
+        "\n\tDriver data information: mmio base = %08x, io base "
+        "= %08x, bus master enabled = %u.\n",
+        pci_dummy_e1000_driver.name, device_const->device.name,
+        data->mmio_bar_base, data->io_bar_base, data->bus_master_enabled);
 
     return 1;
 }
