@@ -6,24 +6,9 @@
 #include "arch/x86/pci/pci_cap.h"
 #include "arch/x86/pci/pci_cfg.h"
 #include "arch/x86/pci/pci_cmd.h"
+#include "core/device.h"
 
-/* Forward declaration to avoid circular include with pci_bind.h */
-struct pci_driver;
-
-/**
- * pci_bind_state - the state of the driver attached to a function record.
- * @driver - ref. to the driver assigned to the associated device with the
- * record.
- * @driver_data - ref. to the data stored by the driver.
- * @bound - 1 if the device associated with the record is bounded.
- * @probe_failed - 1 if probing the driver failed.
- */
-typedef struct pci_bind_state {
-    const struct pci_driver *driver;
-    void *driver_data;
-    uint8_t bound;
-    uint8_t probe_failed;
-} pci_bind_state_t;
+struct pci_device;
 
 /**
  * id - indentity information for a function entry
@@ -52,7 +37,7 @@ typedef struct pci_function_record {
     uint8_t caps_valid;
     uint8_t cap_count;
 
-    pci_bind_state_t bind_state;
+    struct pci_device *runtime_device;
 } pci_function_record_t;
 
 /**

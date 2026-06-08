@@ -31,6 +31,7 @@ uint8_t pci_device_init(pci_device_t *pci_dev, pci_function_record_t *rec,
 
     pci_dev->record = rec;
     pci_dev->device.bus_data = rec;
+    rec->runtime_device = pci_dev;
 
     return 1;
 }

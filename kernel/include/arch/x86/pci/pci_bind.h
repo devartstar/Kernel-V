@@ -13,8 +13,6 @@ typedef enum bind_device_result {
     PCI_BIND_FAILED_NO_MATCHING_DRIVER,
 } bind_device_result_t;
 
-/* pci_bind_state_t is defined in pci_record_registry.h */
-
 /**
  * pci_bind_device - for a given device lookup the driver registry and based on
  * matching critera (eg. same vendor/device id) assign driver to the device.
