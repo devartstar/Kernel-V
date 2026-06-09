@@ -9,6 +9,9 @@ uint8_t pci_driver_matches(const pci_driver_t *pci_driver,
         return 0;
     }
 
+    /* iterate thru the match rules for the driver and bind to all the
+     * deviceswhich match with them */
+
     KLOG_VERBOSE("PCI_DRIVER",
                  "\ndriver: vendor id = %04x, device id = %04x"
                  "\ndriver: vendor id = %04x, device id = %04x\n",
