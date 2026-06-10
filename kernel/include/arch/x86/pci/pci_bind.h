@@ -24,9 +24,21 @@ typedef enum bind_device_result {
 bind_device_result_t pci_bind_device(pci_driver_registry_t *reg,
                                      pci_device_t *dev);
 
+/**
+ * pci_bind_device_to_best_driver - for a given device lookup the driver
+ * registry. for each driver in the registry get the best matching score among
+ * all the rules defined by the driver. compare the best scores from each driver
+ * of registry and bind the device with the driver with highest matching score.
+ * @reg - Ref. to the registry of drivers.
+ * @dev - Ref. to the device object
+ *
+ * @return pci_device_result_t - result state of attaching driver.
+ */
+bind_device_result_t pci_bind_device_to_best_driver(pci_driver_registry_t *reg,
+                                                    pci_device_t *dev);
 /*
- * pci_probe_and_bind_all - for all devices and for all drivers, bind them all
- * based on matching criteria.
+ * pci_probe_and_bind_all - for all devices and for all drivers, bind them
+ * all based on matching criteria.
  * @device_reg - Ref. to the registry of device objects.
  * @driver_reg - Ref. to the registry of driver objects.
  *
