@@ -35,14 +35,26 @@ static uint8_t pci_dummy_driver_probe(pci_device_t *pci_device) {
     return 1;
 }
 
+/* defining an array of match rules for the dummy pci driver */
+static const pci_match_rule_t pci_dummy_driver_e1000_matches[] = {{
+    .type = PCI_MATCH_VENDOR_DEVICE,
+    .vendor_id = 0x8086,
+    .device_id = 0x100e,
+    .class_code = PCI_MATCH_ANY_U8,
+    .subclass = PCI_MATCH_ANY_U8,
+    .prog_if = PCI_MATCH_ANY_U8,
+}};
+
 /**
  * pci_dummy_driver - dummy pci driver to invoke for 0x100e device
  */
 static const pci_driver_t pci_dummy_driver = {
     .name = "pci-dummy-e1000",
-    .vendor_id = 0x8086,
-    .device_id = 0x100e,
     .probe = pci_dummy_driver_probe,
+    .remove = NULL,
+    .matches = pci_dummy_driver_e1000_matches,
+    .match_count = sizeof(pci_dummy_driver_e1000_matches) /
+                   sizeof(pci_dummy_driver_e1000_matches[0]),
 };
 
 /** *** END: TEST DRIVER 1 *** */
@@ -56,13 +68,13 @@ typedef struct pci_dummy_e1000_driver_data {
     uint8_t bus_master_enabled;
 } pci_dummy_e1000_driver_data_t;
 
+static pci_dummy_e1000_driver_data_t test_e1000_data;
+
 static uint8_t pci_dummy_e1000_device_probe(pci_device_t *device) {
     const pci_bar_info_t *bar0;
     const pci_bar_info_t *io_bar;
     const pci_command_status_info_t *cmd_status_before;
     const pci_command_status_info_t *cmd_status_after;
-
-    pci_dummy_e1000_driver_data_t data;
 
     /* check if the reference to the device is valid */
     if (!device || !device->record->present) {
@@ -119,26 +131,36 @@ static uint8_t pci_dummy_e1000_device_probe(pci_device_t *device) {
         return 0;
     }
 
-    KLOG_ERROR("DEVICE_TEST",
-               "bound %s BAR0=%08x IOBAR=%08x cmd_before=%04x cmd_after=%04x\n",
-               device->device.name, (uint32_t)bar0->base,
-               (uint32_t)io_bar->base, cmd_status_before->command,
-               cmd_status_after->command);
+    KLOG_INFO("DEVICE_TEST",
+              "bound %s BAR0=%08x IOBAR=%08x cmd_before=%04x cmd_after=%04x\n",
+              device->device.name, (uint32_t)bar0->base, (uint32_t)io_bar->base,
+              cmd_status_before->command, cmd_status_after->command);
 
-    data.mmio_bar_base = bar0->base;
-    data.io_bar_base = io_bar->base;
-    data.bus_master_enabled = 1;
+    test_e1000_data.mmio_bar_base = bar0->base;
+    test_e1000_data.io_bar_base = io_bar->base;
+    test_e1000_data.bus_master_enabled = 1;
 
-    pci_device_set_driver_data(device, &data);
+    pci_device_set_driver_data(device, &test_e1000_data);
 
     return 1;
 }
 
+static const pci_match_rule_t pci_dummy_e1000_driver_matches[] = {{
+    .type = PCI_MATCH_CLASS,
+    .vendor_id = PCI_MATCH_ANY_U16,
+    .device_id = PCI_MATCH_ANY_U16,
+    .class_code = 0x02,
+    .subclass = 0x00,
+    .prog_if = PCI_MATCH_ANY_U8,
+}};
+
 static const pci_driver_t pci_dummy_e1000_driver = {
     .name = "dummy_e1000_driver",
-    .device_id = 0x100e,
-    .vendor_id = 0x8086,
     .probe = pci_dummy_e1000_device_probe,
+    .remove = NULL,
+    .matches = pci_dummy_e1000_driver_matches,
+    .match_count = sizeof(pci_dummy_e1000_driver_matches) /
+                   sizeof(pci_dummy_e1000_driver_matches[0]),
 };
 
 /** *** END: TEST DRIVER 1 *** */
