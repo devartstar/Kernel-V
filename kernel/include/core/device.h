@@ -21,10 +21,30 @@ typedef enum device_bus_type {
  * @FAILED - device is discovered, driver matched but probing failed
  */
 typedef enum device_state {
-    DEVICE_STATE_EMPTY = 0, /* default */
+    /* default state of a device */
+    DEVICE_STATE_INVALID = 0,
+
+    /* device object exists and is discovered by bus core
+     * but no binding decision taken yet */
     DEVICE_STATE_DISCOVERED,
+
+    /* a driver has been matched with the device
+     * but probe has not been started yet */
+    DEVICE_STATE_MATCHED,
+
+    /* matched drivers probe routine has been executing
+     * On probe completion state transitions into BOUND or PROBE_FAILED */
+    DEVICE_STATE_PROBING,
+
+    /* driver probe routine has succeeded and device is now owned by a driver */
     DEVICE_STATE_BOUND,
+
+    /* driver probe routine has failed, device is not owned by a driver yet */
     DEVICE_STATE_PROBE_FAILED,
+
+    /*no registered driver rule matches with this device.
+     * device is valid but not bound to any driver */
+    DEVICE_STATE_UNBOUND,
 
     DEVICE_STATE_COUNT,
 } device_state_t;

@@ -8,16 +8,18 @@ bind_device_result_t pci_bind_device(pci_driver_registry_t *reg,
     if (!reg || !dev || !dev->record) {
         KLOG_ERROR(
             "PCI_BIND",
-            "Failed to bind driver to the device. Invalid arguments passed.\n");
+            "Failed to bind driver to the device. Invalid arguments passed."
+            "\n\tdriver registry = %p, device = %p.\n",
+            reg, dev);
         return PCI_BIND_FAILED;
     }
 
     /* be can only bind driver to devices which are discovered */
     if (dev->device.state != DEVICE_STATE_DISCOVERED) {
-        KLOG_ERROR(
-            "PCI_BIND",
-            "Failed to bind driver to device %s. Device not initalized.\n",
-            dev->device.name);
+        KLOG_ERROR("PCI_BIND",
+                   "bind failed: device %s, state = %s, expected state = "
+                   "discovered.\n",
+                   dev->device.name, device_state_name(dev->device.state));
 
         return PCI_BIND_FAILED_NOT_DISCOVERED;
     }
@@ -32,7 +34,7 @@ bind_device_result_t pci_bind_device(pci_driver_registry_t *reg,
             continue;
         }
 
-        /* check if the driver detail matches with device detail */
+        /* check if driver matches for the device */
         if (!pci_driver_matches(driver, dev)) {
             KLOG_VERBOSE(
                 "PCI_BIND",
@@ -40,6 +42,18 @@ bind_device_result_t pci_bind_device(pci_driver_registry_t *reg,
                 dev->device.name);
             continue;
         }
+
+        dev->device.state = DEVICE_STATE_MATCHED;
+
+        if (!driver->probe) {
+            dev->device.state = DEVICE_STATE_PROBE_FAILED;
+            KLOG_VERBOSE("PCI_BIND",
+                         "probe failed. Invalid probe routine of Driver %s.\n",
+                         driver->name);
+            return PCI_BIND_FAILED_PROBE_FAILED;
+        }
+
+        dev->device.state = DEVICE_STATE_PROBING;
 
         probe_res = driver->probe(dev);
 
@@ -68,6 +82,7 @@ bind_device_result_t pci_bind_device(pci_driver_registry_t *reg,
         return PCI_BIND_PASSED;
     }
 
+    dev->device.state = DEVICE_STATE_UNBOUND;
     KLOG_ERROR("PCI_BIND", "Failed to find matching driver for device %s.\n",
                dev->device.name);
     return PCI_BIND_FAILED_NO_MATCHING_DRIVER;
@@ -81,18 +96,19 @@ bind_device_result_t pci_bind_device_to_best_driver(pci_driver_registry_t *reg,
 
     /* check for validity of the input arguments */
     if (!reg || !dev) {
-        KLOG_ERROR(
-            "PCI_BIND",
-            "Failed to bind driver to the device. Invalid arguments passed.\n");
+        KLOG_ERROR("PCI_BIND",
+                   "bind device failed. Invalid arguments.\n"
+                   "\tdriver registry ref = %p, device ref = %p.\n",
+                   reg, dev);
         return PCI_BIND_FAILED;
     }
 
     /* be can only bind driver to devices which are discovered */
     if (dev->device.state != DEVICE_STATE_DISCOVERED) {
-        KLOG_ERROR(
-            "PCI_BIND",
-            "Failed to bind driver to device %s. Device not initalized.\n",
-            dev->device.name);
+        KLOG_ERROR("PCI_BIND",
+                   "bind device failed.\n"
+                   "\tdevice %s, state = %s, expected state = discovered.\n",
+                   dev->device.name, device_state_name(dev->device.state));
 
         return PCI_BIND_FAILED_NOT_DISCOVERED;
     }
@@ -134,22 +150,48 @@ bind_device_result_t pci_bind_device_to_best_driver(pci_driver_registry_t *reg,
 
     /* check if any driver matched with the device */
     if (!best_driver) {
+        dev->device.state = DEVICE_STATE_UNBOUND;
+        dev->device.bound_driver = NULL;
+        dev->device.driver_data = NULL;
+
         KLOG_ERROR("PCI_BIND",
-                   "failed to find matching driver for the device %s.\n",
-                   dev->device.name);
+                   "bind result: device = %s, state = %s, reason = no matching "
+                   "driver.\n",
+                   dev->device.name, device_state_name(dev->device.state));
+
         return PCI_BIND_FAILED_NO_MATCHING_DRIVER;
     }
 
+    /* device has been matched with a driver but not bound yet */
+    dev->device.state = DEVICE_STATE_MATCHED;
+    dev->device.bound_driver = NULL;
+    dev->device.driver_data = NULL;
+
     KLOG_INFO("PCI_BIND",
-              "found matching driver %s for device %s with a match score %u.\n",
-              best_driver->name, dev->device.name, best_score);
+              "bind selected: device = %s, device state = %s, driver = %s, "
+              "match score %u.\n",
+              dev->device.name, device_state_name(dev->device.state),
+              best_driver->name, best_score);
 
     /* check if the probe routine exists for the driver */
     if (!best_driver->probe) {
-        KLOG_ERROR("PCI_BIND", "selected driver %s has no probe function.\n",
+        dev->device.state = DEVICE_STATE_PROBE_FAILED;
+
+        KLOG_ERROR("PCI_BIND",
+                   "bind failed: device = %s (state = %s), driver %s, reason = "
+                   "no probe function.\n",
+                   dev->device.name, device_state_name(dev->device.state),
                    best_driver->name);
+
         return PCI_BIND_FAILED_PROBE_FAILED;
     }
+
+    /* set the device state to probing before starting probe */
+    dev->device.state = DEVICE_STATE_PROBING;
+    KLOG_INFO("PCI_BIND",
+              "probe started: device = %s (state = %s), driver %s.\n",
+              dev->device.name, device_state_name(dev->device.state),
+              best_driver->name);
 
     /* invoke the probe from the selected driver */
     uint8_t probe_res = best_driver->probe(dev);
@@ -158,12 +200,16 @@ bind_device_result_t pci_bind_device_to_best_driver(pci_driver_registry_t *reg,
     if (!probe_res) {
         dev->device.state = DEVICE_STATE_PROBE_FAILED;
         dev->device.bound_driver = NULL;
+        /* important to nullify the driver data since it might have been
+         * partially initialized by proble routine. */
         dev->device.driver_data = NULL;
 
-        KLOG_ERROR(
-            "PCI_BIND",
-            "probe failed: driver = %s, device = %s, probe result = %d.\n",
-            best_driver->name, dev->device.name, probe_res);
+        KLOG_ERROR("PCI_BIND",
+                   "probe failed: device = %s (state = %s), driver = %s, probe "
+                   "result = %d.\n",
+                   dev->device.name, device_state_name(dev->device.state),
+                   best_driver->name, probe_res);
+
         return PCI_BIND_FAILED_PROBE_FAILED;
     }
 
@@ -172,8 +218,10 @@ bind_device_result_t pci_bind_device_to_best_driver(pci_driver_registry_t *reg,
     dev->device.bound_driver = best_driver;
 
     KLOG_INFO("PCI_BIND",
-              "probe success:  driver = %s, device = %s, probe result = %d.\n",
-              best_driver->name, dev->device.name, probe_res);
+              "probe success: device = %s (state = %s), driver = %s, probe "
+              "result = %d.\n",
+              dev->device.name, device_state_name(dev->device.state),
+              best_driver->name, probe_res);
 
     return PCI_BIND_PASSED;
 }
@@ -184,8 +232,11 @@ uint8_t pci_probe_and_bind_all(pci_device_registry_t *device_reg,
 
     /* check for validity of int input arguments */
     if (!driver_reg || !device_reg) {
-        KLOG_ERROR("PCI_BIND", "Failed probing & binding all devices. "
-                               "Invalid input arguments.\n");
+        KLOG_ERROR(
+            "PCI_BIND",
+            "Failed probing & binding all devices. Invalid input arguments.\n"
+            "\t driver registry = %p, device registry = %p.\n",
+            driver_reg, device_reg);
         return 0;
     }
 

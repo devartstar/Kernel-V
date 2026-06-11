@@ -5,11 +5,24 @@
 #include "arch/x86/pci/pci_driver_registry.h"
 #include "core/device.h"
 
+/**
+ * bind_device_result - possible results of binding a device
+ */
 typedef enum bind_device_result {
+    /* failed to invoke bind */
     PCI_BIND_FAILED = 0,
+
+    /* successfully bound driver to a device */
     PCI_BIND_PASSED,
+
+    /* failed to bind because the device is not yet discovered
+     * a device is marked discovered when it is initialized */
     PCI_BIND_FAILED_NOT_DISCOVERED,
+
+    /* failed to bind device beacuse driver probe routine failed */
     PCI_BIND_FAILED_PROBE_FAILED,
+
+    /* failed to bind device becase no matching driver found to bind */
     PCI_BIND_FAILED_NO_MATCHING_DRIVER,
 } bind_device_result_t;
 
