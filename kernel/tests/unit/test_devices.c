@@ -62,15 +62,15 @@ static const pci_driver_t pci_dummy_driver = {
 /** *** START: TEST DRIVER 2 *** */
 
 /* dummy driver data info */
-typedef struct pci_dummy_e1000_driver_data {
+typedef struct pci_dummy_net_class_driver_data {
     uint32_t mmio_bar_base;
     uint32_t io_bar_base;
     uint8_t bus_master_enabled;
-} pci_dummy_e1000_driver_data_t;
+} pci_dummy_net_class_driver_data_t;
 
-static pci_dummy_e1000_driver_data_t test_e1000_data;
+static pci_dummy_net_class_driver_data_t test_driver_data;
 
-static uint8_t pci_dummy_e1000_device_probe(pci_device_t *device) {
+static uint8_t pci_dummy_net_class_device_probe(pci_device_t *device) {
     const pci_bar_info_t *bar0;
     const pci_bar_info_t *io_bar;
     const pci_command_status_info_t *cmd_status_before;
@@ -136,16 +136,16 @@ static uint8_t pci_dummy_e1000_device_probe(pci_device_t *device) {
               device->device.name, (uint32_t)bar0->base, (uint32_t)io_bar->base,
               cmd_status_before->command, cmd_status_after->command);
 
-    test_e1000_data.mmio_bar_base = bar0->base;
-    test_e1000_data.io_bar_base = io_bar->base;
-    test_e1000_data.bus_master_enabled = 1;
+    test_driver_data.mmio_bar_base = bar0->base;
+    test_driver_data.io_bar_base = io_bar->base;
+    test_driver_data.bus_master_enabled = 1;
 
-    pci_device_set_driver_data(device, &test_e1000_data);
+    pci_device_set_driver_data(device, &test_driver_data);
 
     return 1;
 }
 
-static const pci_match_rule_t pci_dummy_e1000_driver_matches[] = {{
+static const pci_match_rule_t pci_dummy_net_class_driver_matches[] = {{
     .type = PCI_MATCH_CLASS,
     .vendor_id = PCI_MATCH_ANY_U16,
     .device_id = PCI_MATCH_ANY_U16,
@@ -154,16 +154,16 @@ static const pci_match_rule_t pci_dummy_e1000_driver_matches[] = {{
     .prog_if = PCI_MATCH_ANY_U8,
 }};
 
-static const pci_driver_t pci_dummy_e1000_driver = {
-    .name = "dummy_e1000_driver",
-    .probe = pci_dummy_e1000_device_probe,
+static const pci_driver_t pci_dummy_net_class_driver = {
+    .name = "dummy_net_class_driver",
+    .probe = pci_dummy_net_class_device_probe,
     .remove = NULL,
-    .matches = pci_dummy_e1000_driver_matches,
-    .match_count = sizeof(pci_dummy_e1000_driver_matches) /
-                   sizeof(pci_dummy_e1000_driver_matches[0]),
+    .matches = pci_dummy_net_class_driver_matches,
+    .match_count = sizeof(pci_dummy_net_class_driver_matches) /
+                   sizeof(pci_dummy_net_class_driver_matches[0]),
 };
 
-/** *** END: TEST DRIVER 1 *** */
+/** *** END: TEST DRIVER 2 *** */
 
 /** *** START: Dummy Device <> Driver utility tests *** */
 
@@ -530,7 +530,7 @@ uint8_t device_pci_device_driver_test(void) {
     const pci_device_t *device;
     uint8_t bound_count = 0;
     const pci_bdf_t bdf = {.bus = 0x00, .device = 0x03, .function = 0x00};
-    pci_dummy_e1000_driver_data_t *data;
+    pci_dummy_net_class_driver_data_t *data;
 
     /** BUILDS UP THE RECORD REGISTRY
      * 1. Probe all the devices in bus 0. Probe all the function in each device.
@@ -595,11 +595,12 @@ uint8_t device_pci_device_driver_test(void) {
     /** REGISTER DUMMY 1000E DRIVER INTO REGISTRY
      * Add a entry in the registry for our dummy driver.
      */
-    if (!pci_driver_registry_add(driver_registry, &pci_dummy_e1000_driver)) {
+    if (!pci_driver_registry_add(driver_registry,
+                                 &pci_dummy_net_class_driver)) {
         KLOG_ERROR("DEVICE_TEST",
                    "pci_device_driver_test failed. Failed to register driver "
                    "%s into registry.\n",
-                   &pci_dummy_e1000_driver.name);
+                   &pci_dummy_net_class_driver.name);
         return 0;
     }
 
@@ -620,7 +621,7 @@ uint8_t device_pci_device_driver_test(void) {
             "DEVICE_TEST",
             "pci_device_driver_test failed. Failed to bind driver %s with a "
             "device.\n",
-            pci_dummy_e1000_driver.name);
+            pci_dummy_net_class_driver.name);
         return 0;
     }
 
@@ -662,14 +663,15 @@ uint8_t device_pci_device_driver_test(void) {
         return 0;
     }
 
-    data = (pci_dummy_e1000_driver_data_t *)pci_device_get_driver_data(device);
+    data =
+        (pci_dummy_net_class_driver_data_t *)pci_device_get_driver_data(device);
 
     KLOG_INFO(
         "DEVICE_TEST",
         "pci_device_driver_test passed. success bound driver %s to device %s. "
         "\n\tDriver data information: mmio base = %08x, io base "
         "= %08x, bus master enabled = %u.\n",
-        pci_dummy_e1000_driver.name, device_const->device.name,
+        pci_dummy_net_class_driver.name, device_const->device.name,
         data->mmio_bar_base, data->io_bar_base, data->bus_master_enabled);
 
     return 1;
@@ -683,7 +685,7 @@ uint8_t device_pci_device_registry_lookup_test(void) {
     const pci_device_t *device;
     uint8_t bound_count = 0;
     const pci_bdf_t bdf = {.bus = 0x00, .device = 0x03, .function = 0x00};
-    pci_dummy_e1000_driver_data_t *data;
+    pci_dummy_net_class_driver_data_t *data;
 
     /** BUILDS UP THE RECORD REGISTRY
      * 1. Probe all the devices in bus 0. Probe all the function in each device.
@@ -750,12 +752,13 @@ uint8_t device_pci_device_registry_lookup_test(void) {
     /** REGISTER DUMMY 1000E DRIVER INTO REGISTRY
      * Add a entry in the registry for our dummy driver.
      */
-    if (!pci_driver_registry_add(driver_registry, &pci_dummy_e1000_driver)) {
+    if (!pci_driver_registry_add(driver_registry,
+                                 &pci_dummy_net_class_driver)) {
         KLOG_ERROR(
             "DEVICE_TEST",
             "pci_device_registry_lookup_test failed. Failed to register driver "
             "%s into registry.\n",
-            &pci_dummy_e1000_driver.name);
+            &pci_dummy_net_class_driver.name);
         return 0;
     }
 
@@ -776,7 +779,7 @@ uint8_t device_pci_device_registry_lookup_test(void) {
                    "pci_device_registry_lookup_test failed. Failed to bind "
                    "driver %s with a "
                    "device.\n",
-                   pci_dummy_e1000_driver.name);
+                   pci_dummy_net_class_driver.name);
         return 0;
     }
 
@@ -820,4 +823,80 @@ uint8_t device_pci_device_registry_lookup_test(void) {
     return 1;
 }
 
+/* check and compare the driver match score of a device with different driver */
+uint8_t device_pci_driver_match_priority_test(void) {
+    pci_record_registry_t *record_reg = &test_record_reg;
+    const pci_function_record_t *record_const;
+    pci_function_record_t *record;
+    pci_device_t dev;
+    pci_bdf_t bdf = {.bus = 0x00, .device = 0x03, .function = 0x00};
+
+    /* enumerate and add entries to the record registry */
+    if (!pci_enumerate_bus0_into_record_registry(record_reg)) {
+        KLOG_ERROR("DEVICE_TEST",
+                   "device_pci_driver_match_priority failed. failed to "
+                   "enumerate records into registry.\n");
+        return 0;
+    }
+
+    /* enrich the record registry with values */
+    if (!pci_enrich_record_registry_resources(record_reg)) {
+        KLOG_ERROR("DEVICE_TEST", "device_pci_driver_match_priority failed. "
+                                  "failed to enrich record registry.\n");
+        return 0;
+    }
+
+    /* find a function record from the record registry */
+    record_const = pci_record_registry_find_bdf(record_reg, bdf);
+    record = (pci_function_record_t *)record_const;
+
+    /* initialize a PCI device using the record */
+    if (!pci_device_init(&dev, record, NULL)) {
+        KLOG_ERROR("DEVICE_TEST",
+                   "device_pci_driver_match_priority failed. failed to "
+                   "initialize device [%02x:%02x.%u].\n",
+                   bdf.bus, bdf.device, bdf.function);
+        return 0;
+    }
+
+    /* claculate the mathching score for 2 different driver with the device */
+    pci_match_score_t class_match_score =
+        pci_driver_match_score(&pci_dummy_net_class_driver, &dev);
+    pci_match_score_t vendor_match_score =
+        pci_driver_match_score(&pci_dummy_driver, &dev);
+
+    /* check if match score is as expected for first driver */
+    if (class_match_score != PCI_MATCH_SCORE_CLASS_SUBCLASS_PROGIF) {
+        KLOG_ERROR("DEVICE_TEST",
+                   "device_pci_driver_match_priority failed. class score = %u, "
+                   "expected = %u.\n",
+                   class_match_score, PCI_MATCH_SCORE_CLASS_SUBCLASS_PROGIF);
+        return 0;
+    }
+
+    /* check if match score is as expected for second driver */
+    if (vendor_match_score != PCI_MATCH_SCORE_VENDOR_DEVICE) {
+        KLOG_ERROR("DEVICE_TEST",
+                   "device_pci_driver_match_priority failed. vendor_device "
+                   "score = %u, expected = %u.\n",
+                   vendor_match_score, PCI_MATCH_SCORE_VENDOR_DEVICE);
+        return 0;
+    }
+
+    /* check if match score for second driver with vendor_device match rule
+     * should beat the score of first driver with class_subclass_progif rule */
+    if (vendor_match_score < class_match_score) {
+        KLOG_ERROR("DEVICE_TEST",
+                   "device_pci_driver_match_priority failed. vendor_device "
+                   "score (%u) should beat the class score (%u).\n",
+                   vendor_match_score, class_match_score);
+        return 0;
+    }
+
+    KLOG_INFO("DEVICE_TEST",
+              "device_pci_driver_match_priority passed. vendor_device score = "
+              "%u wins against class score = %u.\n",
+              vendor_match_score, class_match_score);
+    return 1;
+}
 /** *** END: Dummy Device <> Driver linkage tests *** */
