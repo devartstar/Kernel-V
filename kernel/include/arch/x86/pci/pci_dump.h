@@ -1,6 +1,7 @@
 #ifndef PCI_DUMP_H
 #define PCI_DUMP_H
 
+#include "arch/x86/pci/pci_bind.h"
 #include "arch/x86/pci/pci_device_registry.h"
 #include "arch/x86/pci/pci_record_registry.h"
 
@@ -78,5 +79,13 @@ void pci_dump_device_visitor(const pci_device_t *dev, void *ctx);
  * @return void
  */
 void pci_dump_device_registry(const pci_device_registry_t *reg);
+
+/**
+ * pci_dump_bind_summary - dump the pci bind summary
+ * @summary - ref to the pci bind summary object
+ *
+ * @return void
+ */
+void pci_dump_bind_summary(const pci_bind_summary_t *summary);
 
 #endif

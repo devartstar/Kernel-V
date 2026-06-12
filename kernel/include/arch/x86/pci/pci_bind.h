@@ -26,6 +26,16 @@ typedef enum bind_device_result {
     PCI_BIND_FAILED_NO_MATCHING_DRIVER,
 } bind_device_result_t;
 
+typedef struct pci_bind_summary {
+    uint32_t device_seen;
+    uint32_t bind_attempted;
+    uint32_t bound;
+    uint32_t unbound;
+    uint32_t probe_failed;
+    uint32_t skipped;
+    uint32_t failed_invalid;
+} pci_bind_summary_t;
+
 /**
  * pci_bind_device - for a given device lookup the driver registry and based on
  * matching critera (eg. same vendor/device id) assign driver to the device.
@@ -47,8 +57,9 @@ bind_device_result_t pci_bind_device(pci_driver_registry_t *reg,
  *
  * @return pci_device_result_t - result state of attaching driver.
  */
-bind_device_result_t pci_bind_device_to_best_driver(pci_driver_registry_t *reg,
-                                                    pci_device_t *dev);
+bind_device_result_t
+pci_bind_device_to_best_driver(pci_driver_registry_t *reg, pci_device_t *dev,
+                               pci_bind_summary_t *out_summary);
 /*
  * pci_probe_and_bind_all - for all devices and for all drivers, bind them
  * all based on matching criteria.
@@ -58,6 +69,12 @@ bind_device_result_t pci_bind_device_to_best_driver(pci_driver_registry_t *reg,
  * @return - count of number of devices got attached to drivers.
  */
 uint8_t pci_probe_and_bind_all(pci_device_registry_t *device_reg,
-                               pci_driver_registry_t *driver_reg);
+                               pci_driver_registry_t *driver_reg,
+                               pci_bind_summary_t *out_summary);
+
+/**
+ * BIND SUMMARY
+ */
+void pci_bind_summary_init(pci_bind_summary_t *summary);
 
 #endif /* PCI_BIND_H */

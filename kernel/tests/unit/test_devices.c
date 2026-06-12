@@ -13,6 +13,7 @@
 static pci_record_registry_t test_record_reg;
 static pci_driver_registry_t test_driver_reg;
 static pci_device_registry_t test_device_reg;
+static pci_bind_summary_t test_bind_summary;
 
 /** *** START: TEST DRIVER 1 *** */
 
@@ -506,7 +507,8 @@ uint8_t device_pci_driver_registry_bind_test(void) {
     }
 
     /* PHASE 6: BIND ALL DRIVERS WITH DEVICES */
-    bound_count = pci_probe_and_bind_all(device_registry, driver_registry);
+    bound_count = pci_probe_and_bind_all(device_registry, driver_registry,
+                                         &test_bind_summary);
     if (bound_count <= 0) {
         KLOG_ERROR("DEVICE_TEST",
                    "pdevice_pci_driver_registry_bind_test failed. No drivers "
@@ -514,6 +516,8 @@ uint8_t device_pci_driver_registry_bind_test(void) {
                    pci_dummy_driver.name);
         return 0;
     }
+
+    pci_dump_bind_summary(&test_bind_summary);
 
     KLOG_INFO("DEVICE_TEST",
               "pdevice_pci_driver_registry_bind_test successfully bound test "
@@ -615,7 +619,9 @@ uint8_t device_pci_device_driver_test(void) {
      * 3. Try to bind devicce object with a driver from driver registry.
      * 4. if a device and driver matches - call the probe routine of the driver.
      */
-    bound_count = pci_probe_and_bind_all(device_registry, driver_registry);
+    bound_count = pci_probe_and_bind_all(device_registry, driver_registry,
+                                         &test_bind_summary);
+
     if (bound_count == 0) {
         KLOG_ERROR(
             "DEVICE_TEST",
@@ -624,6 +630,8 @@ uint8_t device_pci_device_driver_test(void) {
             pci_dummy_net_class_driver.name);
         return 0;
     }
+
+    pci_dump_bind_summary(&test_bind_summary);
 
     /* try to find a record with bdf to find */
     device_const = pci_device_registry_find_bdf(device_registry, bdf);
@@ -773,7 +781,9 @@ uint8_t device_pci_device_registry_lookup_test(void) {
      * 3. Try to bind devicce object with a driver from driver registry.
      * 4. if a device and driver matches - call the probe routine of the driver.
      */
-    bound_count = pci_probe_and_bind_all(device_registry, driver_registry);
+    bound_count = pci_probe_and_bind_all(device_registry, driver_registry,
+                                         &test_bind_summary);
+
     if (bound_count == 0) {
         KLOG_ERROR("DEVICE_TEST",
                    "pci_device_registry_lookup_test failed. Failed to bind "
@@ -782,6 +792,8 @@ uint8_t device_pci_device_registry_lookup_test(void) {
                    pci_dummy_net_class_driver.name);
         return 0;
     }
+
+    pci_dump_bind_summary(&test_bind_summary);
 
     pci_device_t *dev_bdf, *dev_vd, *dev_bound;
     uint32_t bound_state_count = 0;

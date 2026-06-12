@@ -279,3 +279,20 @@ void pci_dump_device_registry(const pci_device_registry_t *reg) {
 
     KLOG_INFO("PCI_DEVICE_DUMP", "=== PCI DEVICE REGISTRY DUMP END ===\n");
 }
+
+void pci_dump_bind_summary(const pci_bind_summary_t *summary) {
+    if (!summary) {
+        KLOG_ERROR("PCI_BIND",
+                   "Device bind dump failed. invalid ref. to summary.\n");
+        return;
+    }
+
+    KLOG_INFO("PCI_BIND", "bind-summary start\n");
+    KLOG_INFO("PCI_BIND",
+              "bind summary: seen=%u attempted=%u bound=%u unbound=%u "
+              "probe_failed=%u skipped=%u invalid=%u\n",
+              summary->device_seen, summary->bind_attempted, summary->bound,
+              summary->unbound, summary->probe_failed, summary->skipped,
+              summary->failed_invalid);
+    KLOG_INFO("PCI_BIND", "bind-summary end\n");
+}
