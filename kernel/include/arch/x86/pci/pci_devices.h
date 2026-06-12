@@ -72,7 +72,7 @@ static inline void *pci_device_get_driver_data(pci_device_t *device) {
 
 static inline void pci_device_state_match(const pci_device_t *device,
                                           void *ctx) {
-    uint8_t *state_count = (uint8_t *)ctx;
+    uint32_t *state_count = (uint8_t *)ctx;
     state_count[device->device.state]++;
 }
 

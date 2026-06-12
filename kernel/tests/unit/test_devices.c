@@ -911,4 +911,91 @@ uint8_t device_pci_driver_match_priority_test(void) {
               vendor_match_score, class_match_score);
     return 1;
 }
+
+/* check the linkage between the device and record registry */
+uint8_t device_pci_registry_lifetime_links_test(void) {
+    pci_record_registry_t *record_registry = &test_record_reg;
+    pci_device_registry_t *device_registry = &test_device_reg;
+    const pci_bdf_t bdf = {.bus = 0x00, .device = 0x03, .function = 0x00};
+    const pci_function_record_t *rec_const;
+    pci_function_record_t *rec;
+    pci_device_t *dev_from_registry;
+    pci_device_t *dev_from_record;
+
+    if (!pci_enumerate_bus0_into_record_registry(record_registry)) {
+        KLOG_ERROR(
+            "DEVICE_TEST",
+            "registry_lifetime_links_test failed: enumeration failed.\n");
+        return 0;
+    }
+
+    if (!pci_enrich_record_registry_resources(record_registry)) {
+        KLOG_ERROR("DEVICE_TEST",
+                   "registry_lifetime_links_test failed: enrichment failed.\n");
+        return 0;
+    }
+
+    if (!pci_device_registry_materialize_from_record_registry(
+            device_registry, record_registry, NULL)) {
+        KLOG_ERROR(
+            "DEVICE_TEST",
+            "registry_lifetime_links_test failed: materialization failed.\n");
+        return 0;
+    }
+
+    if (!pci_device_registry_validate_links(device_registry, record_registry)) {
+        KLOG_ERROR(
+            "DEVICE_TEST",
+            "registry_lifetime_links_test failed: link validation failed.\n");
+        return 0;
+    }
+
+    rec_const = pci_record_registry_find_bdf(record_registry, bdf);
+    if (!rec_const) {
+        KLOG_ERROR("DEVICE_TEST",
+                   "registry_lifetime_links_test failed: record not found.\n");
+        return 0;
+    }
+
+    rec = (pci_function_record_t *)rec_const;
+
+    dev_from_registry = pci_device_registry_find_bdf(device_registry, bdf);
+    dev_from_record = pci_record_get_runtime_device(rec);
+
+    if (!dev_from_registry || !dev_from_record) {
+        KLOG_ERROR(
+            "DEVICE_TEST",
+            "registry_lifetime_links_test failed: device lookup failed.\n");
+        return 0;
+    }
+
+    if (dev_from_registry != dev_from_record) {
+        KLOG_ERROR("DEVICE_TEST",
+                   "registry_lifetime_links_test failed: registry device and "
+                   "record runtime_device differ.\n");
+        return 0;
+    }
+
+    if (dev_from_registry->record != rec) {
+        KLOG_ERROR(
+            "DEVICE_TEST",
+            "registry_lifetime_links_test failed: device record mismatch.\n");
+        return 0;
+    }
+
+    if (dev_from_registry->device.bus_data != rec) {
+        KLOG_ERROR("DEVICE_TEST",
+                   "registry_lifetime_links_test failed: bus_data mismatch.\n");
+        return 0;
+    }
+
+    KLOG_INFO("DEVICE_TEST",
+              "registry_lifetime_links_test passed: record [%02x:%02x.%u] "
+              "<-> device %s links are stable.\n",
+              bdf.bus, bdf.device, bdf.function,
+              dev_from_registry->device.name);
+
+    return 1;
+}
+
 /** *** END: Dummy Device <> Driver linkage tests *** */

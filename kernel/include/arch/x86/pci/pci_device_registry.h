@@ -20,7 +20,7 @@ typedef void (*pci_device_registry_visitor_fn)(const pci_device_t *device,
  */
 typedef struct pci_device_registry {
     pci_device_t devices[PCI_MAX_DEVICE_OBJECTS];
-    uint8_t count;
+    uint32_t count;
 } pci_device_registry_t;
 
 /**
@@ -79,5 +79,28 @@ pci_device_t *pci_device_registry_find_bound_vendor_device(
 
 uint32_t pci_device_registry_state_count(const pci_device_registry_t *reg,
                                          device_state_t state);
+
+void pci_device_registry_clear_record_runtime_links(pci_record_registry_t *reg);
+
+/**
+ * pci_device_registry_validate_links - validate both device registry and record
+ * registry for correct links
+ * @dev_reg: ref. to the device registry
+ * @rec_reg: ref. to the record registry
+ *
+ * @return 0 if link failed else 1
+ */
+uint8_t
+pci_device_registry_validate_links(const pci_device_registry_t *dev_reg,
+                                   const pci_record_registry_t *rec_reg);
+
+/**
+ * pci_record_get_runtime_device - helper to get the device from the record
+ * registry.
+ * @rec ref. to the record registry
+ *
+ * @return ref. to the device object
+ */
+pci_device_t *pci_record_get_runtime_device(pci_function_record_t *rec);
 
 #endif /* PCI_DEVICE_REGISTRY_H */

@@ -202,7 +202,7 @@ uint8_t pci_enrich_record_registry_resources(pci_record_registry_t *reg) {
         return 0;
     }
 
-    for (uint8_t i = 0; i < reg->count; i++) {
+    for (uint32_t i = 0; i < reg->count; i++) {
         pci_function_record_t *record = &reg->entries[i];
 
         /* check if valid record to decode */

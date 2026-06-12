@@ -64,7 +64,7 @@ pci_device_t *pci_device_registry_find_bdf(pci_device_registry_t *reg,
     }
 
     /* find the device for bfd endpoint in the registry */
-    for (uint8_t i = 0; i < reg->count; i++) {
+    for (uint32_t i = 0; i < reg->count; i++) {
         pci_device_t *dev = &reg->devices[i];
 
         if (!dev->record) {
@@ -97,11 +97,14 @@ uint8_t pci_device_registry_materialize_from_record_registry(
         return 0;
     }
 
+    /* clear the device registry per recrf runtime device */
+    pci_device_registry_clear_record_runtime_links(rec_reg);
+
     /* initalize the device registry before materializing */
     pci_device_registry_init(dev_reg);
 
     /* iterate thru the record reg and materialize device reg entry for each */
-    for (uint8_t i = 0; i < rec_reg->count; i++) {
+    for (uint32_t i = 0; i < rec_reg->count; i++) {
         pci_function_record_t *rec = &rec_reg->entries[i];
 
         if (!rec->present) {
@@ -133,7 +136,7 @@ void pci_device_registry_foreach(const pci_device_registry_t *reg,
         return;
     }
 
-    for (uint8_t i = 0; i < reg->count; i++) {
+    for (uint32_t i = 0; i < reg->count; i++) {
         const pci_device_t *dev = &reg->devices[i];
         if (!dev->record || !dev->record->present) {
             continue;
@@ -196,7 +199,7 @@ uint32_t pci_device_registry_state_count(const pci_device_registry_t *reg,
         return 0;
     }
 
-    uint8_t state_count[DEVICE_STATE_COUNT] = {0};
+    uint32_t state_count[DEVICE_STATE_COUNT] = {0};
 
     pci_device_registry_foreach(reg, pci_device_state_match, state_count);
 
@@ -204,4 +207,128 @@ uint32_t pci_device_registry_state_count(const pci_device_registry_t *reg,
               device_state_name(state), state_count[state]);
 
     return state_count[state];
+}
+
+void pci_device_registry_clear_record_runtime_links(
+    pci_record_registry_t *reg) {
+    if (!reg) {
+        KLOG_ERROR(
+            "PCI",
+            "clear runtime device failed. invalid ref to record registry %p.\n",
+            reg);
+        return;
+    }
+
+    for (uint32_t i = 0; i < reg->count; i++) {
+        reg->entries[i].runtime_device = NULL;
+    }
+}
+
+uint8_t
+pci_device_registry_validate_links(const pci_device_registry_t *dev_reg,
+                                   const pci_record_registry_t *rec_reg) {
+    uint32_t linked_records = 0;
+    if (!dev_reg || !rec_reg) {
+        KLOG_ERROR("PCI",
+                   "device registry link validation failed: invalid args.\n");
+        return 0;
+    }
+
+    /* Validate device registry entries for correct link */
+    for (uint32_t i = 0; i < dev_reg->count; i++) {
+        const pci_device_t *dev = &dev_reg->devices[i];
+        const pci_function_record_t *rec;
+
+        if (!dev->record) {
+            KLOG_ERROR("PCI",
+                       "device registry link validation failed: "
+                       "device index=%u has NULL record.\n",
+                       i);
+            return 0;
+        }
+
+        rec = dev->record;
+
+        if (!rec->present) {
+            KLOG_ERROR("PCI",
+                       "device registry link validation failed: "
+                       "device=%s points to non-present record.\n",
+                       dev->device.name);
+            return 0;
+        }
+
+        if (dev->device.bus_type != DEVICE_BUS_PCI) {
+            KLOG_ERROR("PCI",
+                       "device registry link validation failed: "
+                       "device=%s has wrong bus type=%u.\n",
+                       dev->device.name, dev->device.bus_type);
+            return 0;
+        }
+
+        if (dev->device.bus_data != rec) {
+            KLOG_ERROR("PCI",
+                       "device registry link validation failed: "
+                       "device=%s bus_data does not point to record.\n",
+                       dev->device.name);
+            return 0;
+        }
+
+        if (rec->runtime_device != dev) {
+            KLOG_ERROR("PCI",
+                       "device registry link validation failed: "
+                       "record [%02x:%02x.%u] runtime_device mismatch.\n",
+                       rec->id.bdf.bus, rec->id.bdf.device,
+                       rec->id.bdf.function);
+            return 0;
+        }
+    }
+
+    /* Validate record registry entries for correct link */
+    for (uint32_t i = 0; i < rec_reg->count; i++) {
+        const pci_function_record_t *rec = &rec_reg->entries[i];
+
+        if (!rec->present) {
+            continue;
+        }
+
+        if (!rec->runtime_device) {
+            KLOG_ERROR("PCI",
+                       "device registry link validation failed: "
+                       "record [%02x:%02x.%u] has NULL runtime_device.\n",
+                       rec->id.bdf.bus, rec->id.bdf.device,
+                       rec->id.bdf.function);
+            return 0;
+        }
+
+        linked_records++;
+    }
+
+    if (linked_records != dev_reg->count) {
+        KLOG_ERROR("PCI",
+                   "device registry link validation failed: "
+                   "linked_records=%u device_count=%u.\n",
+                   linked_records, dev_reg->count);
+        return 0;
+    }
+
+    KLOG_INFO("PCI", "device registry links valid: devices=%u records=%u.\n",
+              dev_reg->count, rec_reg->count);
+
+    return 1;
+}
+
+pci_device_t *pci_record_get_runtime_device(pci_function_record_t *rec) {
+    if (!rec || !rec->present) {
+        KLOG_ERROR("PCI", "failed to get runtime device: invalid record.\n");
+        return NULL;
+    }
+
+    if (!rec->runtime_device) {
+        KLOG_ERROR("PCI",
+                   "failed to get runtime device for [%02x:%02x.%u]: NULL.\n",
+                   rec->id.bdf.bus, rec->id.bdf.device, rec->id.bdf.function);
+        return NULL;
+    }
+
+    return rec->runtime_device;
 }

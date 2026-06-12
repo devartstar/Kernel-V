@@ -32,7 +32,7 @@ uint8_t pci_driver_registry_add(pci_driver_registry_t *reg,
     }
 
     /* check if driver already has been registered */
-    for (uint8_t i = 0; i < reg->count; i++) {
+    for (uint32_t i = 0; i < reg->count; i++) {
         if (reg->drivers[i] == driver) {
             KLOG_ERROR(
                 "PCI_DRIVER",
