@@ -7,6 +7,7 @@
 #include "tests/test_mmio.h"
 #include "tests/test_pci.h"
 #include "tests/test_spinlock.h"
+#include "tests/test_vfs.h"
 #include <stdbool.h>
 
 //  Conditionally include headers based on what's available
@@ -49,6 +50,7 @@ void run_kernel_tests(void) {
     run_irq_tests();
     run_pci_tests();
     run_devices_tests();
+    run_vfs_tests();
 
     KLOG_VERBOSE("TEST", "Unit Tests Complete.\n");
     tests_run = true;
