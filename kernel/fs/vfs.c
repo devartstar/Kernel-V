@@ -1,10 +1,12 @@
 #include "fs/vfs.h"
-#include "fs/vfs_root.h"
+#include "fs/vfs_utils.h"
 #include "lib/printk.h"
 #include "stddef.h"
 
-static vfs_node_t g_vfs_root;
-static vfs_node_t *g_vfs_root_ptr;
+vfs_node_t g_vfs_root;
+vfs_node_t *g_vfs_root_ptr = NULL;
+vfs_node_t g_vfs_nodes[VFS_MAX_NODES];
+uint32_t g_vfs_nodes_count = 0;
 
 int vfs_init(void) {
     g_vfs_root.name = "/";
@@ -24,11 +26,12 @@ int vfs_init(void) {
     g_vfs_root.first_child = NULL;
     g_vfs_root.next_sibling = NULL;
 
+    /* reset transient node storage for a clean VFS state */
+    g_vfs_nodes_count = 0;
+
     g_vfs_root_ptr = &g_vfs_root;
 
     KLOG_INFO("VFS", "root initialized.\n");
 
     return VFS_OK;
 }
-
-vfs_node_t *vfs_get_root() { return g_vfs_root_ptr; }

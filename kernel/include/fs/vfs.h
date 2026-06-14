@@ -22,6 +22,9 @@
 #define VFS_ERR_NOOP -4     /* request operation not supported */
 #define VFS_ERR_NOMEM -5    /* kernel allocation failed */
 
+/* define maximum number of node objects */
+#define VFS_MAX_NODES 64
+
 typedef struct vfs_node vfs_node_t;
 typedef struct vfs_file vfs_file_t;
 
@@ -108,5 +111,18 @@ struct vfs_file {
     uint32_t offset;
     uint32_t refcount;
 };
+
+/* root object of the vfs tree */
+extern vfs_node_t g_vfs_root;
+extern vfs_node_t *g_vfs_root_ptr;
+
+/* tree of vfs node objects stored in form of array */
+extern vfs_node_t g_vfs_nodes[VFS_MAX_NODES];
+extern uint32_t g_vfs_nodes_count;
+
+/**
+ * vfs_init - initializes the vfs with a root node
+ */
+int vfs_init(void);
 
 #endif /* VFS_H */

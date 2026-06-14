@@ -3,6 +3,41 @@
 
 #include "fs/vfs.h"
 
+/**
+ * vfs_get_root - get the ref. of the root node object
+ *
+ * @return vfs_node* - ref. of the root node object
+ */
+vfs_node_t *vfs_get_root(void);
+
+/**
+ * vfs_get_node_type - convert enum to string
+ *
+ * @type - vfs node object type
+ * @return - string of the node object type */
 const char *vfs_get_node_type(vfs_node_type_t type);
+
+/**
+ * vfs_create_node - create a vfs node object
+ *
+ * @name - reference name of the node object
+ * @type - node object type
+ * @ops - ref. to the operations the node object supports
+ * @private_data - ref. to the backend data
+ *
+ * @return vfs_node_t* - ref. to the created node object/
+ */
+vfs_node_t *vfs_create_node(const char *name, vfs_node_type_t type,
+                            const vfs_node_ops_t *ops, void *private_data);
+
+/**
+ * vfs_add_child - link child with provided parent in the vfs tree
+ *
+ * @parent - ref. to the parent node object existing in the tree.
+ * @child - ref. to the curret object to be added under the parent.
+ *
+ * @return < 0 for failure and >= 0 for success.
+ */
+int vfs_add_child(vfs_node_t *parent, vfs_node_t *child);
 
 #endif /* VFS_UTILS_H */

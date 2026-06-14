@@ -4,6 +4,7 @@
 #include "lib/printk.h"
 
 uint8_t fs_vfs_root_init_test(void);
+uint8_t fs_vfs_add_child_test(void);
 
 static inline void run_vfs_tests(void) {
     uint8_t failed_count = 0;
@@ -11,6 +12,13 @@ static inline void run_vfs_tests(void) {
     /* intialize the file systems root node object */
     if (fs_vfs_root_init_test()) {
         KLOG_INFO("TEST", "VFS root intialize test passed.\n");
+    } else {
+        failed_count++;
+    }
+
+    /* add two node objects runder the root, one file and one dir */
+    if (fs_vfs_add_child_test()) {
+        KLOG_INFO("TEST", "VFS add child under root test passed.\n");
     } else {
         failed_count++;
     }
