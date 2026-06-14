@@ -25,6 +25,13 @@
 /* define maximum number of node objects */
 #define VFS_MAX_NODES 64
 
+/* maximum length for the vfs node object */
+#define VFS_NAME_MAX 256
+
+/* root character */
+#define VFS_ROOT_SYMBOL '/'
+#define VFS_NAME_SEPARATOR VFS_ROOT_SYMBOL
+
 typedef struct vfs_node vfs_node_t;
 typedef struct vfs_file vfs_file_t;
 
@@ -124,5 +131,13 @@ extern uint32_t g_vfs_nodes_count;
  * vfs_init - initializes the vfs with a root node
  */
 int vfs_init(void);
+
+/**
+ * vfs_lookup_absolute - search for the absolute path in a vfs tree
+ * recurse thru the vfs tree one dir at a time based on the path.
+ *
+ * @path - absolute path string to find
+ */
+vfs_node_t *vfs_lookup_absolute(const char *path);
 
 #endif /* VFS_H */

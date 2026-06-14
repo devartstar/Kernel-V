@@ -40,4 +40,16 @@ vfs_node_t *vfs_create_node(const char *name, vfs_node_type_t type,
  */
 int vfs_add_child(vfs_node_t *parent, vfs_node_t *child);
 
+/**
+ * vfs_find_child - return a vfs node under the parent which matches with name
+ *
+ * @parent - ref. to the parent node under which child is to be found.
+ * @name - name of the child to find. nexted search not supported.
+ * correct name: hello.txt, dev
+ * wrong name: /hello.txt, /dev/null
+ *
+ * @return ref. to the vfd node object if found else NULL.
+ */
+vfs_node_t *vfs_find_child(vfs_node_t *parent, const char *name);
+
 #endif /* VFS_UTILS_H */

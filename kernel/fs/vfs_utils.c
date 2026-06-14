@@ -1,5 +1,6 @@
 #include "fs/vfs_utils.h"
 #include "lib/printk.h"
+#include "lib/string.h"
 
 vfs_node_t *vfs_get_root() { return g_vfs_root_ptr; }
 
@@ -83,4 +84,47 @@ int vfs_add_child(vfs_node_t *parent, vfs_node_t *child) {
               child->name, parent->name);
 
     return VFS_OK;
+}
+
+vfs_node_t *vfs_find_child(vfs_node_t *parent, const char *name) {
+    /* check for the validity of parent node to seach */
+    if (!parent) {
+        KLOG_ERROR("VFS",
+                   "find child node failed. parent node to find in is NULL.\n");
+        return NULL;
+    }
+
+    /* the parent node should be of type dir. to search in. */
+    if (parent->type != VFS_NODE_DIR) {
+        KLOG_ERROR("VFS",
+                   "find child node failed. parent %s is of type %s, expected "
+                   "= DIRECTORY.\n",
+                   parent->name, vfs_get_node_type(parent->type));
+        return NULL;
+    }
+
+    /* chech for validity of the name to search */
+    if (!name) {
+        KLOG_ERROR("VFS", "find child failed. name to find is NULL.\n");
+        return NULL;
+    }
+
+    vfs_node_t *start_node, *curr_node, *next_node;
+
+    /* start from the first entry under the parent dir. */
+    start_node = parent->first_child;
+    curr_node = start_node;
+
+    /* keep iterating until exhausted all nodes under the dir. */
+    while (curr_node != NULL) {
+        if (strcmp(curr_node->name, name) == 0) {
+            return curr_node;
+        }
+        next_node = curr_node->next_sibling;
+        curr_node = next_node;
+    }
+
+    KLOG_ERROR("VFS", "find child failed. no child %s under parent %s.\n", name,
+               parent->name);
+    return NULL;
 }

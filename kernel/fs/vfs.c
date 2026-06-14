@@ -35,3 +35,110 @@ int vfs_init(void) {
 
     return VFS_OK;
 }
+
+vfs_node_t *vfs_lookup_absolute(const char *path) {
+    const char *p;
+    char component[VFS_NAME_MAX];
+    uint32_t i;
+
+    vfs_node_t *start_node;
+    vfs_node_t *curr_node;
+    vfs_node_t *next_node;
+
+    /* check for valid path input for lookup */
+    if (!path) {
+        KLOG_ERROR("VFS", "lookup failed. path for lookup is NULL.\n");
+        return NULL;
+    }
+
+    /* check if the root is initialized */
+    if (!g_vfs_root_ptr) {
+        KLOG_ERROR("VFS", "lookup failed. root node is not initialized.\n");
+        return NULL;
+    }
+
+    /* absolute path should always start from the root */
+    if (path[0] != '/') {
+        KLOG_ERROR("VFS",
+                   "lookup failed. absoulte path %s for lookup doesn't start "
+                   "with /(root).\n",
+                   path);
+        return NULL;
+    }
+
+    /* handle case where absolute path is empty */
+    if (path[0] == '\0') {
+        KLOG_VERBOSE("VFS",
+                     "lookup completed. ablsolute path %s for lookup is empty "
+                     "returning root.\n",
+                     path);
+        return g_vfs_root_ptr;
+    }
+
+    /* start seaching in the vfs tree */
+    start_node = g_vfs_root_ptr;
+    curr_node = start_node;
+
+    /* always start lookup for next node from name and not separator */
+    p = path + 1;
+
+    /* iterate until entire path is traversed */
+    while (*p) {
+        i = 0;
+
+        /* extract the string upto next separator in component */
+        while (*p && *p != '/') {
+            if (i >= VFS_NAME_MAX - 1) {
+                KLOG_ERROR(
+                    "VFS",
+                    "lookup failed. parsed path upto maximum length %u.\n",
+                    VFS_NAME_MAX);
+                return NULL;
+            }
+            component[i++] = *p;
+            p++;
+        }
+        component[i] = '\0';
+
+        /* lookup for the component for child node under the current node as
+         * parent */
+        next_node = vfs_find_child(curr_node, component);
+        if (!next_node) {
+            KLOG_ERROR(
+                "VFS",
+                "lookup failed. child %s is not present under parent %s.\n",
+                component, curr_node->name);
+            return NULL;
+        }
+
+        /* always start lookup for next node from name and not separator */
+        if (*p == '/') {
+            p++;
+
+            /* check if we reached the end of the path */
+            if (*p == '\0') {
+                KLOG_ERROR("VFS",
+                           "lookup failed. parsed path %s till the end.\n",
+                           path);
+                return NULL;
+            }
+
+            /* procced for next iteration only if currnet node is directory */
+            if (curr_node->type != VFS_NODE_DIR) {
+                KLOG_ERROR(
+                    "VFS",
+                    "lookup failed. stoping lookup, current node %s type "
+                    "%s, expected DIRECTORY to continue.\n",
+                    curr_node->name, vfs_get_node_type(curr_node->type));
+                return NULL;
+            }
+        }
+
+        curr_node = next_node;
+    }
+
+    KLOG_INFO("VFS",
+              "lookup completed. cound vfs node %s (type=%s) for path %s.\n",
+              curr_node->name, vfs_get_node_type(curr_node->type), path);
+    return curr_node;
+}
