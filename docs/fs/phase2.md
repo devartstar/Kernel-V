@@ -3,8 +3,10 @@
 Phase 1 gave us a namespace tree: nodes exist, can be attached, and can be found by absolute path. But nodes still do not contain file data. 
 Phase 2 adds the first backend: RAMFS, where regular file bytes live in kernel memory.
 
-`vfs_node_t node` - files identity and namespace.
-RAMFS owns the actual bytes through `node->private_data`
+- `vfs_node_t node` - files identity and namespace.
+- RAMFS owns the actual bytes through `node->private_data`
+- vfs does not store bytes because differen FS underneat store bytes differnetly.
+- RAMFS stroes the bytes in the RAM. othef FS like etx2 stores in disk blocks.
 
 ## Subphase 2.1: RAMFS file data model
 Define `ramfs_file_t`.
