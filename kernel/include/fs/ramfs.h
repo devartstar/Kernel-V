@@ -29,4 +29,6 @@ typedef struct ramfs_file {
  */
 int ramfs_read(vfs_node_t *node, uint32_t offset, void *buf, uint32_t len);
 
+extern const vfs_node_ops_t ramfs_file_ops;
+
 #endif /* RAMFS_H */

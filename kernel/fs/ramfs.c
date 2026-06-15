@@ -61,8 +61,8 @@ int ramfs_read(vfs_node_t *node, uint32_t offset, void *buf, uint32_t len) {
     if (len > available) {
         KLOG_VERBOSE("RAMFS",
                      "[%s] read shrunked. Available bytes to read %u from "
-                     "offset %u exceeds file size %u.\n",
-                     node->name, available, offset, file->size);
+                     "offset %u exceeds length to read %u.\n",
+                     node->name, available, offset, len);
         to_copy = available;
     } else {
         to_copy = len;
@@ -73,3 +73,9 @@ int ramfs_read(vfs_node_t *node, uint32_t offset, void *buf, uint32_t len) {
 
     return (int)to_copy;
 }
+
+const vfs_node_ops_t ramfs_file_ops = {
+    .open = NULL,
+    .read = ramfs_read,
+    .write = NULL,
+};
