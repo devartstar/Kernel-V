@@ -72,3 +72,124 @@ uint8_t ramfs_read_test() {
     KLOG_INFO("TEST_RAMFS", "read_test successful.\n");
     return 1;
 }
+
+uint8_t ramfs_write_test() {
+    static uint8_t storage[16] = {0};
+    static uint8_t init[] = "hello";
+    static uint8_t overwrite[] = "XY";
+    static uint8_t append[] = "!!";
+
+    vfs_node_t *node;
+    ramfs_file_t file;
+
+    int write_len;
+
+    /* initialize the vfs tree */
+    if (vfs_init() != VFS_OK) {
+        KLOG_ERROR("TEST_RAMFS", "write_test failed: vfs init failed.\n");
+        return 0;
+    }
+
+    /* copy init into storage as initial data */
+    storage[0] = init[0];
+    storage[1] = init[1];
+    storage[2] = init[2];
+    storage[3] = init[3];
+    storage[4] = init[4];
+
+    /* create the fs backed file object */
+    file.data = storage;
+    file.size = 5;
+    file.capacity = sizeof(storage);
+
+    /* create a vfs node object */
+    node = vfs_create_node("write_test.txt", VFS_NODE_FILE, &ramfs_file_ops,
+                           &file);
+    if (!node) {
+        KLOG_ERROR("TEST_RAMFS",
+                   "write_test failed: failed creating vfs node object.\n");
+        return 0;
+    }
+
+    node->size = file.size;
+
+    /* overwrite 2 characters at offset 1 in storage */
+    write_len = ramfs_write(node, 1, overwrite, 2);
+    if (write_len != 2) {
+        KLOG_ERROR(
+            "TEST_RAMFS",
+            "write_test failed: write length = %u, expected lenth = 2.\n",
+            write_len);
+        return 0;
+    }
+
+    /* check storage for overwriten characters */
+    if (storage[0] != 'h' || storage[1] != 'X' || storage[2] != 'Y' ||
+        storage[4] != 'o') {
+        KLOG_ERROR(
+            "TEST_RAMFS",
+            "write_test failed: after write storage %s, expected hXYlo.\n",
+            storage);
+        return 0;
+    }
+
+    /* size should have remain unchanges since we overwrite */
+    if (file.size != 5) {
+        KLOG_ERROR("TEST_RAMFS",
+                   "write_test failed: file size changed to %u, expected 5.\n",
+                   file.size);
+        return 0;
+    }
+
+    /* append charactes to the end of the file */
+    write_len = ramfs_write(node, 5, append, 2);
+    if (write_len != 2) {
+        KLOG_ERROR(
+            "TEST_RAMFS",
+            "write_test failed: write length = %u, expected lenth = 2.\n",
+            write_len);
+        return 0;
+    }
+
+    /* file size should have been updated */
+    if (file.size != 7 || node->size != 7) {
+        KLOG_ERROR("TEST_RAMFS",
+                   "write_test failed: file size is %u, expected 7.\n",
+                   file.size);
+        return 0;
+    }
+
+    /* check updated file content */
+    if (storage[0] != 'h' || storage[4] != 'o' || storage[5] != '!' ||
+        storage[6] != '!') {
+        KLOG_ERROR(
+            "TEST_RAMFS",
+            "write_test failed: after write storage %s, expected hXYlo!!.\n",
+            storage);
+        return 0;
+    }
+
+    /* test error case - write at wronf offset */
+    write_len = ramfs_write(node, 10, append, 2);
+    if (write_len != VFS_ERR_INVALID) {
+        KLOG_ERROR("TEST_RAMFS",
+                   "write_test failed: sparse write should have failed with "
+                   "status %u.\n",
+                   VFS_ERR_INVALID);
+        return 0;
+    }
+
+    /* teast error case - write exceeding file capacity */
+    write_len = ramfs_write(node, 7, append, 32);
+    if (write_len != VFS_ERR_NOMEM) {
+        KLOG_ERROR(
+            "TEST_RAMFS",
+            "write_test failed: capacity overflow should have failed with "
+            "status %u.\n",
+            VFS_ERR_NOMEM);
+    }
+
+    KLOG_INFO("RAMFS", "write_test passed.\n");
+
+    return 1;
+}

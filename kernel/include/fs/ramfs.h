@@ -29,6 +29,18 @@ typedef struct ramfs_file {
  */
 int ramfs_read(vfs_node_t *node, uint32_t offset, void *buf, uint32_t len);
 
+/**
+ * ramfs_write - backend operatin for RAMFS file write
+ *
+ * @node ref. to the vfs node object of the file to write.
+ * @offset of the file to read from
+ * @buf ref. to the buffer to store the write data
+ * @length of the data to write
+ *
+ * @return the number of bytes writen
+ */
+int ramfs_write(vfs_node_t *node, uint32_t offset, void *buf, uint32_t len);
+
 extern const vfs_node_ops_t ramfs_file_ops;
 
 #endif /* RAMFS_H */

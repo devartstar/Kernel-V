@@ -71,11 +71,96 @@ int ramfs_read(vfs_node_t *node, uint32_t offset, void *buf, uint32_t len) {
     /* copy the bytes to the buffer */
     ramfs_memcpy((uint8_t *)buf, file->data + offset, to_copy);
 
+    KLOG_INFO("RAMFS",
+              "[%s] read_completed: read %s from offset %u of the file.\n",
+              node->name, buf, offset);
+
     return (int)to_copy;
+}
+
+int ramfs_write(vfs_node_t *node, uint32_t offset, void *buf, uint32_t len) {
+    ramfs_file_t *file;
+    uint32_t end_offset;
+
+    /* check validity of the node object */
+    if (!node) {
+        KLOG_ERROR("RAMFS", "write_failed: vfs node object is NULL.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    /* the write should be on files */
+    if (node->type != VFS_NODE_FILE) {
+        KLOG_ERROR("RAMFS", "[%s] write_failed: buff is NULL.\n", node->name);
+        return VFS_ERR_NOTDIR;
+    }
+
+    /* get the file object */
+    file = (ramfs_file_t *)node->private_data;
+
+    /* file should be valid and should have data buffer */
+    if (!file || !file->data) {
+        KLOG_ERROR("RAMFS", "[%s] write_failed: file is invalid.\n",
+                   node->name);
+        return VFS_ERR_INVALID;
+    }
+
+    /* nothing to write */
+    if (len == 0) {
+        KLOG_VERBOSE("RAMFS", "[%s] write_completed: nothing to write.\n",
+                     node->name);
+        return 0;
+    }
+
+    /* check all possible cases for offset with file size and capacity */
+
+    /* pre-check 1: before start writing offset < filesize */
+    if (offset > file->size) {
+        KLOG_ERROR(
+            "RAMFS",
+            "[%s] write_failed: write at offset = %u, over file size = %u.\n",
+            node->name, offset, file->size);
+        return VFS_ERR_INVALID;
+    }
+
+    /* pre-check 2: before start writing offset + len should not overflow */
+    if (offset > UINT32_MAX - len) {
+        KLOG_ERROR(
+            "RAMFS",
+            "[%s] write_failed: write offset = %u + length %u, overflows.\n",
+            node->name, len);
+        return VFS_ERR_INVALID;
+    }
+
+    end_offset = offset + len;
+
+    /* case 1: filesize <= capacity <= offset + len */
+    if (end_offset > file->capacity) {
+        KLOG_ERROR("RAMFS",
+                   "[%s] write_failed: write offset %u + len %u exceeds the "
+                   "file capacity %u.\n",
+                   node->name, offset, len, file->capacity);
+        return VFS_ERR_NOMEM;
+    }
+
+    /* case 2:  filesize < offset + len <= capacity */
+    /* case 3: offset + len <= filesize <= capacity */
+    ramfs_memcpy(file->data + offset, buf, len);
+
+    /* update the file size and node size of backing data */
+    if (end_offset > file->size) {
+        file->size = end_offset;
+        node->size = end_offset;
+    }
+
+    KLOG_INFO("RAMFS",
+              "[%s] write_completed: wrote %s at offset %u to the file.\n",
+              node->name, buf, offset);
+
+    return (int)len;
 }
 
 const vfs_node_ops_t ramfs_file_ops = {
     .open = NULL,
     .read = ramfs_read,
-    .write = NULL,
+    .write = ramfs_write,
 };
