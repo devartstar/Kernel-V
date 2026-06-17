@@ -79,7 +79,8 @@ int ramfs_read(vfs_node_t *node, uint32_t offset, void *buf, uint32_t len) {
     return (int)to_copy;
 }
 
-int ramfs_write(vfs_node_t *node, uint32_t offset, void *buf, uint32_t len) {
+int ramfs_write(vfs_node_t *node, uint32_t offset, const void *buf,
+                uint32_t len) {
     ramfs_file_t *file;
     uint32_t end_offset;
 
@@ -191,7 +192,7 @@ vfs_node_t *ramfs_create_file(const char *name, uint8_t *data, uint32_t size,
     }
 
     /* file has to be added to the file list - list size < max list size */
-    if (ramfs_file_count >= RAMFS_MAX_FILES) {
+    if (g_ramfs_file_count >= RAMFS_MAX_FILES) {
         KLOG_ERROR("RAMFS",
                    "[%s] failed create_file: max file limit %u reached.\n",
                    name, RAMFS_MAX_FILES);
@@ -200,7 +201,7 @@ vfs_node_t *ramfs_create_file(const char *name, uint8_t *data, uint32_t size,
 
     /* we are good to create a file object, populate the file object structure
      */
-    file = &ramfs_files[ramfs_file_count];
+    file = &g_ramfs_files[g_ramfs_file_count++];
     file->data = data;
     file->size = size;
     file->capacity = capacity;
@@ -208,7 +209,7 @@ vfs_node_t *ramfs_create_file(const char *name, uint8_t *data, uint32_t size,
     /* create the vfs node object for the file */
     node = vfs_create_node(name, VFS_NODE_FILE, &ramfs_file_ops, file);
     if (!node) {
-        ramfs_file_count--;
+        g_ramfs_file_count--;
         KLOG_ERROR(
             "RAMFS",
             "[%s] failed create_file: failed to create vfs node object.\n",
@@ -221,6 +222,74 @@ vfs_node_t *ramfs_create_file(const char *name, uint8_t *data, uint32_t size,
     KLOG_INFO("RAMFS", "[%s] successfully created file %s.\n", name);
 
     return node;
+}
+
+static uint8_t g_hello_storage[64] = "Hello from Kernel-V FS.\n";
+static uint8_t g_banner_storage[64] = "Kernel-V RAMFS online.\n";
+int ramfs_populate_intial_tree() {
+    vfs_node_t *root;
+    vfs_node_t *hello;
+    vfs_node_t *etc;
+    vfs_node_t *banner;
+
+    /* get the VFS root */
+    root = vfs_get_root();
+    if (!root) {
+        KLOG_ERROR(
+            "RAMFS",
+            "populate initial tree failed. failed to get valid root node.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    /* create a RAMFS file hello.txt */
+    hello = ramfs_create_file("hello.txt", g_hello_storage, 23,
+                              sizeof(g_hello_storage));
+    if (!hello) {
+        KLOG_ERROR(
+            "RAMFS",
+            "populate initial tree failed. failed to create hello.txt file.\n");
+        return VFS_ERR_NOMEM;
+    }
+
+    /* add hello.txt file under the VFS root */
+    if (vfs_add_child(root, hello) != VFS_OK) {
+        KLOG_ERROR("RAMFS",
+                   "populate initial tree failed. failed to add child %s to "
+                   "parent %s.\n",
+                   hello->name, root->name);
+        return VFS_ERR_INVALID;
+    }
+
+    /* create a VFS etc Node Directory */
+    etc = vfs_create_node("etc", VFS_NODE_DIR, NULL, NULL);
+    if (!etc) {
+        KLOG_ERROR(
+            "RAMFS",
+            "populate intial tree failed. failed to create etc (directory).\n");
+        return VFS_ERR_NOMEM;
+    }
+
+    /* create a banner file */
+    banner = ramfs_create_file("banner", g_banner_storage, 23,
+                               sizeof(g_banner_storage));
+    if (!banner) {
+        KLOG_ERROR(
+            "RAMFS",
+            "populate initial tree failed. failed to create banner file.\n");
+        return VFS_ERR_NOMEM;
+    }
+
+    /* add the banner file under etc directory */
+    if (vfs_add_child(etc, banner) != VFS_OK) {
+        KLOG_ERROR(
+            "RAMFS",
+            "populate initial tree failed. failed to add banner under etc.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    KLOG_INFO("RAMFS", "initial tree populated.\n");
+
+    return VFS_OK;
 }
 
 const vfs_node_ops_t ramfs_file_ops = {

@@ -1,6 +1,7 @@
 #ifndef CORE_DEVICE_H
 #define CORE_DEVICE_H
 
+#include "lib/printk.h"
 #include "lib/string.h"
 
 #define DEVICE_NAME_MAX 32

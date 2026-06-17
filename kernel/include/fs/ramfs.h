@@ -19,8 +19,8 @@ typedef struct ramfs_file {
     uint32_t capacity;
 } ramfs_file_t;
 
-static ramfs_file_t ramfs_files[RAMFS_MAX_FILES];
-static uint32_t ramfs_file_count = 0;
+static ramfs_file_t g_ramfs_files[RAMFS_MAX_FILES];
+static uint32_t g_ramfs_file_count = 0;
 
 /**
  * ramfs_read - backend operatin for RAMFS file read
@@ -44,7 +44,8 @@ int ramfs_read(vfs_node_t *node, uint32_t offset, void *buf, uint32_t len);
  *
  * @return the number of bytes writen
  */
-int ramfs_write(vfs_node_t *node, uint32_t offset, void *buf, uint32_t len);
+int ramfs_write(vfs_node_t *node, uint32_t offset, const void *buf,
+                uint32_t len);
 
 /**
  * ramfs_file_create - create a file object in the ramfs filesystem. associate
@@ -59,6 +60,17 @@ int ramfs_write(vfs_node_t *node, uint32_t offset, void *buf, uint32_t len);
  */
 vfs_node_t *ramfs_create_file(const char *name, uint8_t *data, uint32_t size,
                               uint32_t capacity);
+
+/**
+ * ramfs_populate_initial_tree - create a FS hierarchy
+ * root (/)
+ * |-- hello.txt
+ * |-- etc
+ *     |--banner
+ *
+ * @return vfs error code
+ */
+int ramfs_populate_intial_tree(void);
 
 extern const vfs_node_ops_t ramfs_file_ops;
 

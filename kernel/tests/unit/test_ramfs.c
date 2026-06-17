@@ -1,6 +1,7 @@
 #include "tests/test_ramfs.h"
 #include "fs/ramfs.h"
 #include "fs/vfs.h"
+#include "fs/vfs_utils.h"
 
 uint8_t ramfs_read_test() {
     static uint8_t data[] = "hello";
@@ -17,7 +18,7 @@ uint8_t ramfs_read_test() {
     }
 
     /* intialize the fs file object */
-    file.data = &data;
+    file.data = data;
     file.size = 5;
     file.capacity = 5;
 
