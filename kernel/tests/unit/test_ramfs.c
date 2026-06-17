@@ -193,3 +193,68 @@ uint8_t ramfs_write_test() {
 
     return 1;
 }
+
+uint8_t ramfs_create_test() {
+    static uint8_t data[16] = "hello";
+    vfs_node_t *node;
+    ramfs_file_t *test_file;
+
+    if (vfs_init() != VFS_OK) {
+        KLOG_ERROR("RAMFS_TEST",
+                   "create_test failed: failed to initialize vfs.\n");
+        return 0;
+    }
+
+    node = ramfs_create_file("hello.txt", data, 5, sizeof(data));
+    if (!node) {
+        KLOG_ERROR("RAMFS_TEST",
+                   "create_test failed: failed to create file.\n");
+        return 0;
+    }
+
+    if (node->type != VFS_NODE_FILE) {
+        KLOG_ERROR("RAMFS_TEST",
+                   "create_test failed: node type = %s, expected = file.\n",
+                   vfs_get_node_type(node->type));
+        return 0;
+    }
+
+    if (node->ops != &ramfs_file_ops) {
+        KLOG_ERROR("RAMFS_TEST", "create_test failed: node ops is invalid.\n");
+        return 0;
+    }
+
+    if (node->size != 5) {
+        KLOG_ERROR("RAMFS_TEST", "create_test failed: node size is invalid.\n");
+        return 0;
+    }
+
+    test_file = (ramfs_file_t *)node->private_data;
+    if (!test_file) {
+        KLOG_ERROR("RAMFS_TEST",
+                   "create_test failed: node %s, backed data is missing.\n",
+                   node->name);
+        return 0;
+    }
+
+    if (test_file->data != data || test_file->size != 5 ||
+        test_file->capacity != sizeof(data)) {
+        KLOG_ERROR("RAMFS_TEST",
+                   "create_test failed: node %s, backed data is invalid.\n"
+                   "\tfile data = %s, expected = %s.\n"
+                   "\tfile size = %u, expected = 5.\n"
+                   "\tfile capacity = %u, expected = %u.\n",
+                   node->name, test_file->data, data, test_file->size,
+                   test_file->capacity, sizeof(data));
+        return 0;
+    }
+
+    if (ramfs_create_file("bad_file.txt", data, 20, 16) != NULL) {
+        KLOG_ERROR("RAMFS_TEST", "create_test failed: create file should have "
+                                 "failed as size(20) > capacity(16).\n");
+        return 0;
+    }
+
+    KLOG_INFO("RAMFS_TEST", "create_test succeeded.\n");
+    return 1;
+}

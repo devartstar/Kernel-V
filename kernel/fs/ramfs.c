@@ -1,4 +1,5 @@
 #include "fs/ramfs.h"
+#include "fs/vfs_utils.h"
 #include "lib/printk.h"
 
 static void ramfs_memcpy(uint8_t *dest, const uint8_t *src, uint32_t len) {
@@ -157,6 +158,69 @@ int ramfs_write(vfs_node_t *node, uint32_t offset, void *buf, uint32_t len) {
               node->name, buf, offset);
 
     return (int)len;
+}
+
+vfs_node_t *ramfs_create_file(const char *name, uint8_t *data, uint32_t size,
+                              uint32_t capacity) {
+    ramfs_file_t *file;
+    vfs_node_t *node;
+
+    /* name of the file should be valid */
+    if (!name) {
+        KLOG_ERROR("RAMFS", "failed create_file: name of the file is NULL.\n");
+        return NULL;
+    }
+
+    /* capacity should not be 0 and data to write less than capacity
+     * case where we are writing data to a file of capacity 0 */
+    if (!data && capacity != 0) {
+        KLOG_ERROR("RAMFS",
+                   "[%s] failed create_file: writing data to a file with "
+                   "capacity 0.\n",
+                   name);
+        return NULL;
+    }
+
+    if (size > capacity) {
+        KLOG_ERROR(
+            "RAMFS",
+            "[%s] failed create_file: size of data to write %u greater than "
+            "capacity %u.\n",
+            name, size, capacity);
+        return NULL;
+    }
+
+    /* file has to be added to the file list - list size < max list size */
+    if (ramfs_file_count >= RAMFS_MAX_FILES) {
+        KLOG_ERROR("RAMFS",
+                   "[%s] failed create_file: max file limit %u reached.\n",
+                   name, RAMFS_MAX_FILES);
+        return NULL;
+    }
+
+    /* we are good to create a file object, populate the file object structure
+     */
+    file = &ramfs_files[ramfs_file_count];
+    file->data = data;
+    file->size = size;
+    file->capacity = capacity;
+
+    /* create the vfs node object for the file */
+    node = vfs_create_node(name, VFS_NODE_FILE, &ramfs_file_ops, file);
+    if (!node) {
+        ramfs_file_count--;
+        KLOG_ERROR(
+            "RAMFS",
+            "[%s] failed create_file: failed to create vfs node object.\n",
+            name);
+        return NULL;
+    }
+
+    node->size = size;
+
+    KLOG_INFO("RAMFS", "[%s] successfully created file %s.\n", name);
+
+    return node;
 }
 
 const vfs_node_ops_t ramfs_file_ops = {

@@ -5,6 +5,7 @@
 
 uint8_t ramfs_read_test(void);
 uint8_t ramfs_write_test(void);
+uint8_t ramfs_create_test(void);
 
 static inline void run_ramfs_tests(void) {
     uint8_t failed_count = 0;
@@ -16,6 +17,11 @@ static inline void run_ramfs_tests(void) {
 
     if (ramfs_write_test() == 0) {
         KLOG_INFO("TEST", "Failed: RAMFS Write test.\n");
+        failed_count++;
+    }
+
+    if (ramfs_create_test() == 0) {
+        KLOG_INFO("TEST", "Failed: RAMFS Create test.\n");
         failed_count++;
     }
 

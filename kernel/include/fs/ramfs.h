@@ -4,6 +4,8 @@
 #include "fs/vfs.h"
 #include "stdint.h"
 
+#define RAMFS_MAX_FILES 64
+
 /**
  * ramfs_file private data stored for regular files
  *
@@ -16,6 +18,9 @@ typedef struct ramfs_file {
     uint32_t size;
     uint32_t capacity;
 } ramfs_file_t;
+
+static ramfs_file_t ramfs_files[RAMFS_MAX_FILES];
+static uint32_t ramfs_file_count = 0;
 
 /**
  * ramfs_read - backend operatin for RAMFS file read
@@ -40,6 +45,20 @@ int ramfs_read(vfs_node_t *node, uint32_t offset, void *buf, uint32_t len);
  * @return the number of bytes writen
  */
 int ramfs_write(vfs_node_t *node, uint32_t offset, void *buf, uint32_t len);
+
+/**
+ * ramfs_file_create - create a file object in the ramfs filesystem. associate
+ * with vfs node object as backed data.
+ *
+ * @name - name of the file or node object
+ * @data - ref to the data to write after creating the file
+ * @size - size of the file or the data to write
+ * @capacity - maximum bytes of contents the file can hold
+ *
+ * @return vfs_node_t* ref. to the vfs node object of the file created.
+ */
+vfs_node_t *ramfs_create_file(const char *name, uint8_t *data, uint32_t size,
+                              uint32_t capacity);
 
 extern const vfs_node_ops_t ramfs_file_ops;
 
