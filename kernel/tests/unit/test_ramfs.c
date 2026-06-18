@@ -195,7 +195,7 @@ uint8_t ramfs_write_test() {
     return 1;
 }
 
-uint8_t ramfs_create_test() {
+uint8_t ramfs_create_file_test() {
     static uint8_t data[16] = "hello";
     vfs_node_t *node;
     ramfs_file_t *test_file;
@@ -257,5 +257,88 @@ uint8_t ramfs_create_test() {
     }
 
     KLOG_INFO("RAMFS_TEST", "create_test succeeded.\n");
+    return 1;
+}
+
+uint8_t ramfs_initial_vfs_tree_test() {
+    vfs_node_t *root;
+    vfs_node_t *hello;
+    vfs_node_t *etc;
+    vfs_node_t *banner;
+    char buf[64];
+    uint32_t read_len;
+
+    /* initialize the vfs tree
+     * create initial tree expects the vfs tree root to be present */
+    if (vfs_init() != VFS_OK) {
+        KLOG_ERROR(
+            "RAMFS_TEST",
+            "initail_vfs_tree_test failed. Failed to initialize vfs tree.\n");
+        return 0;
+    }
+
+    /* check if the root is properly created during init */
+    root = vfs_get_root();
+    if (!root) {
+        KLOG_ERROR(
+            "RAMFS_TEST",
+            "initial_vfs_tree_test failed. invalid root node for the tree.\n");
+        return 0;
+    }
+
+    /* create the initial vfs tree */
+    if (ramfs_populate_intial_tree() != VFS_OK) {
+        KLOG_ERROR(
+            "RAMFS_TEST",
+            "initial_vfs_tree_test failed. failed to populate initial tree.\n");
+        return 0;
+    }
+
+    /* check 1: lookup file using absolute path /hello.txt */
+    hello = vfs_lookup_absolute("/hello.txt");
+    if (!hello) {
+        KLOG_ERROR("RAMFS_TEST",
+                   "intial_vfs_tree_test failed. failed to lookup file "
+                   "/hello.txt using absolute path.\n");
+        return 0;
+    }
+
+    /* check 2: lookup dir using absolute path /etc */
+    etc = vfs_lookup_absolute("/etc");
+    if (!etc) {
+        KLOG_ERROR("RAMFS_TEST", "intial_vfs_tree_test failed. failed to "
+                                 "lookup dir /etc using absolute path.\n");
+        return 0;
+    }
+
+    /* check 3: lookup file nested in subdir using absolute path /etc/banner */
+    banner = vfs_lookup_absolute("/etc/banner");
+    if (!banner) {
+        KLOG_ERROR("RAMFS_TEST", "intial_vfs_tree_test failed. failed to "
+                                 "lookup file banner under nested dir /etc.\n");
+        return 0;
+    }
+
+    /* check 4: read the data from hello.txt */
+    read_len = ramfs_read(hello, 0, buf, sizeof(buf));
+    if (read_len <= 0 || read_len > sizeof(buf)) {
+        KLOG_ERROR("RAMFS_TEST",
+                   "intial_vfs_tree_test failed. %s read length = %u, expected "
+                   "= %u.\n",
+                   hello->name, read_len, sizeof(buf));
+        return 0;
+    }
+
+    /* check 5: read the data from banner file */
+    read_len = ramfs_read(banner, 0, buf, sizeof(buf));
+    if (read_len <= 0 || read_len > sizeof(buf)) {
+        KLOG_ERROR("RAMFS_TEST",
+                   "intial_vfs_tree_test failed. %s read length = %u, expected "
+                   "= %u.\n",
+                   banner->name, read_len, sizeof(buf));
+        return 0;
+    }
+
+    KLOG_ERROR("RAMFS_TEST", "initial_vfs_tree test passed.\n");
     return 1;
 }

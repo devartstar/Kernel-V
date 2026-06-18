@@ -219,8 +219,6 @@ vfs_node_t *ramfs_create_file(const char *name, uint8_t *data, uint32_t size,
 
     node->size = size;
 
-    KLOG_INFO("RAMFS", "[%s] successfully created file %s.\n", name);
-
     return node;
 }
 
@@ -253,10 +251,12 @@ int ramfs_populate_intial_tree() {
 
     /* add hello.txt file under the VFS root */
     if (vfs_add_child(root, hello) != VFS_OK) {
-        KLOG_ERROR("RAMFS",
-                   "populate initial tree failed. failed to add child %s to "
-                   "parent %s.\n",
-                   hello->name, root->name);
+        KLOG_ERROR(
+            "RAMFS",
+            "populate initial tree failed. failed to add child %s (type %s) to "
+            "parent %s (type %s). \n",
+            hello->name, vfs_get_node_type(hello->type), root->name,
+            vfs_get_node_type(root->type));
         return VFS_ERR_INVALID;
     }
 
@@ -267,6 +267,15 @@ int ramfs_populate_intial_tree() {
             "RAMFS",
             "populate intial tree failed. failed to create etc (directory).\n");
         return VFS_ERR_NOMEM;
+    }
+
+    /* add etc directory under root directory */
+    if (vfs_add_child(root, etc) != VFS_OK) {
+        KLOG_ERROR("RAMFS",
+                   "populate initial tree failed. failed to add child %s (type "
+                   "%s) to parent %s (type %s).\n",
+                   etc->name, vfs_get_node_type(etc->type), root->name,
+                   vfs_get_node_type(root->type));
     }
 
     /* create a banner file */
@@ -281,9 +290,11 @@ int ramfs_populate_intial_tree() {
 
     /* add the banner file under etc directory */
     if (vfs_add_child(etc, banner) != VFS_OK) {
-        KLOG_ERROR(
-            "RAMFS",
-            "populate initial tree failed. failed to add banner under etc.\n");
+        KLOG_ERROR("RAMFS",
+                   "populate initial tree failed. failed to add child %s (type "
+                   "%s) to parent %s (type %s)\n",
+                   banner->name, vfs_get_node_type(banner->type), etc->name,
+                   vfs_get_node_type(etc->type));
         return VFS_ERR_INVALID;
     }
 

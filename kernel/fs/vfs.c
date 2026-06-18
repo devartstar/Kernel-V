@@ -99,6 +99,9 @@ vfs_node_t *vfs_lookup_absolute(const char *path) {
             p++;
         }
         component[i] = '\0';
+        KLOG_VERBOSE("VFS",
+                     "Looking up component %s in the absolute path %s.\n",
+                     component, path);
 
         /* lookup for the component for child node under the current node as
          * parent */
