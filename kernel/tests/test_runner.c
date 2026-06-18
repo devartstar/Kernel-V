@@ -2,6 +2,7 @@
 #include "core/kernel.h"
 #include "lib/printk.h"
 #include "tests/nested_irq.h"
+#include "tests/test_devfs.h"
 #include "tests/test_devices.h"
 #include "tests/test_irq.h"
 #include "tests/test_mmio.h"
@@ -53,6 +54,7 @@ void run_kernel_tests(void) {
     run_devices_tests();
     run_vfs_tests();
     run_ramfs_tests();
+    run_devfs_tests();
 
     KLOG_VERBOSE("TEST", "Unit Tests Complete.\n");
     tests_run = true;

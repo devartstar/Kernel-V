@@ -1,5 +1,9 @@
 # Phase 3: DEVFS Minimal
 
+Both regular files and device files use the vfs node. vfs_node_t.
+RAMFS regular files use ramfs_file_t. (vfs node type = FILE)
+DEVFS device files use devfs_file_t. (vfs node type = CHARDEV)
+
 ## Subphase 3.1: DEVFS structure
 Create `devfs.h`, `devfs.c`, and define device-node creation helpers.
 
