@@ -219,3 +219,89 @@ uint8_t devfs_devzero_test() {
     KLOG_INFO("DEVFS_TEST", "devzero test passed.\n");
     return 1;
 }
+
+uint8_t devfs_seedroot_test() {
+    vfs_node_t *dev, *null, *zero;
+    uint8_t buf[8];
+    int read_len, write_len;
+
+    if (vfs_init() != VFS_OK) {
+        KLOG_ERROR("DEVFS_TEST", "seedroot test failed. failed to init vfs.\n");
+        return 0;
+    }
+
+    if (devfs_seed_root() != VFS_OK) {
+        KLOG_ERROR("DEVFS_TEST",
+                   "seedroot test failed. failed seeding root.\n");
+        return 0;
+    }
+
+    /* seeding completed: dev dir should have dev/null and dev/zero character
+     * device */
+
+    /* check1:  lookup for /dev */
+    dev = vfs_lookup_absolute("/dev");
+    if (!dev || dev->type != VFS_NODE_DIR) {
+        KLOG_ERROR("DEVFS_TEST", "seedroot test failed. /dev is invalid.\n");
+        return 0;
+    }
+
+    /* check2: lookup for /dev/null */
+    null = vfs_lookup_absolute("/dev/null");
+    if (!null || null->type != VFS_NODE_CHARDEV) {
+        KLOG_ERROR("DEVFS_TEST",
+                   "seedroot test failed. /dev/null is invalid.\n");
+        return 0;
+    }
+
+    /* check3: lookup for /dev/zero */
+    zero = vfs_lookup_absolute("/dev/zero");
+    if (!zero || zero->type != VFS_NODE_CHARDEV) {
+        KLOG_ERROR("DEVFS_TEST",
+                   "seedroot test failed. /dev/zero is invalid.\n");
+        return 0;
+    }
+
+    /* check4: read/write on null char dev */
+    read_len = null->ops->read(null, 0, buf, sizeof(buf));
+    if (read_len != 0) {
+        KLOG_ERROR("DEVFS_TEST",
+                   "seedroot test failed. read on /dev/null failed.\n");
+        return 0;
+    }
+
+    write_len = null->ops->write(null, 0, "test", 4);
+    if (write_len != 4) {
+        KLOG_ERROR("DEVFS_TEST",
+                   "seedroot test failed. write on /dev/null failed.\n");
+        return 0;
+    }
+
+    /* check5: read/write on zero char dev */
+    for (uint32_t i = 0; i < sizeof(buf); i++)
+        buf[i] = 0xFF;
+    read_len = zero->ops->read(zero, 0, buf, sizeof(buf));
+    if (read_len != (int)sizeof(buf)) {
+        KLOG_ERROR("DEVFS_TEST",
+                   "seedroot test failed. read on /dev/zero failed.\n");
+        return 0;
+    }
+
+    for (uint32_t i = 0; i < sizeof(buf); i++) {
+        if (buf[i] != 0) {
+            KLOG_ERROR("DEVFS_TEST", "seedroot test failed. read on /dev/zero "
+                                     "didnt return all 0.\n");
+            return 0;
+        }
+    }
+
+    write_len = zero->ops->write(zero, 0, "test", 4);
+    if (write_len != 4) {
+        KLOG_ERROR("DEVFS_TEST",
+                   "seedroot test failed. write on /dev/zero failed.\n");
+        return 0;
+    }
+
+    KLOG_INFO("DEVFS_TEST", "seedroot test passed.\n");
+    return 1;
+}

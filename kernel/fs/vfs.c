@@ -141,7 +141,7 @@ vfs_node_t *vfs_lookup_absolute(const char *path) {
     }
 
     KLOG_INFO("VFS",
-              "lookup completed. cound vfs node %s (type=%s) for path %s.\n",
+              "lookup completed. found vfs node %s (type=%s) for path %s.\n",
               curr_node->name, vfs_get_node_type(curr_node->type), path);
     return curr_node;
 }

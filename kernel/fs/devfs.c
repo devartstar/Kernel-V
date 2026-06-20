@@ -209,7 +209,7 @@ int devfs_seed_root() {
 
     if (!dev) {
         /* create a vfs node dev under root as the base of devfs */
-        dev = devfs_create_node("dev", VFS_NODE_DIR, NULL, NULL);
+        dev = vfs_create_node("dev", VFS_NODE_DIR, NULL, NULL);
         if (!dev) {
             KLOG_ERROR("DEVFS",
                        "seeding /dev failed. failed to create vfs node dev.\n");
@@ -227,7 +227,7 @@ int devfs_seed_root() {
     }
 
     /* create a null character device and attach it to devfs root */
-    null = vfs_find_child(dev, null);
+    null = vfs_find_child(dev, "null");
     if (!null) {
         null = devfs_create_null();
         if (!null) {
@@ -248,7 +248,7 @@ int devfs_seed_root() {
     }
 
     /* create a zero character device and attach it to devfs root */
-    zero = vfs_find_child(zero, null);
+    zero = vfs_find_child(dev, "zero");
     if (!zero) {
         zero = devfs_create_zero();
         if (!zero) {
