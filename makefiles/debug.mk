@@ -36,17 +36,17 @@ verify-symbols: debug-symbols ## Verify debug symbols are present
 debug-stage1: debug-symbols all ## Debug Stage 1 bootloader
 	$(ECHO) "Starting QEMU for Stage1 debugging..."
 	$(ECHO) "Connect with: $(GDB) -x tools/gdb/stage1.gdb"
-	$(Q)$(QEMU) -drive format=raw,file=$(DISK_IMG) -s -S -display curses
+	$(Q)$(QEMU) $(QEMU_DRIVE_FLAGS)$(if $(wildcard $(DISK_IMG)),$(DISK_IMG),$(DISK_TEST_IMG)) -s -S -display curses
 
 debug-stage2: debug-symbols all ## Debug Stage 2 bootloader
 	$(ECHO) "Starting QEMU for Stage2 debugging..."
 	$(ECHO) "Connect with: $(GDB) -x tools/gdb/stage2.gdb"
-	$(Q)$(QEMU) -drive format=raw,file=$(DISK_IMG) -s -S -display curses
+	$(Q)$(QEMU) $(QEMU_DRIVE_FLAGS)$(if $(wildcard $(DISK_IMG)),$(DISK_IMG),$(DISK_TEST_IMG)) -s -S -display curses
 
 debug-bootloader: debug-symbols all ## Debug both bootloader stages
 	$(ECHO) "Starting QEMU for bootloader debugging..."
 	$(ECHO) "Connect with: $(GDB) -x tools/gdb/bootloader.gdb"
-	$(Q)$(QEMU) -drive format=raw,file=$(DISK_IMG) -s -S -display curses
+	$(Q)$(QEMU) $(QEMU_DRIVE_FLAGS)$(if $(wildcard $(DISK_IMG)),$(DISK_IMG),$(DISK_TEST_IMG)) -s -S -display curses
 
 debug-kernel: debug-symbols ## Debug kernel with appropriate test image
 ifeq ($(CONFIG_TESTS_UNIT)$(CONFIG_TESTS_INTEGRATION), yy)

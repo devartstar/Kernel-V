@@ -3,6 +3,8 @@ BITS 16
 [org 0x7e00]
 %endif
 
+%include "stage2_kernel.inc"
+
 Start:
     mov dl, 0x80
     mov ah, 0x41
@@ -22,50 +24,52 @@ Start:
     ; [si+8] [si+15]    - LBA to Read from the Disk
     ; 1. Load the Kernel into memory 0x10000 ()
     ; [PMM] Reserved kernel range: 0x65536 - 0x78800 
-    ; INT 0x13/AH=42h can only load up to 64KB (127 sectors) per call
-    ; due to segment:offset limits.  Split into two reads.
+    ; INT 0x13/AH=42h can only load up to 64KB (127 sectors) per call.
+    ; Read the kernel in 127-sector chunks based on generated build size.
 LoadKernel:
-    ; --- Read 1: first 127 sectors to 0x1000:0x0000 (phys 0x10000) ---
     mov si, ReadPacket
     mov word [si], 0x10
-    mov word [si+2], 127
     mov word [si+4], 0x0000
-    mov word [si+6], 0x1000          ; phys 0x10000
-    mov dword [si+8], 9              ; starting LBA
     mov dword [si+12], 0
+
+    mov word [kernel_load_segment], 0x1000
+    mov dword [kernel_next_lba], KERNEL_START_LBA
+    mov word [kernel_sectors_left], KERNEL_TOTAL_SECTORS
+
+.read_loop:
+    mov ax, [kernel_sectors_left]
+    test ax, ax
+    jz GetMemoryMap
+
+    cmp ax, 127
+    jbe .set_count
+    mov ax, 127
+
+.set_count:
+    mov word [kernel_chunk_sectors], ax
+    mov word [si+2], ax
+    mov bx, [kernel_load_segment]
+    mov word [si+6], bx
+    mov eax, [kernel_next_lba]
+    mov dword [si+8], eax
+    mov si, ReadPacket
 
     mov ah, 0x42
     mov dl, 0x80
     int 0x13
     jc ReadError
 
-    ; --- Read 2: next 127 sectors to 0x1FE0:0x0000 (phys 0x1FE00) ---
-    mov si, ReadPacket
-    mov word [si], 0x10
-    mov word [si+2], 127
-    mov word [si+4], 0x0000
-    mov word [si+6], 0x1FE0          ; phys 0x1FE00
-    mov dword [si+8], 136            ; 9 + 127
-    mov dword [si+12], 0
+    ; Advance destination by (count * 512 bytes) => (count * 32) paragraphs.
+    mov ax, [kernel_chunk_sectors]
+    mov bx, ax
+    shl bx, 5
+    add word [kernel_load_segment], bx
 
-    mov ah, 0x42
-    mov dl, 0x80
-    int 0x13
-    jc ReadError
-
-    ; --- Read 3: final 35 sectors to 0x2FC0:0x0000 (phys 0x2FC00) ---
-    mov si, ReadPacket
-    mov word [si], 0x10
-    mov word [si+2], 127
-    mov word [si+4], 0x0000
-    mov word [si+6], 0x2FC0          ; phys 0x2FC00
-    mov dword [si+8], 263            ; 136 + 127
-    mov dword [si+12], 0
-
-    mov ah, 0x42
-    mov dl, 0x80
-    int 0x13
-    jc ReadError
+    sub word [kernel_sectors_left], ax
+    xor eax, eax
+    mov ax, [kernel_chunk_sectors]
+    add dword [kernel_next_lba], eax
+    jmp .read_loop
 
 GetMemoryMap:
     xor ax, ax
@@ -143,6 +147,10 @@ MsgNoSupportL:  equ $-MsgNoSupport
 
 ReadPacket:     times 16 db 0
 memmap_count:   dw 0
+kernel_sectors_left: dw 0
+kernel_chunk_sectors: dw 0
+kernel_load_segment: dw 0
+kernel_next_lba:     dd 0
 
 ; Global Descriptor Table
 GDT32:

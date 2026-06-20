@@ -6,6 +6,7 @@ extern kernel_main
 _start:
     mov esp, 0x9FB00
     call kernel_main
+    jmp halt_loop
 
 global switch_to_high_stack
 
@@ -14,7 +15,7 @@ switch_to_high_stack:
     mov esp, [esp+4]      ; set new stack pointer (which already has a fake return addr)
     jmp eax               ; JMP, instead of CALL, so that we don't push return addr
 
-.hang:
+halt_loop:
     cli
     hlt
-    jmp .hang
+    jmp halt_loop

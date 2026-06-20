@@ -16,6 +16,8 @@
 [ORG 0x7c00]
 %endif
 
+%include "stage1_stage2.inc"
+
 jmp short Start
 nop
 
@@ -32,7 +34,7 @@ Start:
 LoadStage2:
 	mov si, ReadPacket
 	mov word[si],   0x10
-	mov word[si+2], 0x05
+	mov word[si+2], STAGE2_TOTAL_SECTORS
 	mov word[si+4], 0x7E00	; Offset in Memory to Load
 	mov word[si+6], 0x00	; Segement in Memory to Load
 	mov dword[si+8], 0x01	; Read from LBA = 1
