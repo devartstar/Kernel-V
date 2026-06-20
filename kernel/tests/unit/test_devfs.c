@@ -80,7 +80,7 @@ uint8_t devfs_create_chardev_test() {
     return 1;
 }
 
-uint8_t devfs_devnull_test(void) {
+uint8_t devfs_devnull_test() {
     vfs_node_t *node;
     uint8_t buf[8];
     int read_len, write_len;
@@ -133,11 +133,89 @@ uint8_t devfs_devnull_test(void) {
     if (write_len != VFS_ERR_INVALID) {
         KLOG_ERROR("DEVFS_TEST",
                    "devnull test failed. device %s write NULL should have "
-                   "failed. returned %u, expected %u\n",
+                   "failed. returned %u, expected %d\n",
                    node->name, write_len, VFS_ERR_INVALID);
         return 0;
     }
 
     KLOG_INFO("DEVFS_TEST", "devnull test passed.\n");
+    return 1;
+}
+
+uint8_t devfs_devzero_test() {
+    vfs_node_t *node;
+    uint8_t buf[8];
+    int read_len, write_len;
+
+    if (vfs_init() != VFS_OK) {
+        KLOG_ERROR("DEVFS_TEST",
+                   "devzero test failed. failed to initialize vfs tree.\n");
+        return 0;
+    }
+
+    /* create a zero character device */
+    node = devfs_create_zero();
+    if (!node) {
+        KLOG_ERROR("DEVFS_TEST",
+                   "devzero test failed. failed to create zero device.\n");
+        return 0;
+    }
+
+    /* populate bufer with random data to check if it reads 0 */
+    for (uint32_t i = 0; i < (uint32_t)sizeof(buf); i++) {
+        buf[i] = 0xAA;
+    }
+
+    /* verify if null device was correctly created */
+    if (node->type != VFS_NODE_CHARDEV) {
+        KLOG_ERROR(
+            "DEVFS_TEST",
+            "devzero test failed. device %s type=%s, expected=CHARDEV.\n",
+            node->name, vfs_get_node_type(node->type));
+        return 0;
+    }
+
+    /* verify read to a zero device */
+    read_len = node->ops->read(node, 0, buf, sizeof(buf));
+    if (read_len != (int)sizeof(buf)) {
+        KLOG_ERROR("DEVFS_TEST",
+                   "devzero test failed. device %s read returned %n bytes, "
+                   "expected %u bytes.\n",
+                   node->name, read_len, (int)sizeof(buf));
+        return 0;
+    }
+
+    /* verify all characters read should be 0 */
+    for (uint8_t i = 0; i < (int)sizeof(buf); i++) {
+        if (buf[i] != 0) {
+            KLOG_ERROR("DEVFS_TEST",
+                       "devzero test failed. device %s has read a non zero "
+                       "value at index %u.\n",
+                       node->name, i);
+            return 0;
+        }
+    }
+
+    /* verify write to a null device */
+    write_len = node->ops->write(node, 0, "abc", 3);
+    if (write_len != 3) {
+        KLOG_ERROR("DEVFS_TEST",
+                   "devzero test failed. device %s write returned %n bytes, "
+                   "expected 3 bytes.\n",
+                   node->name, write_len);
+        return 0;
+    }
+
+    /* verify incorrect write to a null device */
+    read_len = node->ops->read(node, 0, NULL, 4);
+    if (read_len != VFS_ERR_INVALID) {
+        KLOG_ERROR("DEVFS_TEST",
+                   "devzero test failed. device %s read NULL should have "
+                   "failed. returned %u, expected %d\n",
+                   node->name, read_len, VFS_ERR_INVALID);
+        return 0;
+    }
+
+    KLOG_INFO("DEVFS_TEST", "devzero test passed.\n");
     return 1;
 }

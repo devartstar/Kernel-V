@@ -62,7 +62,6 @@ static int devnull_read(vfs_node_t *node, uint32_t offset, void *buf,
 
 static int devnull_write(vfs_node_t *node, uint32_t offset, const void *buf,
                          uint32_t len) {
-
     (void)offset;
 
     /* just verify if node is valid character device */
@@ -100,4 +99,85 @@ const vfs_node_ops_t devnull_ops = {
 
 vfs_node_t *devfs_create_null(void) {
     return devfs_create_chardev("null", &devnull_ops, NULL);
+}
+
+/** *** /dev/zero: ZERO DEVICE START *** */
+
+static void devfs_memzero(uint8_t *buf, uint32_t len) {
+    for (uint32_t i = 0; i < len; i++) {
+        buf[i] = 0;
+    }
+}
+
+static int devzero_read(vfs_node_t *node, uint32_t offset, void *buf,
+                        uint32_t len) {
+    (void)offset;
+
+    /* just verify if node is valid zero device */
+    if (!node) {
+        KLOG_ERROR("DEVFS", "dev/zero read failed. invalid vfs node object.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    if (node->type != VFS_NODE_CHARDEV) {
+        KLOG_ERROR(
+            "DEVFS",
+            "dev/zero read failed. node type = %s, expected = CHARDEV.\n",
+            vfs_get_node_type(node->type));
+        return VFS_ERR_INVALID;
+    }
+
+    /* validate for length and valid buffer */
+    if (len < 0 || !buf) {
+        KLOG_ERROR(
+            "DEVFS",
+            "/dev/zero read failed. invalid buffer or length to read.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    devfs_memzero((uint8_t *)buf, len);
+
+    KLOG_INFO("DEVFS", "dev/zero read succeeded.\n");
+    return len;
+}
+
+static int devzero_write(vfs_node_t *node, uint32_t offset, const void *buf,
+                         uint32_t len) {
+    (void)offset;
+
+    /* just verify if node is valid character device */
+    if (!node) {
+        KLOG_ERROR("DEVFS",
+                   "dev/zero write failed. invalid vfs node object.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    if (node->type != VFS_NODE_CHARDEV) {
+        KLOG_ERROR(
+            "DEVFS",
+            "dev/zero write failed. node type = %s, expected = CHARDEV.\n",
+            vfs_get_node_type(node->type));
+        return VFS_ERR_INVALID;
+    }
+
+    /* ceck if the buffer to write is valid */
+    if (len < 0 || !buf) {
+        KLOG_ERROR(
+            "DEVFS",
+            "dev/zero write fialed. invalid buffer or length to write.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    KLOG_INFO("DEVFS", "dev/zero write succeeded.\n");
+    return (int)len;
+}
+
+const vfs_node_ops_t devzero_ops = {
+    .open = NULL,
+    .read = devzero_read,
+    .write = devzero_write,
+};
+
+vfs_node_t *devfs_create_zero() {
+    return devfs_create_chardev("zero", &devzero_ops, NULL);
 }
