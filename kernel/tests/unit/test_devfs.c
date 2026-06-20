@@ -79,3 +79,65 @@ uint8_t devfs_create_chardev_test() {
     KLOG_INFO("DEVFS_TEST", "create_chardev_test passed.\n");
     return 1;
 }
+
+uint8_t devfs_devnull_test(void) {
+    vfs_node_t *node;
+    uint8_t buf[8];
+    int read_len, write_len;
+
+    if (vfs_init() != VFS_OK) {
+        KLOG_ERROR("DEVFS_TEST",
+                   "devnull test failed. failed to initialize vfs tree.\n");
+        return 0;
+    }
+
+    /* create a null character device */
+    node = devfs_create_null();
+    if (!node) {
+        KLOG_ERROR("DEVFS_TEST",
+                   "devnull test failed. failed to create null device.\n");
+        return 0;
+    }
+
+    /* verify if null device was correctly created */
+    if (node->type != VFS_NODE_CHARDEV) {
+        KLOG_ERROR(
+            "DEVFS_TEST",
+            "devnull test failed. device %s type=%s, expected=CHARDEV.\n",
+            node->name, vfs_get_node_type(node->type));
+        return 0;
+    }
+
+    /* verify read to a null device */
+    read_len = node->ops->read(node, 0, buf, sizeof(buf));
+    if (read_len != 0) {
+        KLOG_ERROR("DEVFS_TEST",
+                   "devnull test failed. device %s read returned %n bytes, "
+                   "expected 0 bytes.\n",
+                   node->name, read_len);
+        return 0;
+    }
+
+    /* verify write to a null device */
+    write_len = node->ops->write(node, 0, "abc", 3);
+    if (write_len != 3) {
+        KLOG_ERROR("DEVFS_TEST",
+                   "devnull test failed. device %s write returned %n bytes, "
+                   "expected 3 bytes.\n",
+                   node->name, write_len);
+        return 0;
+    }
+
+    /* verify incorrect write to a null device */
+    write_len = node->ops->write(node, 0, NULL, 3);
+    if (write_len != VFS_ERR_INVALID) {
+        KLOG_ERROR("DEVFS_TEST",
+                   "devnull test failed. device %s write NULL should have "
+                   "failed. returned %u, expected %u\n",
+                   node->name, write_len, VFS_ERR_INVALID);
+        return 0;
+    }
+
+    KLOG_INFO("DEVFS_TEST", "devnull test passed.\n");
+    return 1;
+}

@@ -14,4 +14,14 @@
 vfs_node_t *devfs_create_chardev(const char *name, const vfs_node_ops_t *ops,
                                  void *private_data);
 
+/**
+ * devfs_create_null - create a null device /dev/null.
+ *  add read/write operation to null device.
+ *  read will do not read any private data but just return 0
+ *  write will do not write to te private data just return len
+ *
+ * @return ref. to the null device.
+ */
+vfs_node_t *devfs_create_null(void);
+
 #endif /* DEVFS_H */
