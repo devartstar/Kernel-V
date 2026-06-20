@@ -287,7 +287,7 @@ uint8_t ramfs_initial_vfs_tree_test() {
     }
 
     /* create the initial vfs tree */
-    if (ramfs_populate_intial_tree() != VFS_OK) {
+    if (ramfs_seed_root() != VFS_OK) {
         KLOG_ERROR(
             "RAMFS_TEST",
             "initial_vfs_tree_test failed. failed to populate initial tree.\n");

@@ -70,7 +70,7 @@ vfs_node_t *ramfs_create_file(const char *name, uint8_t *data, uint32_t size,
  *
  * @return vfs error code
  */
-int ramfs_populate_intial_tree(void);
+int ramfs_seed_root(void);
 
 extern const vfs_node_ops_t ramfs_file_ops;
 

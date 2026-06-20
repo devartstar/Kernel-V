@@ -34,4 +34,13 @@ vfs_node_t *devfs_create_null(void);
  */
 vfs_node_t *devfs_create_zero(void);
 
+/**
+ * devfs_seed_root - create a vfs node /dev under root as the base for all
+ * device files syste.
+ * Add null and zero device to the devfs root
+ *
+ * @return VFS error/success code
+ */
+int devfs_seed_root(void);
+
 #endif /* DEVFS_H */

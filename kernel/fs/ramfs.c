@@ -224,7 +224,7 @@ vfs_node_t *ramfs_create_file(const char *name, uint8_t *data, uint32_t size,
 
 static uint8_t g_hello_storage[64] = "Hello from Kernel-V FS.\n";
 static uint8_t g_banner_storage[64] = "Kernel-V RAMFS online.\n";
-int ramfs_populate_intial_tree() {
+int ramfs_seed_root() {
     vfs_node_t *root;
     vfs_node_t *hello;
     vfs_node_t *etc;
