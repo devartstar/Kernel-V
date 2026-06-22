@@ -1,19 +1,22 @@
-## Phase 4: File Descriptor Table
+## Phase 4: FD Table
 
-### Subphase 4.1
-Add fd table storage to `process_t`.
+### 4.1 Add fd table to `pcb_t`
+Add `vfs_file_t *fds[PROCESS_MAX_FDS]`.
 
-### Subphase 4.2
-Initialize fd table during process creation.
+### 4.2 Add `fd.h` / `fd.c`
+Create fd management functions.
 
-### Subphase 4.3
-Implement `fd_alloc()`.
+### 4.3 Implement `fd_alloc`
+Find free fd slot and attach `vfs_file_t`.
 
-### Subphase 4.4
-Implement `fd_get()`.
+### 4.4 Implement `fd_get`
+Validate fd and return open file object.
 
-### Subphase 4.5
-Implement `fd_close()`.
+### 4.5 Implement `fd_close`
+Clear fd slot and release file object.
 
-### Subphase 4.6
-Validate fd allocation, lookup, close, and reuse.
+### 4.6 Add close-all-on-process-cleanup
+Before freeing process, close all open fds.
+
+### 4.7 Build fd tests
+Validate allocation, lookup, close, reuse, invalid fd.

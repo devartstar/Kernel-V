@@ -19,9 +19,6 @@ typedef struct ramfs_file {
     uint32_t capacity;
 } ramfs_file_t;
 
-static ramfs_file_t g_ramfs_files[RAMFS_MAX_FILES];
-static uint32_t g_ramfs_file_count = 0;
-
 /**
  * ramfs_read - backend operatin for RAMFS file read
  *

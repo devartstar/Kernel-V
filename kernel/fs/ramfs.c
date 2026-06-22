@@ -2,6 +2,9 @@
 #include "fs/vfs_utils.h"
 #include "lib/printk.h"
 
+static ramfs_file_t g_ramfs_files[RAMFS_MAX_FILES];
+static uint32_t g_ramfs_file_count = 0;
+
 static void ramfs_memcpy(uint8_t *dest, const uint8_t *src, uint32_t len) {
     uint32_t i;
     for (i = 0; i < len; i++) {
