@@ -78,7 +78,7 @@ typedef struct vfs_node_ops {
  * @name local name of a dir/file
  * @type node type - dir/file/chardevice
  * @size - byte size for file
- * @refcount - number of opened instances
+ * @refcount - lifetime reference of this node
  * @ops - ref. to backend behaviour table
  * @private_data - ref. to backend owned state
  * @parent - parent node object
@@ -109,7 +109,7 @@ struct vfs_node {
  * @node - ref. to the node object opened
  * @flags - read/write mode of operations allowed on file.
  * @offset - current file offser for any operation.
- * @refcount - for duplicate / sharing
+ * @refcount - reference to a file local to a process
  */
 struct vfs_file {
     vfs_node_t *node;

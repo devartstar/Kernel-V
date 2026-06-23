@@ -4,6 +4,7 @@
 #include "tests/nested_irq.h"
 #include "tests/test_devfs.h"
 #include "tests/test_devices.h"
+#include "tests/test_fd.h"
 #include "tests/test_irq.h"
 #include "tests/test_mmio.h"
 #include "tests/test_pci.h"
@@ -55,6 +56,7 @@ void run_kernel_tests(void) {
     run_vfs_tests();
     run_ramfs_tests();
     run_devfs_tests();
+    run_fd_tests();
 
     KLOG_VERBOSE("TEST", "Unit Tests Complete.\n");
     tests_run = true;

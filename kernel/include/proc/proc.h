@@ -1,12 +1,16 @@
 #ifndef PROC_H
 #define PROC_H
 
+#include "fs/ramfs.h"
 #include <stdint.h>
 
 #define PROC_NAME_MAX 16
 #define KERNEL_STACK_SIZE 4096
 #define DEFAULT_TIMESLICE 10
 #define KERNEL_MAIN_TIMESLICE 20
+
+#define PROCESS_MAX_FDS 32
+#define PROCESS_FIRST_NORMAL_FD 3
 
 //
 // Process Types
@@ -86,6 +90,9 @@ typedef struct pcb {
     /* Address space */
     uint32_t *page_directory_virt;
     uint32_t page_directory_phys;
+
+    /* File descriptor table */
+    vfs_file_t *fds[PROCESS_MAX_FDS];
 
     /* Process tree */
     struct pcb *parent;
