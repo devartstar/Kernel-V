@@ -203,3 +203,92 @@ uint8_t fd_close_test() {
     KLOG_INFO("FD_TEST", "close test passed.\n");
     return 1;
 }
+
+uint8_t fd_reuse_test() {
+    pcb_t *proc;
+    uint8_t fd1, fd2;
+    vfs_file_t *file1, *file2;
+
+    /* simulate a process structure */
+    proc = pcb_alloc();
+    if (!proc) {
+        KLOG_ERROR(
+            "FD_TEST",
+            "reuse test failed. failed to allocate memory to process.\n");
+        return 0;
+    }
+    memset(proc, 0, sizeof(pcb_t));
+    proc->pid = 102;
+    strncpy(proc->name, "reusetestproc", PROC_NAME_MAX);
+    proc->name[PROC_NAME_MAX - 1] = '\0';
+
+    /* create a file 1 and allocate fd */
+    file1 = fs_file_alloc();
+    if (!file1) {
+        KLOG_ERROR("FD_TEST",
+                   "reuse test failed. failed to allocate memory to file 1.\n");
+        return 0;
+    }
+    fd1 = fd_alloc(proc, file1);
+    if (fd1 < 0 || fd1 >= PROCESS_MAX_FDS) {
+        KLOG_ERROR("FD_TEST",
+                   "reuse test failed. fd %u, expected between 0-%u.\n", fd1,
+                   PROCESS_MAX_FDS);
+        return 0;
+    }
+
+    if (proc->fds[fd1] != file1) {
+        KLOG_ERROR("FD_TEST",
+                   "reuse test failed. fd %u entry in process doesnt point to "
+                   "file 1.\n",
+                   fd1);
+        return 0;
+    }
+
+    /* close file 1 */
+    int ret1 = fd_close(proc, fd1);
+    if (ret1 != VFS_OK) {
+        KLOG_ERROR("FD_TEST",
+                   "reuse test failed. failed to close file 1. status = %d, "
+                   "expected = %d.\n",
+                   ret1, VFS_OK);
+        return 0;
+    }
+
+    /* create a file 2 and allocate fd */
+    file2 = fs_file_alloc();
+    if (!file2) {
+        KLOG_ERROR("FD_TEST",
+                   "reuse test failed. failed to allocate memory to file 2.\n");
+        return 0;
+    }
+    fd2 = fd_alloc(proc, file2);
+    if (fd2 != fd1) {
+        KLOG_ERROR("FD_TEST",
+                   "reuse test failed. fd %u allocated to file 2, expected "
+                   "fd %u, same as of file 1 since it was freed.\n",
+                   fd2, fd1);
+        return 0;
+    }
+
+    if (proc->fds[fd2] != file2) {
+        KLOG_ERROR("FD_TEST",
+                   "reuse test failed. fd %u entry in process doesnt point to "
+                   "file 2.\n",
+                   fd2);
+        return 0;
+    }
+
+    /* close file 2 */
+    int ret2 = fd_close(proc, fd2);
+    if (ret2 != VFS_OK) {
+        KLOG_ERROR("FD_TEST",
+                   "reuse test failed. failed to close file 2. status = %d, "
+                   "expected = %d.\n",
+                   ret2, VFS_OK);
+        return 0;
+    }
+
+    KLOG_INFO("FD_TEST", "reuse test passed.\n");
+    return 1;
+}
