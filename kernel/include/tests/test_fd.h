@@ -1,4 +1,3 @@
-
 #ifndef TEST_FD_H
 #define TEST_FD_H
 
@@ -7,6 +6,7 @@
 
 uint8_t fd_alloc_free_test(void);
 uint8_t fd_get_test(void);
+uint8_t fd_close_test(void);
 
 static inline void run_fd_tests(void) {
     uint8_t failed_count = 0;
@@ -23,6 +23,12 @@ static inline void run_fd_tests(void) {
     /* attach a file to a process and allocate file descriptor to it */
     if (fd_get_test() == 0) {
         KLOG_INFO("TEST", "Failed: FD allocate test.\n");
+        failed_count++;
+    }
+
+    /* close an file attached to a process based on file descriptor */
+    if (fd_close_test() == 0) {
+        KLOG_INFO("TEST", "Failed: FD close test.\n");
         failed_count++;
     }
 

@@ -88,3 +88,58 @@ vfs_file_t *fd_get(pcb_t *proc, int fd) {
 
     return proc->fds[fd];
 }
+
+int fd_close(pcb_t *proc, int fd) {
+    vfs_file_t *file;
+
+    /* check if the process argument is valid */
+    if (!proc) {
+        KLOG_ERROR("FD", "closing fd failed. process ref is NULL.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    /* check if the fd argument is valid */
+    if (fd < 0 || fd >= PROCESS_MAX_FDS) {
+        KLOG_ERROR("FD",
+                   "closing fd failed. invalid fd %u, expected between 0-%u.\n",
+                   fd, PROCESS_MAX_FDS);
+        return VFS_ERR_INVALID;
+    }
+
+    /* validate if the process has a valid file entry */
+    file = proc->fds[fd];
+    if (!file) {
+        KLOG_ERROR(
+            "FD",
+            "closing fd failed. process %u doesnt contain entry for fd %u.\n",
+            proc->pid, fd);
+        return VFS_ERR_INVALID;
+    }
+
+    /* remove the fd entry from the process */
+    proc->fds[fd] = NULL;
+
+    /* check for the open references of the file */
+
+    /* case 1: if refcount aready equal 0. return */
+    if (file->refcount == 0) {
+        KLOG_ERROR("FD", "closing fd failed. file ref. count is already 0.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    /* case 2: if refcount greater than 1 then just decrease the refcount */
+    file->refcount--;
+
+    /* case 3: if refcount after decrease becomes 0. free up resources */
+    if (file->refcount == 0) {
+        /* check if the associated node is valid and decrease node ref count */
+        if (!file->node && file->node->refcount > 0) {
+            file->node->refcount--;
+        }
+
+        fs_file_free(file);
+    }
+    KLOG_INFO("FD", "closed fd %u successfully.\n", fd);
+
+    return VFS_OK;
+}
