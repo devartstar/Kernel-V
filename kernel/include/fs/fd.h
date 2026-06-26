@@ -65,4 +65,12 @@ vfs_file_t *fd_get(pcb_t *proc, int fd);
  */
 int fd_close(pcb_t *proc, int fd);
 
+/**
+ * fd_close_all - close all the file ref. for all file descriptor of the process
+ * @proc - process to close all associated files.
+ *
+ * @return status of closing all file.
+ */
+int fd_close_all(pcb_t *proc);
+
 #endif /* FD_H */

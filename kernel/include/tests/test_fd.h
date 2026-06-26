@@ -8,6 +8,7 @@ uint8_t fd_alloc_free_test(void);
 uint8_t fd_get_test(void);
 uint8_t fd_close_test(void);
 uint8_t fd_reuse_test(void);
+uint8_t fd_close_all_test(void);
 
 static inline void run_fd_tests(void) {
     uint8_t failed_count = 0;
@@ -36,6 +37,12 @@ static inline void run_fd_tests(void) {
     /* reuse a freed file descriptor of a process */
     if (fd_reuse_test() == 0) {
         KLOG_INFO("TEST", "Failed: FD close test.\n");
+        failed_count++;
+    }
+
+    /* close all file descriptors of an associated process */
+    if (fd_close_all_test() == 0) {
+        KLOG_INFO("TEST", "Failed: FD close all test.\n");
         failed_count++;
     }
 

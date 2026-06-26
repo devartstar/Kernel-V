@@ -208,6 +208,9 @@ void proc_cleanup_kernel(pcb_t *proc) {
     proc->kernel_stack_top = NULL;
     proc->kernel_stack_size = 0;
 
+    /* close all the file ref. for the process */
+    fd_close_all(proc);
+
     /* Free PCB */
     pcb_free(proc);
 }
@@ -272,6 +275,9 @@ void proc_cleanup_user(pcb_t *proc) {
     proc->kernel_stack_base = NULL;
     proc->kernel_stack_top = NULL;
     proc->kernel_stack_size = 0;
+
+    /* close all the file ref. by the process */
+    fd_close_all(proc);
 
     pcb_free(proc);
 }

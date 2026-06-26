@@ -292,3 +292,62 @@ uint8_t fd_reuse_test() {
     KLOG_INFO("FD_TEST", "reuse test passed.\n");
     return 1;
 }
+
+uint8_t fd_close_all_test() {
+    pcb_t *proc;
+    vfs_file_t *file1, *file2;
+    uint32_t fd1, fd2;
+
+    /* allocate memory to simulate a test process */
+    proc = pcb_alloc();
+    if (!proc) {
+        KLOG_ERROR(
+            "FD_TEST",
+            "close_all test failed. failed to allocate memory to process.\n");
+        return 0;
+    }
+    memset(proc, 0, sizeof(proc));
+    strncpy(proc->name, "close_all_test", PROC_NAME_MAX);
+    proc->pid = 102;
+
+    /* allocate memory for the file objects */
+    file1 = fs_file_alloc();
+    file2 = fs_file_alloc();
+    if (!file1 || !file2) {
+        KLOG_ERROR(
+            "FD_TEST",
+            "close_all test failed. failed to allocate memory for files.\n");
+        return 0;
+    }
+
+    /* assign file descriptor for the files in the process */
+    fd1 = fd_alloc(proc, file1);
+    fd2 = fd_alloc(proc, file2);
+    if (fd1 != PROCESS_FIRST_NORMAL_FD || fd2 != PROCESS_FIRST_NORMAL_FD + 1) {
+        KLOG_ERROR("FD_TEST",
+                   "close_all test failed. failed to allocate correct fd for "
+                   "process fd1 %u, fd2 %u.\n",
+                   fd1, fd2);
+        return 0;
+    }
+
+    /* close all reference to the files in the process */
+    if (fd_close_all(proc) != VFS_OK) {
+        KLOG_ERROR("FD_TEST",
+                   "close_all test failed. failed to close all files inside "
+                   "process %s.\n",
+                   proc->name);
+        return 0;
+    }
+
+    if (proc->fds[fd1] || proc->fds[fd2]) {
+        KLOG_ERROR(
+            "FD_TEST",
+            "close_all test failed. process %s still holds file reference.\n",
+            proc->name);
+        return 0;
+    }
+
+    KLOG_INFO("FD_TEST", "close_all test passed.\n");
+    return 1;
+}

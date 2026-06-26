@@ -143,3 +143,33 @@ int fd_close(pcb_t *proc, int fd) {
 
     return VFS_OK;
 }
+
+int fd_close_all(pcb_t *proc) {
+    int ret;
+    uint32_t failed_count = 0;
+
+    if (!proc) {
+        KLOG_ERROR("FD",
+                   "failed to close all fd for process. process is NULL.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    for (uint32_t fd = 0; fd < PROCESS_MAX_FDS; fd++) {
+        if (proc->fds[fd]) {
+            ret = fd_close(proc, (int)fd);
+            if (ret != VFS_OK) {
+                KLOG_WARN(
+                    "FD",
+                    "proc: %s (%u) close all fds: failed to close fd %u.\n",
+                    proc->name, proc->pid, fd);
+                failed_count++;
+                continue;
+            }
+        }
+    }
+
+    KLOG_INFO("FD",
+              "proc %s (%u) close all fds completed. failed closing %u fds.\n",
+              proc->name, proc->pid, failed_count);
+    return VFS_OK;
+}
