@@ -1,48 +1,6 @@
 #include "fs/fd.h"
 #include "lib/printk.h"
 #include "lib/string.h"
-#include "mm/pool_alloc.h"
-
-static pool_allocator_t vfs_file_pool;
-
-void fs_system_init() {
-    if (pool_init(&vfs_file_pool, sizeof(vfs_file_t)) < 0) {
-        KLOG_ERROR("FD", "failed to intialize vfs_file pool.\n");
-        return;
-    }
-
-    KLOG_INFO("FD", "vfs_file_pool: memory pool for vfs_file_t successfully "
-                    "initialized.\n");
-}
-
-vfs_file_t *fs_file_alloc() {
-    vfs_file_t *file;
-
-    file = (vfs_file_t *)pool_alloc(&vfs_file_pool);
-    if (!file) {
-        KLOG_ERROR("FD", "Failed to allocate memory for file object.\n");
-        return NULL;
-    }
-
-    /* zero out all the bytes of the allocated memory */
-    memset(file, 0, sizeof(vfs_file_t));
-
-    file->refcount = 1;
-
-    return file;
-}
-
-int fs_file_free(vfs_file_t *file) {
-    if (!file) {
-        KLOG_ERROR("FD", "file ref to free is NULL.\n");
-        return VFS_ERR_INVALID;
-    }
-
-    memset(file, 0, sizeof(vfs_file_t));
-    pool_free(&vfs_file_pool, file);
-
-    return VFS_OK;
-}
 
 int fd_alloc(pcb_t *proc, vfs_file_t *file) {
     uint32_t fd;
@@ -137,7 +95,7 @@ int fd_close(pcb_t *proc, int fd) {
             file->node->refcount--;
         }
 
-        fs_file_free(file);
+        vfs_file_free(file);
     }
     KLOG_INFO("FD", "closed fd %u successfully.\n", fd);
 
@@ -172,4 +130,75 @@ int fd_close_all(pcb_t *proc) {
               "proc %s (%u) close all fds completed. failed closing %u fds.\n",
               proc->name, proc->pid, failed_count);
     return VFS_OK;
+}
+
+int fd_open_path(pcb_t *proc, const char *path, uint32_t flags) {
+    vfs_node_t *node;
+    vfs_file_t *file;
+    uint32_t fd;
+    int ret;
+
+    /* validate the input arguments */
+    if (!path) {
+        KLOG_ERROR("FD", "failed to open file. file path is NULL.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    if (!proc) {
+        KLOG_ERROR("FD",
+                   "failed to open file %s. process to open for is NULL.\n",
+                   path);
+        return VFS_ERR_INVALID;
+    }
+
+    /* lookup for the vfs node object from the path */
+    node = vfs_lookup_absolute(path);
+    if (!node) {
+        KLOG_ERROR("FD", "open file %s failed. failed to lookup for file.\n");
+        return VFS_ERR_NOTFOUND;
+    }
+
+    if (node->refcount == UINT32_MAX) {
+        KLOG_ERROR("FD", "open file %s failed. vfs node ref count %u is max.\n",
+                   node->refcount);
+        return VFS_ERR_NOMEM;
+    }
+
+    /* create a vfs file object for the file to be ref. by the process */
+    file = vfs_file_alloc();
+    if (!file) {
+        KLOG_ERROR(
+            "FD", "open file %s failed. failed to allocate memory for file.\n");
+        return VFS_ERR_NOMEM;
+    }
+    file->node = node;
+    file->flags = flags;
+    file->offset = 0;
+    file->refcount = 1;
+
+    /* update the vfs file object and vfs node object ref. count
+     * we have already check for refcount to be inbound */
+    node->refcount++;
+
+    /* invoke the open operation for that vfs node */
+    if (node->ops && node->ops->open) {
+        int ret = node->ops->open(file);
+        if (ret != VFS_OK) {
+            node->refcount--;
+            vfs_file_free(file);
+            return ret;
+        }
+    }
+
+    /* attach the file ref. to the process and return file descriptor */
+    fd = fd_alloc(proc, file);
+    if (fd < 0) {
+        node->refcount--;
+        vfs_file_free(fd);
+        return fd;
+    }
+
+    KLOG_INFO("FD", "successfully opened file %s for process %s.\n", path,
+              proc->name);
+    return fd;
 }

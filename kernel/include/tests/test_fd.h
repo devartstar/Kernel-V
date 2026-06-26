@@ -9,12 +9,13 @@ uint8_t fd_get_test(void);
 uint8_t fd_close_test(void);
 uint8_t fd_reuse_test(void);
 uint8_t fd_close_all_test(void);
+uint8_t fd_open_path_test(void);
 
 static inline void run_fd_tests(void) {
     uint8_t failed_count = 0;
 
     /* Initialize file-object allocator pool before exercising fd APIs. */
-    fs_system_init();
+    vfs_system_init();
 
     /* attach a file to a process and allocate file descriptor to it */
     if (fd_alloc_free_test() == 0) {
@@ -42,6 +43,12 @@ static inline void run_fd_tests(void) {
 
     /* close all file descriptors of an associated process */
     if (fd_close_all_test() == 0) {
+        KLOG_INFO("TEST", "Failed: FD close all test.\n");
+        failed_count++;
+    }
+
+    /* test opening a file using path and ref. to process */
+    if (fd_open_path_test() == 0) {
         KLOG_INFO("TEST", "Failed: FD close all test.\n");
         failed_count++;
     }

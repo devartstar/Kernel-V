@@ -1,12 +1,15 @@
 #include "fs/vfs.h"
 #include "fs/vfs_utils.h"
 #include "lib/printk.h"
+#include "mm/pool_alloc.h"
 #include "stddef.h"
 
 vfs_node_t g_vfs_root;
 vfs_node_t *g_vfs_root_ptr = NULL;
 vfs_node_t g_vfs_nodes[VFS_MAX_NODES];
 uint32_t g_vfs_nodes_count = 0;
+
+static pool_allocator_t vfs_file_pool;
 
 int vfs_init(void) {
     g_vfs_root.name = "/";
@@ -144,4 +147,43 @@ vfs_node_t *vfs_lookup_absolute(const char *path) {
               "lookup completed. found vfs node %s (type=%s) for path %s.\n",
               curr_node->name, vfs_get_node_type(curr_node->type), path);
     return curr_node;
+}
+
+void vfs_system_init() {
+    if (pool_init(&vfs_file_pool, sizeof(vfs_file_t)) < 0) {
+        KLOG_ERROR("FD", "failed to intialize vfs_file pool.\n");
+        return;
+    }
+
+    KLOG_INFO("FD", "vfs_file_pool: memory pool for vfs_file_t successfully "
+                    "initialized.\n");
+}
+
+vfs_file_t *vfs_file_alloc() {
+    vfs_file_t *file;
+
+    file = (vfs_file_t *)pool_alloc(&vfs_file_pool);
+    if (!file) {
+        KLOG_ERROR("FD", "Failed to allocate memory for file object.\n");
+        return NULL;
+    }
+
+    /* zero out all the bytes of the allocated memory */
+    memset(file, 0, sizeof(vfs_file_t));
+
+    file->refcount = 1;
+
+    return file;
+}
+
+int vfs_file_free(vfs_file_t *file) {
+    if (!file) {
+        KLOG_ERROR("FD", "file ref to free is NULL.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    memset(file, 0, sizeof(vfs_file_t));
+    pool_free(&vfs_file_pool, file);
+
+    return VFS_OK;
 }

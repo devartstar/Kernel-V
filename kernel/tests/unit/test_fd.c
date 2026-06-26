@@ -18,7 +18,7 @@ int fd_alloc_free_test() {
     memset(proc, 0, sizeof(pcb_t));
 
     /* create a file object */
-    file = fs_file_alloc();
+    file = vfs_file_alloc();
     if (!file) {
         KLOG_ERROR(
             "FD_TEST",
@@ -46,7 +46,7 @@ int fd_alloc_free_test() {
     }
 
     /* free the memory allocated for the file back to the pool */
-    int res = fs_file_free(file);
+    int res = vfs_file_free(file);
     if (res != VFS_OK) {
         KLOG_ERROR("FD_TEST", "alloc_free test failed. failed to free "
                               "allocated memory for file.\n");
@@ -76,7 +76,7 @@ uint8_t fd_get_test() {
     memset(proc, 0, sizeof(pcb_t));
 
     /* allocates zeroed memory for a file object */
-    file = fs_file_alloc();
+    file = vfs_file_alloc();
     if (!file) {
         KLOG_ERROR("FD_TEST",
                    "get test failed. failed to allocate memory for file.\n");
@@ -158,7 +158,7 @@ uint8_t fd_close_test() {
     proc->name[PROC_NAME_MAX - 1] = '\0';
 
     /* allocates zeroed memory for a file object */
-    file = fs_file_alloc();
+    file = vfs_file_alloc();
     if (!file) {
         KLOG_ERROR("FD_TEST",
                    "close test failed. failed to allocate memory for file.\n");
@@ -223,7 +223,7 @@ uint8_t fd_reuse_test() {
     proc->name[PROC_NAME_MAX - 1] = '\0';
 
     /* create a file 1 and allocate fd */
-    file1 = fs_file_alloc();
+    file1 = vfs_file_alloc();
     if (!file1) {
         KLOG_ERROR("FD_TEST",
                    "reuse test failed. failed to allocate memory to file 1.\n");
@@ -256,7 +256,7 @@ uint8_t fd_reuse_test() {
     }
 
     /* create a file 2 and allocate fd */
-    file2 = fs_file_alloc();
+    file2 = vfs_file_alloc();
     if (!file2) {
         KLOG_ERROR("FD_TEST",
                    "reuse test failed. failed to allocate memory to file 2.\n");
@@ -311,8 +311,8 @@ uint8_t fd_close_all_test() {
     proc->pid = 102;
 
     /* allocate memory for the file objects */
-    file1 = fs_file_alloc();
-    file2 = fs_file_alloc();
+    file1 = vfs_file_alloc();
+    file2 = vfs_file_alloc();
     if (!file1 || !file2) {
         KLOG_ERROR(
             "FD_TEST",
@@ -349,5 +349,86 @@ uint8_t fd_close_all_test() {
     }
 
     KLOG_INFO("FD_TEST", "close_all test passed.\n");
+    return 1;
+}
+
+uint8_t fd_open_path_test() {
+    pcb_t *proc;
+    vfs_file_t *file;
+    int fd;
+
+    /* seed the VFS root so /hello.txt exists for the lookup below */
+    vfs_init();
+    if (ramfs_seed_root() != VFS_OK) {
+        KLOG_ERROR("FD_TEST",
+                   "open_path test failed. failed to seed initial vfs tree.\n");
+        return 0;
+    }
+
+    /* allocate memory for the process */
+    proc = pcb_alloc();
+    if (!proc) {
+        KLOG_ERROR(
+            "FD_TEST",
+            "open_path test failed. failed to allocate memory to process.\n");
+        return 0;
+    }
+    memset(proc, 0, sizeof(pcb_t));
+    strncpy(proc->name, "open_path_test", PROC_NAME_MAX);
+    proc->name[PROC_NAME_MAX - 1] = '\0';
+
+    /* open a file for a process */
+    fd = fd_open_path(proc, "/hello.txt", 0);
+    if (fd != PROCESS_FIRST_NORMAL_FD) {
+        KLOG_ERROR("FD_TEST",
+                   "open_path test failed. failed to open path for file "
+                   "/hello.txt for process %s. fd = %d, expected fd = %d\n",
+                   proc->name, fd, PROCESS_FIRST_NORMAL_FD);
+        return 0;
+    }
+
+    /* verification */
+
+    /* check if the file referenced by the fd is valid */
+    file = fd_get(proc, fd);
+    if (!file) {
+        KLOG_ERROR("FD_TEST",
+                   "open_path test failed. invalid file ref for fd %d.\n", fd);
+        return 0;
+    }
+
+    /* file should have valid vfs node reference */
+    if (!file->node) {
+        KLOG_ERROR("FD_TEST",
+                   "open_path test failed. file has no valid node reference.\n");
+        return 0;
+    }
+
+    /* compare the file name returned by fd with the one opened */
+    if (strcmp(file->node->name, "hello.txt") != 0) {
+        KLOG_ERROR("FD_TEST",
+                   "open_path test failed. file returned by fd %s, expected "
+                   "hello.txt.\n",
+                   file->node->name);
+        return 0;
+    }
+
+    /* validate other file fields */
+    if (file->offset != 0) {
+        KLOG_ERROR(
+            "FD_TEST",
+            "open_path test failed. offset for net file %u, expected 0.\n",
+            file->offset);
+        return 0;
+    }
+
+    /* negative case, try opening a file which doesn't exists */
+    if (fd_open_path(proc, "/does-not-exist", 0) != VFS_ERR_NOTFOUND) {
+        KLOG_ERROR("FD_TEST", "open_path test failed. missing path "
+                              "/does-not-exist should have returned null.\n");
+        return 0;
+    }
+
+    KLOG_INFO("FD_TEST", "open_path test passed.\n");
     return 1;
 }

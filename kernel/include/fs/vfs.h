@@ -51,7 +51,7 @@ typedef enum vfs_node_type {
  * @write - ref to the write operation callback
  */
 typedef struct vfs_node_ops {
-    int (*open)(vfs_node_t *node, uint32_t flags);
+    int (*open)(vfs_file_t *file);
 
     /* read operation:
      * @node - ref. to the node object of dir/file to read from.
@@ -139,5 +139,29 @@ int vfs_init(void);
  * @path - absolute path string to find
  */
 vfs_node_t *vfs_lookup_absolute(const char *path);
+
+/**
+ * vfs_system_init - initialize the memory pool for allocating file object
+ * NOTE: This does not initialize the file descriptor tables.
+ *
+ * @return void
+ */
+void vfs_system_init(void);
+
+/**
+ * vfs_file_alloc - allocates a memory region for file object from the memory
+ * pool and if no free region in the pool then allocate new memory to the pool.
+ *
+ * @return - ref. to the vfs_file_t object allocated.
+ */
+vfs_file_t *vfs_file_alloc(void);
+
+/**
+ * vfs_file_free - frees a memory region which was earlier allocated to the file
+ * object back to the memory pool
+ *
+ * @return 1 if successfully free else 0
+ */
+int vfs_file_free(vfs_file_t *file);
 
 #endif /* VFS_H */

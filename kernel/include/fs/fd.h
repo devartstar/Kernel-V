@@ -7,30 +7,6 @@
 #define S_MAX_OPEN_FILES 64
 
 /**
- * fs_system_init - initialize the memory pool for allocating file object
- * NOTE: This does not initialize the file descriptor tables.
- *
- * @return void
- */
-void fs_system_init(void);
-
-/**
- * fs_file_alloc - allocates a memory region for file object from the memory
- * pool and if no free region in the pool then allocate new memory to the pool.
- *
- * @return - ref. to the vfs_file_t object allocated.
- */
-vfs_file_t *fs_file_alloc(void);
-
-/**
- * fs_file_free - frees a memory region which was earlier allocated to the file
- * object back to the memory pool
- *
- * @return 1 if successfully free else 0
- */
-int fs_file_free(vfs_file_t *file);
-
-/**
  * fd_alloc - allocates  a file descriptor to a file object
  * 0, 1, 2 is reserved for stderr, stdin, stdout
  *
@@ -72,5 +48,20 @@ int fd_close(pcb_t *proc, int fd);
  * @return status of closing all file.
  */
 int fd_close_all(pcb_t *proc);
+
+/**
+ * fd_open_path - open the file at the given absolute path for a process.
+ * looks up the vfs node for the path, allocates a vfs file object referencing
+ * it, invokes the node's open operation (if any) and attaches the file to the
+ * process by allocating a file descriptor.
+ *
+ * @proc - process opening the file.
+ * @path - absolute path of the file to open.
+ * @flags - open flags stored on the resulting file object.
+ *
+ * @return the allocated file descriptor on success, else a negative VFS error
+ * code.
+ */
+int fd_open_path(pcb_t *proc, const char *path, uint32_t flags);
 
 #endif /* FD_H */
