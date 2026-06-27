@@ -64,6 +64,33 @@ int fd_close_all(pcb_t *proc);
  */
 int fd_open_path(pcb_t *proc, const char *path, uint32_t flags);
 
+/**
+ * fd_read - read the file referenced by fd in a given process.
+ * gets the file reference from the fd and the vfs node ref. from file
+ * invoke the read routine registered to the vfs node
+ *
+ * @proc - process referencing the file.
+ * @fd - file descriptor for the file to be read.
+ * @buf - ref. to the memory to update with the data read.
+ * @len - number of characters to read.
+ *
+ * @return the number of charaters read on success, else negative VFS error code
+ */
 int fd_read(pcb_t *proc, int fd, void *buf, uint32_t len);
+
+/**
+ * fd_write - write the file referenced by fd in a given process.
+ * gets the file reference from the fd and the vfs node ref. from file
+ * invoke the write routine registered to the vfs node
+ *
+ * @proc - process referencing the file.
+ * @fd - file descriptor for the file to write.
+ * @buf - ref. to the memory containing the write data.
+ * @len - number of characters to write.
+ *
+ * @return the number of charaters written on success, else negative VFS error
+ * code
+ */
+int fd_write(pcb_t *proc, int fd, void *buf, uint32_t len);
 
 #endif /* FD_H */

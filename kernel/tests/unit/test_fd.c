@@ -492,3 +492,68 @@ uint8_t fd_read_test() {
     KLOG_INFO("FD_TEST", "read test passed.\n");
     return 1;
 }
+
+uint8_t fd_write_test() {
+    pcb_t *proc;
+    vfs_file_t *file;
+    int fd;
+    int ret;
+    const char *msg = "TEST";
+    uint32_t msg_len = 4;
+
+    /* create a process object */
+    proc = pcb_alloc();
+    if (!proc) {
+        KLOG_ERROR(
+            "FD_TEST",
+            "write test failed. failed to allocate memory for process.\n");
+        return 0;
+    }
+    memset(proc, 0, sizeof(pcb_t));
+    strncpy(proc->name, "fd_write_test", PROC_NAME_MAX);
+    proc->name[PROC_NAME_MAX - 1] = '\0';
+    proc->pid = 102;
+
+    /* open a file and associate it with process */
+    fd = fd_open_path(proc, "/hello.txt", 0);
+    if (fd != PROCESS_FIRST_NORMAL_FD) {
+        KLOG_ERROR("FD_TEST",
+                   "write test failed. opening file: /hello.txt in proc %s, "
+                   "returned fd %u, expected %u.\n",
+                   proc->name, fd, PROCESS_FIRST_NORMAL_FD);
+        return 0;
+    }
+
+    /* write the content to the file */
+    ret = fd_write(proc, fd, msg, msg_len);
+
+    /* verification */
+    /* verify the write length */
+    if (ret != 4) {
+        KLOG_ERROR("FD_TEST",
+                   "write test failed. write length %d (%s), expected 4.\n",
+                   ret, vfs_get_status_string(ret));
+        return 0;
+    }
+
+    /* verify the read content */
+    if (msg[0] != 'T' && msg[3] != 'T') {
+        KLOG_ERROR("FD_TEST",
+                   "write test failed. file content = %s, expected = TEST.\n",
+                   msg);
+        return 0;
+    }
+
+    /* verify the file offset after read */
+    uint32_t offset = fd_get(proc, fd)->offset;
+    if (offset != 4) {
+        KLOG_ERROR(
+            "FD_TEST",
+            "write test failed. file offset after write = %u, expected = 5.\n",
+            offset);
+        return 0;
+    }
+
+    KLOG_INFO("FD_TEST", "write test passed.\n");
+    return 1;
+}

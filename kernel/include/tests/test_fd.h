@@ -11,6 +11,7 @@ uint8_t fd_reuse_test(void);
 uint8_t fd_close_all_test(void);
 uint8_t fd_open_path_test(void);
 uint8_t fd_read_test(void);
+uint8_t fd_write_test(void);
 
 uint8_t test_setup() {
     /* Initialize file-object allocator pool before exercising fd APIs. */
@@ -76,6 +77,12 @@ static inline void run_fd_tests(void) {
     /* test reading a file ref. by a process */
     if (fd_read_test() == 0) {
         KLOG_INFO("TEST", "Failed: FD read test.\n");
+        failed_count++;
+    }
+
+    /* test writing to a file ref. by a process */
+    if (fd_write_test() == 0) {
+        KLOG_INFO("TEST", "Failed: FD write test.\n");
         failed_count++;
     }
 

@@ -252,11 +252,68 @@ int fd_read(pcb_t *proc, int fd, void *buf, uint32_t len) {
     ret = node->ops->read(node, file->offset, buf, len);
 
     /* update the offset pointer of the file data */
-    if (ret >= 0) {
+    if (ret > 0) {
         file->offset += (uint32_t)ret;
     }
 
     KLOG_INFO("FD", "fd read completed. status = %s.\n",
+              vfs_get_status_string(ret));
+    return ret;
+}
+
+int fd_write(pcb_t *proc, int fd, void *buf, uint32_t len) {
+    vfs_node_t *node;
+    vfs_file_t *file;
+    int ret;
+
+    /* validate the input arguments */
+    if (!proc) {
+        KLOG_ERROR("FD", "fd write failed. invalid process reference.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    if (!buf && len > 0) {
+        KLOG_ERROR("FD", "fd write failed. invalid buf ref. to write from.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    /* get the vfs file ref. from the process and fd */
+    file = fd_get(proc, fd);
+    if (!file) {
+        KLOG_ERROR("FD",
+                   "fd write failed. failed to get file referenced by fd %d in "
+                   "process %s.\n",
+                   fd, proc->name);
+        return VFS_ERR_NOTFOUND;
+    }
+
+    /* get the vfs node ref from the file ref. */
+    node = file->node;
+    if (!node) {
+        KLOG_ERROR("FD", "fd write failed. invalid vfs node referenced by the "
+                         "vfs file object.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    if (!node->ops || !node->ops->write) {
+        KLOG_ERROR("FD",
+                   "fd write failed. file %s node object not associated with "
+                   "write operation.\n",
+                   node->name);
+        return VFS_ERR_NOOP;
+    }
+
+    /* invoke the write operation of the vfs node
+     * write returns the number of bytes writen, on failure returns the negative
+     * error code */
+    ret = node->ops->write(node, file->offset, buf, len);
+
+    /* update the offset pointer of the file data */
+    if (ret > 0) {
+        file->offset += (uint32_t)ret;
+    }
+
+    KLOG_INFO("FD", "fd write completed. status = %s.\n",
               vfs_get_status_string(ret));
     return ret;
 }

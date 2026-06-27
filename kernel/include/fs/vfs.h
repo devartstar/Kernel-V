@@ -32,6 +32,11 @@
 #define VFS_ROOT_SYMBOL '/'
 #define VFS_NAME_SEPARATOR VFS_ROOT_SYMBOL
 
+/* todo: use these vfs file permission */
+#define VFS_O_RDONLY 0x1
+#define VFS_O_WRONLY 0x2
+#define VFS_O_RDWR 0x3
+
 typedef struct vfs_node vfs_node_t;
 typedef struct vfs_file vfs_file_t;
 
