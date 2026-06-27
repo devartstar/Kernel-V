@@ -557,3 +557,121 @@ uint8_t fd_write_test() {
     KLOG_INFO("FD_TEST", "write test passed.\n");
     return 1;
 }
+
+uint8_t fd_seek_test() {
+    pcb_t *proc;
+    vfs_file_t *file;
+    int fd;
+    int ret;
+    char buf[8];
+
+    /* create a process object */
+    proc = pcb_alloc();
+    if (!proc) {
+        KLOG_ERROR(
+            "FD_TEST",
+            "seek test failed. failed to allocate memory for process.\n");
+        return 0;
+    }
+    memset(proc, 0, sizeof(pcb_t));
+    strncpy(proc->name, "fd_seek_test", PROC_NAME_MAX);
+    proc->name[PROC_NAME_MAX - 1] = '\0';
+    proc->pid = 102;
+
+    /* initialize the buffer with zeroed memory */
+    memset(buf, 0, sizeof(buf));
+
+    /* open a file and associate it with process */
+    fd = fd_open_path(proc, "/hello.txt", 0);
+    if (fd != PROCESS_FIRST_NORMAL_FD) {
+        KLOG_ERROR("FD_TEST",
+                   "seek test failed. opening file: /hello.txt in proc %s, "
+                   "returned fd %u, expected %u.\n",
+                   proc->name, fd, PROCESS_FIRST_NORMAL_FD);
+        return 0;
+    }
+
+    /* open file with set the offset to 0, move offset forward by 2 from start
+     */
+    ret = fd_lseek(proc, fd, 2, VFS_SEEK_SET);
+
+    /* get the file using the fd and test file offset */
+    file = fd_get(proc, fd);
+    if (!file) {
+        KLOG_ERROR(
+            "FD_TEST",
+            "seek test failed. unable to ref. file for fd %u in process %s.\n",
+            fd, proc->name);
+        return 0;
+    }
+
+    if (file->offset != 2) {
+        KLOG_ERROR("FD_TEST",
+                   "seek test failed. file for fd %u in process %s, offset = "
+                   "%u, expected = 2.\n",
+                   fd, proc->name, file->offset);
+        return 0;
+    }
+
+    /* read file from offset 2 */
+    ret = fd_read(proc, fd, buf, 3);
+    if (ret != 3) {
+        KLOG_ERROR("FD_TEST",
+                   "seek test failed. reading file for fd %u in process %s. "
+                   "length read = %u (%s), expected = 3.\n",
+                   fd, proc->name, ret, vfs_get_status_string(ret));
+        return 0;
+    }
+
+    /* verify the read content */
+    if (buf[0] != 'l' && buf[2] != 'o') {
+        KLOG_ERROR("FD_TEST",
+                   "seek test failed. file %s, offset 2 in process %s. data "
+                   "read = %s, expected = llo.\n",
+                   file->node->name, proc->name, buf);
+        return 0;
+    }
+
+    /* verify the offset after read */
+    if (file->offset != 5) {
+        KLOG_ERROR("FD_TEST",
+                   "seek test failed. file %s in process %s, after read. "
+                   "offset = %u, expected = 5.\n",
+                   file->node->name, proc->name, file->offset);
+        return 0;
+    }
+
+    /* update the offset to move 2 back from current */
+    ret = fd_lseek(proc, fd, -2, VFS_SEEK_CUR);
+    if (ret != 3 || file->offset != 3) {
+        KLOG_ERROR("FD_TEST",
+                   "seek test failed. file %s in process %s. offset = %u, "
+                   "expected = 3.\n",
+                   file->node->name, proc->name, file->offset);
+    }
+
+    /* update offset to move 1 back from the end */
+    ret = fd_lseek(proc, fd, -1, VFS_SEEK_END);
+    if (ret < 0) {
+        KLOG_ERROR("FD_TEST",
+                   "seek test failed. file %s in process %s. offset = %u. "
+                   "status %d (%s).\n",
+                   file->node->name, proc->name, file->offset, ret,
+                   vfs_get_status_string(ret));
+        return 0;
+    }
+
+    /* negative case: update offset to move 1000 back from the 0 */
+    ret = fd_lseek(proc, fd, -1000, VFS_SEEK_SET);
+    if (ret != VFS_ERR_INVALID) {
+        KLOG_ERROR("FD_TEST",
+                   "seek test failed. file %s in process %s. offset = %u. "
+                   "status %u (%s), expected ERR_INVALID\n",
+                   file->node->name, proc->name, file->offset, ret,
+                   vfs_get_status_string(ret));
+        return 0;
+    }
+
+    KLOG_INFO("FD_TEST", "seek test passed.\n");
+    return 1;
+}

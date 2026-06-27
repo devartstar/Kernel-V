@@ -37,6 +37,11 @@
 #define VFS_O_WRONLY 0x2
 #define VFS_O_RDWR 0x3
 
+/* seek types */
+#define VFS_SEEK_SET 0
+#define VFS_SEEK_CUR 1
+#define VFS_SEEK_END 2
+
 typedef struct vfs_node vfs_node_t;
 typedef struct vfs_file vfs_file_t;
 

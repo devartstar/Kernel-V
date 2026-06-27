@@ -317,3 +317,70 @@ int fd_write(pcb_t *proc, int fd, void *buf, uint32_t len) {
               vfs_get_status_string(ret));
     return ret;
 }
+
+int fd_lseek(pcb_t *proc, int fd, int32_t offset, int whence) {
+    vfs_file_t *file;
+    vfs_node_t *node;
+    int32_t base_offset;
+    int32_t new_offset;
+
+    /* validate the input arguments */
+    if (!proc) {
+        KLOG_ERROR("FD", "fd seek failed. invalid process reference.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    /* get the file referenced by fd */
+    file = fd_get(proc, fd);
+    if (!file) {
+        KLOG_ERROR("FD",
+                   "fd seek failed. failed to get file referenced by fd %d in "
+                   "process %s.\n",
+                   fd, proc->name);
+        return VFS_ERR_NOTFOUND;
+    }
+
+    /* get the node reference by the file */
+    node = file->node;
+    if (!node) {
+        KLOG_ERROR("FD", "fd seek failed. invalid vfs node referenced by the "
+                         "vfs file object.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    /* get the base_offset depending upon the seek type
+     * offset update is done on the base offset */
+    switch (whence) {
+    case VFS_SEEK_SET:
+        base_offset = 0;
+        break;
+    case VFS_SEEK_CUR:
+        base_offset = file->offset;
+        break;
+    case VFS_SEEK_END:
+        base_offset = (int32_t)node->size;
+        break;
+    default:
+        KLOG_ERROR("FD",
+                   "fd seek failed. invalid seek type %d to set base offset "
+                   "for update.\n",
+                   whence);
+        return VFS_ERR_INVALID;
+    }
+
+    /* update the base_offset to get the new_offset */
+    new_offset = base_offset + offset;
+
+    /* verify the new offset for overflow */
+    if (new_offset < 0) {
+        KLOG_ERROR("FD",
+                   "fd seek failed. offset is invalid after update. base "
+                   "offset = %d, offset to update = %d, new offset = %d.\n",
+                   base_offset, offset, new_offset);
+        return VFS_ERR_INVALID;
+    }
+
+    /* update the file offset with the new offset calculated */
+    file->offset = (uint32_t)new_offset;
+    return file->offset;
+}

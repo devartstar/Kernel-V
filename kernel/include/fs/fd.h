@@ -93,4 +93,16 @@ int fd_read(pcb_t *proc, int fd, void *buf, uint32_t len);
  */
 int fd_write(pcb_t *proc, int fd, void *buf, uint32_t len);
 
+/**
+ * fd_lseek - update the offset of the file referenced by fd in the process
+ *
+ * @proc - process referencing the file.
+ * @fd - file descriptor for the file to update offset.
+ * @offset - positive to move offset forward, negative for backward.
+ * @whence - relative position to update the offset from.
+ *
+ * @return the updated file offset.
+ */
+int fd_lseek(pcb_t *proc, int fd, int32_t offset, int whence);
+
 #endif /* FD_H */
