@@ -4,6 +4,14 @@
 #include "fs/vfs.h"
 
 /**
+ * vfs_get_status_string - converts the enum vfs error codes to string.
+ * @status - the status macro, negative for error status, positive for success
+ *
+ * @returns - the status string
+ */
+const char *vfs_get_status_string(int status);
+
+/**
  * vfs_get_root - get the ref. of the root node object
  *
  * @return vfs_node* - ref. of the root node object

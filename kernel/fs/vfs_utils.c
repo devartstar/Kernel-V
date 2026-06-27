@@ -128,3 +128,26 @@ vfs_node_t *vfs_find_child(vfs_node_t *parent, const char *name) {
                parent->name);
     return NULL;
 }
+
+const char *vfs_get_status_string(int status) {
+    switch (status) {
+    case VFS_OK:
+        return "OK";
+    case VFS_ERR_INVALID:
+        return "ERR_INVALID";
+    case VFS_ERR_NOTFOUND:
+        return "ERR_NOTFOUND";
+    case VFS_ERR_NOTDIR:
+        return "ERR_NOTDIR";
+    case VFS_ERR_NOOP:
+        return "ERR_NOOP";
+    case VFS_ERR_NOMEM:
+        return "ERR_NOMEM";
+    default:
+        if (status > 0) {
+            return "SUCCESS";
+        } else {
+            return "UNDEFINED_ERR";
+        }
+    }
+}

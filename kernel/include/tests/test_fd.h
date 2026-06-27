@@ -10,12 +10,32 @@ uint8_t fd_close_test(void);
 uint8_t fd_reuse_test(void);
 uint8_t fd_close_all_test(void);
 uint8_t fd_open_path_test(void);
+uint8_t fd_read_test(void);
+
+uint8_t test_setup() {
+    /* Initialize file-object allocator pool before exercising fd APIs. */
+    vfs_system_init();
+
+    /* seed the VFS root so /hello.txt exists for the lookup below */
+    vfs_init();
+    if (ramfs_seed_root() != VFS_OK) {
+        KLOG_ERROR("FD_TEST",
+                   "open_path test failed. failed to seed initial vfs tree.\n");
+        return 0;
+    }
+
+    return 1;
+}
 
 static inline void run_fd_tests(void) {
     uint8_t failed_count = 0;
+    uint8_t status;
 
-    /* Initialize file-object allocator pool before exercising fd APIs. */
-    vfs_system_init();
+    status = test_setup();
+    if (!status) {
+        KLOG_ERROR("TEST", "Skipped: FD test. Setup Failed.\n");
+        return;
+    }
 
     /* attach a file to a process and allocate file descriptor to it */
     if (fd_alloc_free_test() == 0) {
@@ -50,6 +70,12 @@ static inline void run_fd_tests(void) {
     /* test opening a file using path and ref. to process */
     if (fd_open_path_test() == 0) {
         KLOG_INFO("TEST", "Failed: FD close all test.\n");
+        failed_count++;
+    }
+
+    /* test reading a file ref. by a process */
+    if (fd_read_test() == 0) {
+        KLOG_INFO("TEST", "Failed: FD read test.\n");
         failed_count++;
     }
 

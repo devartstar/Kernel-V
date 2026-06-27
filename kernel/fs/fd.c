@@ -1,4 +1,5 @@
 #include "fs/fd.h"
+#include "fs/vfs_utils.h"
 #include "lib/printk.h"
 #include "lib/string.h"
 
@@ -201,4 +202,61 @@ int fd_open_path(pcb_t *proc, const char *path, uint32_t flags) {
     KLOG_INFO("FD", "successfully opened file %s for process %s.\n", path,
               proc->name);
     return fd;
+}
+
+int fd_read(pcb_t *proc, int fd, void *buf, uint32_t len) {
+    vfs_node_t *node;
+    vfs_file_t *file;
+    int ret;
+
+    /* validate the input arguments */
+    if (!proc) {
+        KLOG_ERROR("FD", "fd read failed. invalid process reference.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    if (!buf && len > 0) {
+        KLOG_ERROR("FD", "fd read failed. invalid buf ref. to read into.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    /* get the vfs file ref. from the process and fd */
+    file = fd_get(proc, fd);
+    if (!file) {
+        KLOG_ERROR("FD",
+                   "fd read failed. failed to get file referenced by fd %d in "
+                   "process %s.\n",
+                   fd, proc->name);
+        return VFS_ERR_NOTFOUND;
+    }
+
+    /* get the vfs node ref from the file ref. */
+    node = file->node;
+    if (!node) {
+        KLOG_ERROR("FD", "fd read failed. invalid vfs node referenced by the "
+                         "vfs file object.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    if (!node->ops || !node->ops->read) {
+        KLOG_ERROR("FD",
+                   "fd read failed. file %s node object not associated with "
+                   "read operation.\n",
+                   node->name);
+        return VFS_ERR_NOOP;
+    }
+
+    /* invoke the read operation of the vfs node
+     * read returns the number of bytes read, on failure returns the negative
+     * error code */
+    ret = node->ops->read(node, file->offset, buf, len);
+
+    /* update the offset pointer of the file data */
+    if (ret >= 0) {
+        file->offset += (uint32_t)ret;
+    }
+
+    KLOG_INFO("FD", "fd read completed. status = %s.\n",
+              vfs_get_status_string(ret));
+    return ret;
 }

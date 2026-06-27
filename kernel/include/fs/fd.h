@@ -64,4 +64,6 @@ int fd_close_all(pcb_t *proc);
  */
 int fd_open_path(pcb_t *proc, const char *path, uint32_t flags);
 
+int fd_read(pcb_t *proc, int fd, void *buf, uint32_t len);
+
 #endif /* FD_H */

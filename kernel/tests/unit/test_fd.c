@@ -1,4 +1,5 @@
 #include "fs/fd.h"
+#include "fs/vfs_utils.h"
 #include "lib/printk.h"
 
 int fd_alloc_free_test() {
@@ -357,14 +358,6 @@ uint8_t fd_open_path_test() {
     vfs_file_t *file;
     int fd;
 
-    /* seed the VFS root so /hello.txt exists for the lookup below */
-    vfs_init();
-    if (ramfs_seed_root() != VFS_OK) {
-        KLOG_ERROR("FD_TEST",
-                   "open_path test failed. failed to seed initial vfs tree.\n");
-        return 0;
-    }
-
     /* allocate memory for the process */
     proc = pcb_alloc();
     if (!proc) {
@@ -399,8 +392,9 @@ uint8_t fd_open_path_test() {
 
     /* file should have valid vfs node reference */
     if (!file->node) {
-        KLOG_ERROR("FD_TEST",
-                   "open_path test failed. file has no valid node reference.\n");
+        KLOG_ERROR(
+            "FD_TEST",
+            "open_path test failed. file has no valid node reference.\n");
         return 0;
     }
 
@@ -430,5 +424,71 @@ uint8_t fd_open_path_test() {
     }
 
     KLOG_INFO("FD_TEST", "open_path test passed.\n");
+    return 1;
+}
+
+uint8_t fd_read_test() {
+    pcb_t *proc;
+    int fd;
+    int ret;
+    char buf[8];
+
+    /* create a process object */
+    proc = pcb_alloc();
+    if (!proc) {
+        KLOG_ERROR(
+            "FD_TEST",
+            "read test failed. failed to allocate memory for process.\n");
+        return 0;
+    }
+    memset(proc, 0, sizeof(pcb_t));
+    strncpy(proc->name, "fd_read_test", PROC_NAME_MAX);
+    proc->name[PROC_NAME_MAX - 1] = '\0';
+    proc->pid = 102;
+
+    /* initialize the buffer with zeroed memory */
+    memset(buf, 0, sizeof(buf));
+
+    /* open a file and associate it with process */
+    fd = fd_open_path(proc, "/hello.txt", 0);
+    if (fd != PROCESS_FIRST_NORMAL_FD) {
+        KLOG_ERROR("FD_TEST",
+                   "read test failed. opening file: /hello.txt in proc %s, "
+                   "returned fd %u, expected %u.\n",
+                   proc->name, fd, PROCESS_FIRST_NORMAL_FD);
+        return 0;
+    }
+
+    /* read the content of the file */
+    ret = fd_read(proc, fd, buf, 5);
+
+    /* verification */
+    /* verify the read length */
+    if (ret != 5) {
+        KLOG_ERROR("FD_TEST",
+                   "read test failed. read length %d (%s), expected 5.\n", ret,
+                   vfs_get_status_string(ret));
+        return 0;
+    }
+
+    /* verify the read content */
+    if (buf[0] != 'h' && buf[4] != 'o') {
+        KLOG_ERROR("FD_TEST",
+                   "read test failed. read content = %s, expected = hello.\n",
+                   buf);
+        return 0;
+    }
+
+    /* verify the file offset after read */
+    uint32_t offset = fd_get(proc, fd)->offset;
+    if (offset != 5) {
+        KLOG_ERROR(
+            "FD_TEST",
+            "read test failed. file offset after read = %u, expected = 5.\n",
+            offset);
+        return 0;
+    }
+
+    KLOG_INFO("FD_TEST", "read test passed.\n");
     return 1;
 }
