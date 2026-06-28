@@ -1,5 +1,6 @@
 #include "proc/syscall.h"
 #include "fs/vfs.h"
+#include "fs/vfs_utils.h"
 #include "lib/print_macros.h"
 #include "lib/printk.h"
 #include "mm/paging.h"
@@ -11,6 +12,7 @@
 
 static uint8_t usr_ptr_validate(uint32_t ptr);
 static uint8_t usr_range_is_valid(uint32_t ptr, uint32_t len);
+static int copy_user_string(char *kdst, const char *usrc, uint32_t max_len);
 
 syscall_handler_t syscall_table[NUM_SYSCALLS] = {0};
 
@@ -134,6 +136,32 @@ static int32_t syscall_sched_yield(uint32_t _1, uint32_t _2, uint32_t _3,
     return 0;
 }
 
+static int32_t syscall_open(uint32_t path_ptr, uint32_t flags, uint32_t _3,
+                            uint32_t _4, uint32_t _5, uint32_t _6) {
+    (void)_3;
+    (void)_4;
+    (void)_5;
+    (void)_6;
+
+    char kpath[VFS_PATH_MAX];
+    int ret;
+
+    /* never pass path directly to VFS. Copy to kernel owned buffer first */
+    ret = copy_user_string(kpath, (const char *)path_ptr, VFS_PATH_MAX);
+    if (ret != VFS_OK) {
+        KLOG_ERROR("SYSCALL",
+                   "syscall_open failed. failed tp copy path %s to kernel "
+                   "buffer. status = %s.\n",
+                   path_ptr, vfs_get_status_string(ret));
+        return ret;
+    }
+
+    KLOG_VERBOSE("SYSCALL",
+                 "syscall_open: opened file %s for process %s (pid: %u).\n",
+                 kpath, current_proc->name, current_proc->pid);
+    return fd_open_path(current_proc, kpath, flags);
+}
+
 void syscall_table_init(void) {
     /* Register default handler (ENOSYS) for all syscalls */
     for (int8_t i = 0; i < NUM_SYSCALLS; i++) {
@@ -144,6 +172,7 @@ void syscall_table_init(void) {
     syscall_table[SYS_WRITE] = syscall_write;
     syscall_table[SYS_GETPID] = syscall_getpid;
     syscall_table[SYS_SCHED_YIELD] = syscall_sched_yield;
+    syscall_table[SYS_OPEN] = syscall_open;
 }
 
 void syscall_interrupt_handler(uint32_t idt_index, regs_t *regs) {
@@ -389,7 +418,7 @@ static int copy_to_user(void *udst, const void *ksrc, uint32_t len) {
  *
  * @return VFS status code
  */
-static int copy_user_string(char *kdst, char *usrc, uint32_t max_len) {
+static int copy_user_string(char *kdst, const char *usrc, uint32_t max_len) {
     uint32_t i;
 
     /* validate input arguments */

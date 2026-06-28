@@ -27,6 +27,7 @@
 
 /* maximum length for the vfs node object */
 #define VFS_NAME_MAX 256
+#define VFS_PATH_MAX 256
 
 /* root character */
 #define VFS_ROOT_SYMBOL '/'

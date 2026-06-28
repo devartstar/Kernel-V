@@ -10,7 +10,8 @@ enum {
     SYS_EXIT = 1,
     SYS_WRITE = 2,
     SYS_GETPID = 3,
-    SYS_SCHED_YIELD = 4
+    SYS_SCHED_YIELD = 4,
+    SYS_OPEN = 5,
     /* Add more syscall entries as needed */
 };
 
