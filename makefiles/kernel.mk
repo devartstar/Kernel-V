@@ -14,7 +14,7 @@ PROC_OFFSET_GEN := $(KERNDIR)/lib/proc_offset_generator
 PROC_OFFSET_HDR := $(INCDIR)/proc/proc_offset_asm.h
 
 # --- Source File Discovery ---
-KERNEL_C_SOURCES := $(shell find $(KERNDIR) -name "*.c" -not -path "$(TESTDIR)/*" -not -name "*_generator.c")
+KERNEL_C_SOURCES := $(shell find $(KERNDIR) -name "*.c" -not -path "$(TESTDIR)/*" -not -path "$(KERN_ARCH_DIR)/user/*" -not -name "*_generator.c")
 KERNEL_ASM_SOURCES := $(shell find $(KERNDIR) -name "*.asm" -not -path "$(BOOTDIR)/*" -not -name "kernel_entry.asm" -not -path "$(KERN_ARCH_DIR)/user/userprog*.asm")
 
 # --- Object File Generation ---
@@ -34,6 +34,16 @@ ifeq ($(CONFIG_TESTS_INTEGRATION), y)
     USERPROG_B_ASM := $(KERN_ARCH_DIR)/user/userprog_b.asm
     USERPROG_B_BIN := $(BUILD_KERN)/userprog_b.bin
     USERPROG_B_OBJ := $(BUILD_KERN)/userprog_b.o
+
+    USERPROG_SYSCALL_ASM := $(KERN_ARCH_DIR)/user/userprog_syscall.asm
+    USERPROG_SYSCALL_BIN := $(BUILD_KERN)/userprog_syscall.bin
+    USERPROG_SYSCALL_OBJ := $(BUILD_KERN)/userprog_syscall.o
+
+    USERPROG_OPEN_SRC := $(KERN_ARCH_DIR)/user/userprog_open.c
+    USERPROG_OPEN_CMPL := $(BUILD_KERN)/userprog_open.user.o
+    USERPROG_OPEN_ELF := $(BUILD_KERN)/userprog_open.elf
+    USERPROG_OPEN_BIN := $(BUILD_KERN)/userprog_open.bin
+    USERPROG_OPEN_OBJ := $(BUILD_KERN)/userprog_open.o
 endif
 
 # --- Test Sources (conditional) ---
@@ -41,7 +51,7 @@ ifeq ($(CONFIG_BUILD_TEST), y)
     TEST_C_SOURCES := $(shell find $(TESTDIR) -name "*.c")
     TEST_C_OBJECTS := $(patsubst $(KERNDIR)/%.c,$(BUILD_KERN)/%.o,$(TEST_C_SOURCES))
     ifeq ($(CONFIG_TESTS_INTEGRATION), y)
-        KERNEL_OBJECTS := $(KERNEL_ENTRY_OBJ) $(KERNEL_C_OBJECTS) $(KERNEL_ASM_OBJECTS) $(TEST_C_OBJECTS) $(USERPROG_OBJ_MAIN) $(USERPROG_A_OBJ) $(USERPROG_B_OBJ)
+        KERNEL_OBJECTS := $(KERNEL_ENTRY_OBJ) $(KERNEL_C_OBJECTS) $(KERNEL_ASM_OBJECTS) $(TEST_C_OBJECTS) $(USERPROG_OBJ_MAIN) $(USERPROG_A_OBJ) $(USERPROG_B_OBJ) $(USERPROG_SYSCALL_OBJ) $(USERPROG_OPEN_OBJ)
     else
         KERNEL_OBJECTS := $(KERNEL_ENTRY_OBJ) $(KERNEL_C_OBJECTS) $(KERNEL_ASM_OBJECTS) $(TEST_C_OBJECTS)
     endif
@@ -124,6 +134,40 @@ $(USERPROG_B_OBJ): $(USERPROG_B_BIN) | $(BUILD_KERN)
 		--redefine-sym _binary_userprog_b_bin_start=_binary_userprog_b_start \
 		--redefine-sym _binary_userprog_b_bin_end=_binary_userprog_b_end \
 		userprog_b.bin userprog_b.o)
+
+$(USERPROG_SYSCALL_BIN): $(USERPROG_SYSCALL_ASM) | $(BUILD_KERN)
+	$(ECHO) "  ASM-USER $@"
+	$(Q)$(NASM) -f bin $< -o $@
+
+$(USERPROG_SYSCALL_OBJ): $(USERPROG_SYSCALL_BIN) | $(BUILD_KERN)
+	$(ECHO) "  OBJCOPY $@"
+	$(Q)(cd $(BUILD_KERN) && \
+	$(OBJCOPY) -I binary -O elf32-i386 -B i386 \
+		--rename-section .data=.rodata,contents,alloc,load,readonly,data \
+		--redefine-sym _binary_userprog_syscall_bin_start=_binary_userprog_syscall_start \
+		--redefine-sym _binary_userprog_syscall_bin_end=_binary_userprog_syscall_end \
+		userprog_syscall.bin userprog_syscall.o)
+
+$(USERPROG_OPEN_CMPL): $(USERPROG_OPEN_SRC) | $(BUILD_KERN)
+	$(ECHO) "  CC-USER $@"
+	$(Q)$(CC) $(USER_CFLAGS) -c $< -o $@
+
+$(USERPROG_OPEN_ELF): $(USERPROG_OPEN_CMPL) $(USER_LD) | $(BUILD_KERN)
+	$(ECHO) "  LD-USER $@"
+	$(Q)$(LD) $(LDFLAGS) -T $(USER_LD) -o $@ $(USERPROG_OPEN_CMPL)
+
+$(USERPROG_OPEN_BIN): $(USERPROG_OPEN_ELF) | $(BUILD_KERN)
+	$(ECHO) "  BIN-USER $@"
+	$(Q)$(OBJCOPY) -O binary $< $@
+
+$(USERPROG_OPEN_OBJ): $(USERPROG_OPEN_BIN) | $(BUILD_KERN)
+	$(ECHO) "  OBJCOPY $@"
+	$(Q)(cd $(BUILD_KERN) && \
+	$(OBJCOPY) -I binary -O elf32-i386 -B i386 \
+		--rename-section .data=.rodata,contents,alloc,load,readonly,data \
+		--redefine-sym _binary_userprog_open_bin_start=_binary_userprog_open_start \
+		--redefine-sym _binary_userprog_open_bin_end=_binary_userprog_open_end \
+		userprog_open.bin userprog_open.o)
 endif
 
 # --- Kernel Linking ---
