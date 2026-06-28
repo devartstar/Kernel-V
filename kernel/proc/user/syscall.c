@@ -1,4 +1,5 @@
 #include "proc/syscall.h"
+#include "fs/vfs.h"
 #include "lib/print_macros.h"
 #include "lib/printk.h"
 #include "mm/paging.h"
@@ -126,7 +127,7 @@ static int32_t syscall_sched_yield(uint32_t _1, uint32_t _2, uint32_t _3,
     (void)_6;
 
     KLOG_VERBOSE("SYSCALL", "syscall_sched_yield: pid=%d name=%s\n",
-                current_proc->pid, current_proc->name);
+                 current_proc->pid, current_proc->name);
 
     yield();
 
@@ -196,16 +197,16 @@ static uint8_t usr_ptr_validate(uint32_t ptr) {
 
     if (ptr >= USER_VIRT_MAX) {
         KLOG_ERROR("SYSCALL",
-                     "Invalid virtual address for the buffer=0x%08x, Max=%u\n",
-                     ptr, USER_VIRT_MAX);
+                   "Invalid virtual address for the buffer=0x%08x, Max=%u\n",
+                   ptr, USER_VIRT_MAX);
 
         return 0;
     }
 
     if (paging_get_physical_address_in_pd(current_proc->page_directory_virt,
-                                           ptr) == 0) {
+                                          ptr) == 0) {
         KLOG_ERROR("SYSCALL",
-                     "Invalid physical address for the buffer=0x%08x\n", ptr);
+                   "Invalid physical address for the buffer=0x%08x\n", ptr);
 
         return 0;
     }
@@ -232,8 +233,8 @@ static uint8_t usr_range_is_valid(uint32_t ptr, uint32_t len) {
     if (ptr + len < ptr) {
         /* overflow */
         KLOG_ERROR("SYSCALL",
-                     "Invalid address range for the buffer=0x%08x, len=%u\n",
-                     ptr, len);
+                   "Invalid address range for the buffer=0x%08x, len=%u\n", ptr,
+                   len);
         return 0;
     }
 
@@ -241,8 +242,8 @@ static uint8_t usr_range_is_valid(uint32_t ptr, uint32_t len) {
     end = PAGE_ALIGN_UP(ptr + len);
 
     for (uint32_t addr = start; addr < end; addr += PAGE_SIZE) {
-        if (paging_get_physical_address_in_pd(
-                current_proc->page_directory_virt, addr) == 0) {
+        if (paging_get_physical_address_in_pd(current_proc->page_directory_virt,
+                                              addr) == 0) {
             KLOG_ERROR(
                 "SYSCALL",
                 "Invalid physical address for the buffer=0x%08x, len=%u\n", ptr,
@@ -252,4 +253,185 @@ static uint8_t usr_range_is_valid(uint32_t ptr, uint32_t len) {
     }
 
     return 1;
+}
+
+/* copy_from_user - syscall utility which helps to copy data from userspace
+ * source buffer to kernelspace destination buffer.
+ *
+ * @kdst - ref. to the kernel space destination buffer to write into
+ * @usrc - ref. to the user space source buffer to read from
+ * @len - number of charaters to read.
+ *
+ * @return VFS status code
+ */
+static int copy_from_user(void *kdst, const void *usrc, uint32_t len) {
+    uint8_t *dst;
+    const uint8_t *src;
+    uint32_t i;
+
+    /* validate the input arguments */
+    if (len == 0) {
+        KLOG_INFO("SYSCALL",
+                  "copy to kernel buffer completed. copied length = 0.\n");
+        return VFS_OK;
+    }
+
+    if (!kdst) {
+        KLOG_ERROR(
+            "SYSCALL",
+            "copy to kernel buffer failed. dest. kernel buffer is NULL.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    if (!usrc) {
+        KLOG_ERROR(
+            "SYSCALL",
+            "copy to kernel buffer failed. source user buffer is NULL.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    /* validate if the memory ref. from usrc with length all lies within the
+     * user space memory region */
+    if (!usr_range_is_valid(usrc, len)) {
+        KLOG_ERROR(
+            "SYSCALL",
+            "copy to kernel buffer failed. user buffer range is invalid. "
+            "start = %p, length = %u.\n",
+            usrc, len);
+        return VFS_ERR_INVALID;
+    }
+
+    dst = (uint8_t *)kdst;
+    src = (const uint8_t *)usrc;
+
+    for (i = 0; i < len; i++) {
+        dst[i] = src[i];
+    }
+
+    KLOG_INFO(
+        "SYSCALL",
+        "copy to kernel buffer completed. copied content = %s, length = %u.\n",
+        dst, len);
+    return VFS_OK;
+}
+
+/* copy_to_user - syscall utility which helps to copy data from kernelspace
+ * source buffer to userspace destination buffer.
+ *
+ * @udst - ref. to the user space destination buffer to write into
+ * @ksrc - ref. to the kernel space source buffer to read from
+ * @len - number of charaters to read.
+ *
+ * @return VFS status code
+ */
+static int copy_to_user(void *udst, const void *ksrc, uint32_t len) {
+    uint8_t *dst;
+    const uint8_t *src;
+    uint32_t i;
+
+    /* validate the input arguments */
+    if (len == 0) {
+        KLOG_INFO("SYSCALL",
+                  "copy to user buffer completed. copied length = 0.\n");
+        return VFS_OK;
+    }
+
+    if (!udst) {
+        KLOG_ERROR("SYSCALL",
+                   "copy to user buffer failed. dest. user buffer is NULL.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    if (!ksrc) {
+        KLOG_ERROR(
+            "SYSCALL",
+            "copy to user buffer failed. source kernel buffer is NULL.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    /* validate if the memory ref. from udest with length all lies within the
+     * user space memory region */
+    if (!usr_range_is_valid(udst, len)) {
+        KLOG_ERROR("SYSCALL",
+                   "copy to user buffer failed. user buffer range is invalid. "
+                   "start = %p, length = %u.\n",
+                   udst, len);
+        return VFS_ERR_INVALID;
+    }
+
+    dst = (uint8_t *)udst;
+    src = (const uint8_t *)ksrc;
+
+    for (i = 0; i < len; i++) {
+        dst[i] = src[i];
+    }
+
+    KLOG_INFO(
+        "SYSCALL",
+        "copy to user buffer completed. copied content = %s, length = %u.\n",
+        dst, len);
+    return VFS_OK;
+}
+
+/**
+ * copy_user_string - copies string content from user space memory to kernel
+ * space memory.
+ * passing the max length we can copy as we might know the exact
+ * string length to copy. complete copying when we see the null character \0.
+ * before copying from user buufer, validate each buffer block to be in user
+ * memory region.
+ * if length of string to copy is greater than max_len, copy partially upto
+ * max_len and return error.
+ *
+ * @kdst - ref. to the kernel space destination buffer to copy to.
+ * @usrc - ref. to the user space source buffer to copy from.
+ * @max_len - maximum length of the string to copy.
+ *
+ * @return VFS status code
+ */
+static int copy_user_string(char *kdst, char *usrc, uint32_t max_len) {
+    uint32_t i;
+
+    /* validate input arguments */
+    if (!kdst) {
+        KLOG_ERROR("SYSCALL", "copy string to kernel buffer failed. dest. "
+                              "kernel buffer is NULL.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    if (!usrc) {
+        KLOG_ERROR("SYSCALL", "copy string to kernel buffer failed. source "
+                              "user buffer is NULL.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    if (max_len == 0) {
+        KLOG_ERROR(
+            "SYSCALL",
+            "copy string to kernel buffer failed. max length to copy is 0.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    /* copy the contents */
+    for (i = 0; i < max_len; i++) {
+        /* validate if the memory ref. is in user region
+         * if fails before copying entire string, update dest buffer with empty
+         * string */
+        if (!usr_ptr_validate((const void *)(usrc + i))) {
+            kdst[0] = '\0';
+        }
+
+        kdst[i] = usrc[i];
+        if (kdst[i] == '\0') {
+            KLOG_INFO("SYSCALL",
+                      "copy string to kernel buffer completed. string = %s, "
+                      "length = %u.\n",
+                      kdst, i + 1);
+            return VFS_OK;
+        }
+    }
+
+    /* string to copy was too long or not null terminated within max-len */
+    kdst[max_len - 1] = '\0';
+    return VFS_ERR_INVALID;
 }

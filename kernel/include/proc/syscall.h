@@ -3,6 +3,9 @@
 #include "arch/x86/interrupt.h"
 #include <stdint.h>
 
+/* syscall io buffer size */
+#define SYSCALL_IO_BUFSZ 256
+
 enum {
     SYS_EXIT = 1,
     SYS_WRITE = 2,
