@@ -10,6 +10,7 @@
 #include "tests/test_pci.h"
 #include "tests/test_ramfs.h"
 #include "tests/test_spinlock.h"
+#include "tests/test_syscall.h"
 #include "tests/test_vfs.h"
 #include <stdbool.h>
 
@@ -57,6 +58,7 @@ void run_kernel_tests(void) {
     run_ramfs_tests();
     run_devfs_tests();
     run_fd_tests();
+    run_syscall_tests();
 
     KLOG_VERBOSE("TEST", "Unit Tests Complete.\n");
     tests_run = true;
