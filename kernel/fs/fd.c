@@ -155,12 +155,14 @@ int fd_open_path(pcb_t *proc, const char *path, uint32_t flags) {
     /* lookup for the vfs node object from the path */
     node = vfs_lookup_absolute(path);
     if (!node) {
-        KLOG_ERROR("FD", "open file %s failed. failed to lookup for file.\n");
+        KLOG_ERROR("FD", "open file %s failed. failed to lookup for file.\n",
+                   path);
         return VFS_ERR_NOTFOUND;
     }
 
     if (node->refcount == UINT32_MAX) {
-        KLOG_ERROR("FD", "open file %s failed. vfs node ref count %u is max.\n",
+        KLOG_ERROR("FD",
+                   "open file %s failed. vfs node ref count %u is max.\n", path,
                    node->refcount);
         return VFS_ERR_NOMEM;
     }
@@ -169,7 +171,8 @@ int fd_open_path(pcb_t *proc, const char *path, uint32_t flags) {
     file = vfs_file_alloc();
     if (!file) {
         KLOG_ERROR(
-            "FD", "open file %s failed. failed to allocate memory for file.\n");
+            "FD",
+            "open file %s failed. failed to allocate memory for file.\n", path);
         return VFS_ERR_NOMEM;
     }
     file->node = node;
@@ -194,13 +197,16 @@ int fd_open_path(pcb_t *proc, const char *path, uint32_t flags) {
     /* attach the file ref. to the process and return file descriptor */
     fd = fd_alloc(proc, file);
     if (fd < 0) {
+        KLOG_ERROR("FD",
+                   "open file %s failed. no free fd slot in process %s.\n",
+                   path, proc->name);
         node->refcount--;
-        vfs_file_free(fd);
+        vfs_file_free(file);
         return fd;
     }
 
-    KLOG_INFO("FD", "successfully opened file %s (fd %d) for process %s.\n", path, fd,
-              proc->name);
+    KLOG_INFO("FD", "opened path=%s fd=%d flags=0x%x for process %s.\n", path,
+              fd, flags, proc->name);
     return fd;
 }
 
@@ -256,8 +262,9 @@ int fd_read(pcb_t *proc, int fd, void *buf, uint32_t len) {
         file->offset += (uint32_t)ret;
     }
 
-    KLOG_INFO("FD", "fd read completed. status = %s.\n",
-              vfs_get_status_string(ret));
+    KLOG_INFO(
+        "FD", "fd read completed. fd=%d len=%u bytes=%d new_off=%u status=%s.\n",
+        fd, len, ret, file->offset, vfs_get_status_string(ret));
     return ret;
 }
 
@@ -313,8 +320,10 @@ int fd_write(pcb_t *proc, int fd, void *buf, uint32_t len) {
         file->offset += (uint32_t)ret;
     }
 
-    KLOG_INFO("FD", "fd write completed. status = %s.\n",
-              vfs_get_status_string(ret));
+    KLOG_INFO(
+        "FD",
+        "fd write completed. fd=%d len=%u bytes=%d new_off=%u status=%s.\n", fd,
+        len, ret, file->offset, vfs_get_status_string(ret));
     return ret;
 }
 

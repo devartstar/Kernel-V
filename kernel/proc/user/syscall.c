@@ -28,6 +28,25 @@ static __attribute__((unused)) int32_t syscall_test(uint32_t a, uint32_t b,
     return 0xDEADC0DE;
 }
 
+static char *syscall_get_name(uint32_t syscall_num) {
+    switch (syscall_num) {
+    case SYS_EXIT:
+        return "SYSCALL_EXIT";
+    case SYS_WRITE:
+        return "SYSCALL_WRITE";
+    case SYS_GETPID:
+        return "SYSCALL_GETPID";
+    case SYS_SCHED_YIELD:
+        return "SYSCALL_SCHED_YIELD";
+    case SYS_OPEN:
+        return "SYSCALL_OPEN";
+    case SYS_READ:
+        return "SYSCALL_READ";
+    default:
+        return "UNKNOWN_SYSCALL";
+    }
+}
+
 static int32_t syscall_exit(uint32_t code, uint32_t _2, uint32_t _3,
                             uint32_t _4, uint32_t _5, uint32_t _6) {
     (void)_2;
@@ -96,8 +115,8 @@ static int32_t syscall_write(uint32_t fd, uint32_t buf_ptr, uint32_t len,
         kbuf[chunk_len] = '\0';
 
         KLOG_INFO("SYSCALL",
-                  "sycall_write: (buf_start=0x%08x, len=%u) (msg: %s)\n",
-                  (buf_ptr + offset), chunk_len, kbuf, len);
+                  "syscall_write: fd=%u buf=0x%08x len=%u (msg: %s)\n", fd,
+                  (buf_ptr + offset), chunk_len, kbuf);
 
         copy_remaining_len = copy_remaining_len - chunk_len;
         offset += chunk_len;
@@ -152,15 +171,15 @@ static int32_t syscall_open(uint32_t path_ptr, uint32_t flags, uint32_t _3,
     ret = copy_user_string(kpath, (const char *)path_ptr, VFS_PATH_MAX);
     if (ret != VFS_OK) {
         KLOG_ERROR("SYSCALL",
-                   "syscall_open failed. failed tp copy path %s to kernel "
-                   "buffer. status = %s.\n",
+                   "syscall_open failed. failed to copy path from user "
+                   "ptr=0x%08x to kernel buffer. status = %s.\n",
                    path_ptr, vfs_get_status_string(ret));
         return ret;
     }
 
     KLOG_VERBOSE("SYSCALL",
-                 "syscall_open: opened file %s for process %s (pid: %u).\n",
-                 kpath, current_proc->name, current_proc->pid);
+                 "syscall_open: path=%s flags=0x%x for process %s (pid=%u).\n",
+                 kpath, flags, current_proc->name, current_proc->pid);
     return fd_open_path(current_proc, kpath, flags);
 }
 
@@ -254,8 +273,9 @@ static int32_t syscall_read(uint32_t _fd, uint32_t _user_buf, uint32_t _len,
         total_read_len += (uint32_t)ret;
     }
 
-    KLOG_VERBOSE("SYSCALL", "syscall_read: completed. read length = %u.\n",
-                 total_read_len);
+    KLOG_VERBOSE("SYSCALL",
+                 "syscall_read: completed. fd=%d requested=%u read=%u\n", fd,
+                 len_to_read, total_read_len);
     return total_read_len;
 }
 
@@ -284,8 +304,29 @@ void syscall_interrupt_handler(uint32_t idt_index, regs_t *regs) {
     uint32_t arg5 = regs->edi;
     uint32_t arg6 = regs->ebp;
 
-    KLOG_VERBOSE("SYSCALL", "Syscall interrupt fired! Number=0x%08lx\n",
-                 PRINT_UINT32(num));
+    /* Assign a fresh, unique trace id for this syscall. Stashing the previous
+     * (background) id in the PCB and restoring it on exit means each operation
+     * gets its own sc - distinct even from other syscalls in the same
+     * timeslice - and because the active id is kept in pcb_t.trace_id, it is
+     * restored by yield() if this syscall blocks/yields or is preempted.
+     *
+     * INVARIANT (load-bearing): trace_id_saved is a 1-DEEP save slot and lives
+     * on the PCB (per process). This is correct only because syscalls never
+     * nest/re-enter for the same process, and a process is single-threaded:
+     *   - nested/re-entrant syscalls (kernel-issued int 0x80, signal handlers)
+     *     would clobber the saved id -> make this a small per-PCB stack.
+     *   - multiple threads per process would share these fields -> move
+     *     trace_id/trace_id_saved into a per-thread TCB. */
+    pcb_t *sc_proc = current_proc;
+    if (sc_proc) {
+        sc_proc->trace_id_saved = sc_proc->trace_id;
+        sc_proc->trace_id = log_trace_begin();
+    } else {
+        log_trace_begin();
+    }
+
+    KLOG_VERBOSE("SYSCALL", "Syscall interrupt fired! Number=0x%08lx (%s)\n",
+                 PRINT_UINT32(num), syscall_get_name(num));
 
     // For now, just handle it as a no-op and return
     // The interrupt will return to user mode automatically
@@ -293,11 +334,11 @@ void syscall_interrupt_handler(uint32_t idt_index, regs_t *regs) {
     int32_t retval = ENOSYS;
 
     if (num < NUM_SYSCALLS && syscall_table[num]) {
-        KLOG_VERBOSE("SYSCALL", "Invoking syscall handler at address 0x%08x\n",
-                     syscall_table[num]);
+        KLOG_VERBOSE("SYSCALL", "Invoking syscall handler for %s at address 0x%08x\n",
+                     syscall_get_name(num), syscall_table[num]);
         retval = syscall_table[num](arg1, arg2, arg3, arg4, arg5, arg6);
     } else {
-        KLOG_VERBOSE("SYSCALL", "No syscall handler for Number=0x%08x\n", num);
+        KLOG_VERBOSE("SYSCALL", "No syscall handler for Number=0x%08x (%s)\n", num, syscall_get_name(num));
     }
 
     KLOG_VERBOSE("SYSCALL", "Syscall handler returned value = 0x%08x\n",
@@ -305,6 +346,13 @@ void syscall_interrupt_handler(uint32_t idt_index, regs_t *regs) {
 
     /* Kernel syscall handler on return value is stored in eax register */
     regs->eax = retval;
+
+    /* Restore the process background trace id. Skipped implicitly for syscalls
+     * that never return here (e.g. SYS_EXIT switches away permanently). */
+    if (sc_proc && current_proc == sc_proc) {
+        sc_proc->trace_id = sc_proc->trace_id_saved;
+        log_trace_set(sc_proc->trace_id);
+    }
 }
 
 /* usr_ptr_validate - check if the pointer points to address in user space

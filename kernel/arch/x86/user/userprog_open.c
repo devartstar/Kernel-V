@@ -61,22 +61,22 @@ static __attribute__((noreturn)) void uexit(int32_t code) {
 /* Placed first in the binary (see user.ld) so the kernel entry at 0x00400000
  * lands on _start. */
 __attribute__((section(".text.start"), used, noreturn)) void _start(void) {
-    uwrite("open-test: starting\n");
+    uwrite("open-test: starting");
 
     /* Check 1: opening an existing file yields a valid descriptor (>= 3). */
     int32_t fd = do_syscall(SYS_OPEN, (uint32_t) "/hello.txt", 0, 0);
     if (fd < FIRST_NORMAL_FD) {
-        uwrite("open-test: FAIL open existing file\n");
+        uwrite("open-test: FAIL open existing file");
         uexit(1);
     }
 
     /* Check 2: opening a missing file is rejected with a negative error. */
     int32_t missing = do_syscall(SYS_OPEN, (uint32_t) "/no_such_file.txt", 0, 0);
     if (missing >= 0) {
-        uwrite("open-test: FAIL open missing file\n");
+        uwrite("open-test: FAIL open missing file");
         uexit(2);
     }
 
-    uwrite("open-test: all checks passed\n");
+    uwrite("open-test: all checks passed");
     uexit(0);
 }

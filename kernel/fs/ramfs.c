@@ -75,9 +75,8 @@ int ramfs_read(vfs_node_t *node, uint32_t offset, void *buf, uint32_t len) {
     /* copy the bytes to the buffer */
     ramfs_memcpy((uint8_t *)buf, file->data + offset, to_copy);
 
-    KLOG_INFO("RAMFS",
-              "[%s] read_completed: read %s from offset %u of the file.\n",
-              node->name, buf, offset);
+    KLOG_INFO("RAMFS", "[%s] read_completed: bytes=%u off=%u size=%u.\n",
+              node->name, to_copy, offset, file->size);
 
     return (int)to_copy;
 }
@@ -132,7 +131,7 @@ int ramfs_write(vfs_node_t *node, uint32_t offset, const void *buf,
         KLOG_ERROR(
             "RAMFS",
             "[%s] write_failed: write offset = %u + length %u, overflows.\n",
-            node->name, len);
+            node->name, offset, len);
         return VFS_ERR_INVALID;
     }
 
@@ -157,9 +156,8 @@ int ramfs_write(vfs_node_t *node, uint32_t offset, const void *buf,
         node->size = end_offset;
     }
 
-    KLOG_INFO("RAMFS",
-              "[%s] write_completed: wrote %s at offset %u to the file.\n",
-              node->name, buf, offset);
+    KLOG_INFO("RAMFS", "[%s] write_completed: bytes=%u off=%u size=%u.\n",
+              node->name, len, offset, file->size);
 
     return (int)len;
 }

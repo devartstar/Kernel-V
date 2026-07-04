@@ -10,6 +10,48 @@
 
 extern volatile uint32_t tick_count;
 
+/* Correlation id of the in-flight operation (0 = no active operation).
+ *
+ * INVARIANT (load-bearing): this is a SINGLE machine-wide "active id", which
+ * is correct only while at most one operation is in flight at a time - i.e.
+ * one CPU. On SMP this must become per-CPU (read via the current CPU in
+ * printk_structured), otherwise concurrent cores stomp each other's id. */
+volatile uint32_t log_trace_id = 0;
+
+/* Monotonic sequence used to hand out fresh correlation ids.
+ *
+ * INVARIANT (load-bearing): ++log_trace_seq is NOT atomic. Safe only without
+ * concurrent minting (single CPU). On SMP two cores could observe the same
+ * value and hand out a duplicate sc - switch to an atomic increment. */
+static volatile uint32_t log_trace_seq = 0;
+
+uint32_t log_trace_begin(void) {
+    /* Never hand out 0: it is reserved for "no active operation". */
+    if (++log_trace_seq == 0) {
+        log_trace_seq = 1;
+    }
+    log_trace_id = log_trace_seq;
+    return log_trace_id;
+}
+
+uint32_t log_trace_next(void) {
+    /* Mint a fresh id WITHOUT changing the active id (log_trace_id). Used to
+     * pre-assign a background id to a process without disturbing the caller's
+     * current trace context. Never hands out 0. */
+    if (++log_trace_seq == 0) {
+        log_trace_seq = 1;
+    }
+    return log_trace_seq;
+}
+
+void log_trace_set(uint32_t id) {
+    log_trace_id = id;
+}
+
+void log_trace_end(void) {
+    log_trace_id = 0;
+}
+
 /* Circular log buffer for storing kernel messages */
 static char log_buffer[LOG_BUF_SIZE];
 
@@ -72,6 +114,10 @@ void printk_init(void) {
     register_log_backend(vga_backend);
     register_log_backend(ringbuf_backend);
     register_log_backend(serial_backend);
+
+    /* Seed a trace id so early boot logs (before scheduling starts) are
+     * grouped under a non-zero sc. */
+    log_trace_begin();
 }
 
 /**
@@ -166,8 +212,9 @@ int printk_structured(const char *level, const char *tag, const char *file,
 
     /* Structuring the log prefix */
     int prefix_len = my_snprintf(
-        logbuf, sizeof(logbuf), "[%s][%lu][pid=%d:%s][cpu=%d][%s:%s:%d][%s] ",
-        level_name, tick, pid, pname, cpu, file, func, line, tag);
+        logbuf, sizeof(logbuf),
+        "[%s][%lu][pid=%d:%s][sc=%lu][cpu=%d][%s:%s:%d][%s] ", level_name, tick,
+        pid, pname, (unsigned long)log_trace_id, cpu, file, func, line, tag);
 
     /* Structuring the user log message */
     va_list ap;

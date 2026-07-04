@@ -105,6 +105,11 @@ pcb_t *proc_alloc(const char *name) {
     new_proc->exit_code = 0;
     new_proc->has_exited = 0;
 
+    /* Background trace id for this process's non-syscall execution. Minted
+     * without disturbing the caller's active sc. */
+    new_proc->trace_id = log_trace_next();
+    new_proc->trace_id_saved = new_proc->trace_id;
+
     new_proc->kernel_stack_base = NULL;
     new_proc->kernel_stack_top = NULL;
     new_proc->kernel_stack_size = 0;
@@ -652,6 +657,19 @@ void yield(void) {
         /* Mark the selected Process as Running */
         proc_next->state = PROC_RUNNING;
         current_proc = proc_next;
+
+        /* Restore the incoming process's trace id so its sc survives across
+         * this context switch. If proc_next was preempted/yielded mid-syscall
+         * this is the syscall's unique id; otherwise it is the background id.
+         *
+         * Placed HERE - under cli, immediately after current_proc is updated -
+         * so current_proc and log_trace_id flip together atomically. If set
+         * before cli, a timer interrupt in that window would log under
+         * proc_next's sc while current_proc is still proc_now (pid/sc mismatch,
+         * i.e. two processes appearing to share one sc). The pre-cli
+         * announcement logs above still ran as proc_now, so they correctly
+         * carry proc_now's own sc. */
+        log_trace_set(proc_next->trace_id);
 
         /** [START] Todo: move before switch_to */
         /* [todo] We have 1 TSS, its a good practice to have 1 per CPU */

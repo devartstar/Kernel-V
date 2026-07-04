@@ -81,6 +81,14 @@ typedef struct pcb {
     uint32_t sleep_ticks;
     uint32_t timeslice_ticks;
 
+    /* Log correlation (sc=) tracing.
+     * trace_id: id this process is currently running under (restored by
+     *           yield() on context switch so it survives yields/preemption).
+     * trace_id_saved: background id stashed while a syscall runs under a fresh
+     *           per-operation id. */
+    uint32_t trace_id;
+    uint32_t trace_id_saved;
+
     /* User Space */
     uint32_t user_entry;
     uint32_t user_stack_top;

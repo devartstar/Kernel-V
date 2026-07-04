@@ -69,6 +69,47 @@ int printk(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 #define KLOG_VERBOSE(tag, fmt, ...) KLOG(KERN_VERBOSE, tag, fmt, ##__VA_ARGS__);
 
 /**
+ * log_trace_id - Correlation id of the current execution activation.
+ *
+ * Included in every log prefix as "sc=<id>". The id travels with the running
+ * process: each process carries its current id in its PCB (pcb_t.trace_id) and
+ * yield() restores it on context switch, so an id survives across yields and
+ * preemption. A syscall mints a fresh, unique id on entry and restores the
+ * process background id on exit, so each operation (SYSCALL -> FD -> VFS ->
+ * RAMFS) is isolated - even two syscalls in the same timeslice differ. Trace a
+ * single operation across the user<->kernel boundary with `grep 'sc=<id>'`.
+ */
+extern volatile uint32_t log_trace_id;
+
+/**
+ * log_trace_begin - Assign a fresh correlation id and make it active.
+ * @returns the newly assigned (and now active) trace id.
+ */
+uint32_t log_trace_begin(void);
+
+/**
+ * log_trace_next - Mint a fresh correlation id WITHOUT changing the active id.
+ *
+ * Use to pre-assign an id (e.g. a per-process background id) without
+ * disturbing the caller's current trace context.
+ * @returns the newly minted trace id.
+ */
+uint32_t log_trace_next(void);
+
+/**
+ * log_trace_set - Force the active correlation id to a specific value.
+ * @id - trace id to make active (e.g. to restore a saved id).
+ * @returns void.
+ */
+void log_trace_set(uint32_t id);
+
+/**
+ * log_trace_end - Clear the current correlation scope (resets id to 0).
+ * @returns void.
+ */
+void log_trace_end(void);
+
+/**
  * printk_init - Initialize printk subsystem.
  * @returns void.
  */

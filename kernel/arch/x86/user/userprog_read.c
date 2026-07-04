@@ -73,12 +73,12 @@ static __attribute__((noreturn)) void uexit(int32_t code) {
 /* Placed first in the binary (see user.ld) so the kernel entry at 0x00400000
  * lands on _start. */
 __attribute__((section(".text.start"), used, noreturn)) void _start(void) {
-    uwrite_stdout("read-test: starting\n");
+    uwrite_stdout("read-test: starting");
 
     /* Step 1: opening an existing file yields a valid descriptor (>= 3). */
     int32_t fd = do_syscall(SYS_OPEN, (uint32_t) "/hello.txt", 0, 0);
     if (fd < FIRST_NORMAL_FD) {
-        uwrite_stdout("read-test: FAIL open existing file\n");
+        uwrite_stdout("read-test: FAIL open existing file");
         uexit(1);
     }
 
@@ -86,23 +86,23 @@ __attribute__((section(".text.start"), used, noreturn)) void _start(void) {
     char buf[16];
     int32_t read_len = uread_file(fd, buf, 5);
     if (read_len < 0) {
-        uwrite_stdout("read-test: FAIL reading file contents.\n");
+        uwrite_stdout("read-test: FAIL reading file contents.");
         uexit(2);
     }
 
     /* Step 3: verify the length of the read contents */
     if (read_len != 5) {
-        uwrite_stdout("read-test: FAIL, read length mismatch.\n");
+        uwrite_stdout("read-test: FAIL, read length mismatch.");
         uexit(3);
     }
 
     /* Step 4: check negative case when buffer is invalid */
     read_len = uread_file(fd, NULL, 5);
     if (read_len >= 0) {
-        uwrite_stdout("read-test: FAIL, returnd success, expected error.\n");
+        uwrite_stdout("read-test: FAIL, returnd success, expected error.");
         uexit(4);
     }
 
-    uwrite_stdout("read-test: all checks passed\n");
+    uwrite_stdout("read-test: all checks passed");
     uexit(0);
 }
