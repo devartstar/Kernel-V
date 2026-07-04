@@ -136,7 +136,7 @@ int fd_close_all(pcb_t *proc) {
 int fd_open_path(pcb_t *proc, const char *path, uint32_t flags) {
     vfs_node_t *node;
     vfs_file_t *file;
-    uint32_t fd;
+    int32_t fd;
     int ret;
 
     /* validate the input arguments */
@@ -199,7 +199,7 @@ int fd_open_path(pcb_t *proc, const char *path, uint32_t flags) {
         return fd;
     }
 
-    KLOG_INFO("FD", "successfully opened file %s for process %s.\n", path,
+    KLOG_INFO("FD", "successfully opened file %s (fd %d) for process %s.\n", path, fd,
               proc->name);
     return fd;
 }

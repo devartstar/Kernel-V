@@ -11,7 +11,9 @@ enum {
     SYS_WRITE = 2,
     SYS_GETPID = 3,
     SYS_SCHED_YIELD = 4,
+
     SYS_OPEN = 5,
+    SYS_READ = 6,
     /* Add more syscall entries as needed */
 };
 

@@ -44,6 +44,13 @@ ifeq ($(CONFIG_TESTS_INTEGRATION), y)
     USERPROG_OPEN_ELF := $(BUILD_KERN)/userprog_open.elf
     USERPROG_OPEN_BIN := $(BUILD_KERN)/userprog_open.bin
     USERPROG_OPEN_OBJ := $(BUILD_KERN)/userprog_open.o
+
+    USERPROG_READ_SRC := $(KERN_ARCH_DIR)/user/userprog_read.c
+    USERPROG_READ_CMPL := $(BUILD_KERN)/userprog_read.user.o
+    USERPROG_READ_ELF := $(BUILD_KERN)/userprog_read.elf
+    USERPROG_READ_BIN := $(BUILD_KERN)/userprog_read.bin
+    USERPROG_READ_OBJ := $(BUILD_KERN)/userprog_read.o
+
 endif
 
 # --- Test Sources (conditional) ---
@@ -51,7 +58,7 @@ ifeq ($(CONFIG_BUILD_TEST), y)
     TEST_C_SOURCES := $(shell find $(TESTDIR) -name "*.c")
     TEST_C_OBJECTS := $(patsubst $(KERNDIR)/%.c,$(BUILD_KERN)/%.o,$(TEST_C_SOURCES))
     ifeq ($(CONFIG_TESTS_INTEGRATION), y)
-        KERNEL_OBJECTS := $(KERNEL_ENTRY_OBJ) $(KERNEL_C_OBJECTS) $(KERNEL_ASM_OBJECTS) $(TEST_C_OBJECTS) $(USERPROG_OBJ_MAIN) $(USERPROG_A_OBJ) $(USERPROG_B_OBJ) $(USERPROG_SYSCALL_OBJ) $(USERPROG_OPEN_OBJ)
+        KERNEL_OBJECTS := $(KERNEL_ENTRY_OBJ) $(KERNEL_C_OBJECTS) $(KERNEL_ASM_OBJECTS) $(TEST_C_OBJECTS) $(USERPROG_OBJ_MAIN) $(USERPROG_A_OBJ) $(USERPROG_B_OBJ) $(USERPROG_SYSCALL_OBJ) $(USERPROG_OPEN_OBJ) $(USERPROG_READ_OBJ)
     else
         KERNEL_OBJECTS := $(KERNEL_ENTRY_OBJ) $(KERNEL_C_OBJECTS) $(KERNEL_ASM_OBJECTS) $(TEST_C_OBJECTS)
     endif
@@ -168,6 +175,27 @@ $(USERPROG_OPEN_OBJ): $(USERPROG_OPEN_BIN) | $(BUILD_KERN)
 		--redefine-sym _binary_userprog_open_bin_start=_binary_userprog_open_start \
 		--redefine-sym _binary_userprog_open_bin_end=_binary_userprog_open_end \
 		userprog_open.bin userprog_open.o)
+
+$(USERPROG_READ_CMPL): $(USERPROG_READ_SRC) | $(BUILD_KERN)
+	$(ECHO) "  CC-USER $@"
+	$(Q)$(CC) $(USER_CFLAGS) -c $< -o $@
+
+$(USERPROG_READ_ELF): $(USERPROG_READ_CMPL) $(USER_LD) | $(BUILD_KERN)
+	$(ECHO) "  LD-USER $@"
+	$(Q)$(LD) $(LDFLAGS) -T $(USER_LD) -o $@ $(USERPROG_READ_CMPL)
+
+$(USERPROG_READ_BIN): $(USERPROG_READ_ELF) | $(BUILD_KERN)
+	$(ECHO) "  BIN-USER $@"
+	$(Q)$(OBJCOPY) -O binary $< $@
+
+$(USERPROG_READ_OBJ): $(USERPROG_READ_BIN) | $(BUILD_KERN)
+	$(ECHO) "  OBJCOPY $@"
+	$(Q)(cd $(BUILD_KERN) && \
+	$(OBJCOPY) -I binary -O elf32-i386 -B i386 \
+		--rename-section .data=.rodata,contents,alloc,load,readonly,data \
+		--redefine-sym _binary_userprog_read_bin_start=_binary_userprog_read_start \
+		--redefine-sym _binary_userprog_read_bin_end=_binary_userprog_read_end \
+		userprog_read.bin userprog_read.o)
 endif
 
 # --- Kernel Linking ---

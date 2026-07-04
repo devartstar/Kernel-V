@@ -25,6 +25,9 @@ extern uint8_t _binary_userprog_syscall_end[];
 extern uint8_t _binary_userprog_open_start[];
 extern uint8_t _binary_userprog_open_end[];
 
+extern uint8_t _binary_userprog_read_start[];
+extern uint8_t _binary_userprog_read_end[];
+
 /* Fixture file the SYS_OPEN test program expects to open successfully. */
 #define OPEN_TEST_FIXTURE_PATH "/hello.txt"
 
@@ -71,8 +74,7 @@ void test_usermode_process(void) {
     KLOG_VERBOSE("TEST", "RUNNING usermode process / syscall tests\n");
 
     if (!ensure_open_test_fixture()) {
-        KLOG_ERROR("TEST",
-                   "skipping SYS_OPEN case: VFS fixture unavailable\n");
+        KLOG_ERROR("TEST", "skipping SYS_OPEN case: VFS fixture unavailable\n");
     }
 
     const syscall_itest_case_t cases[] = {
@@ -100,6 +102,13 @@ void test_usermode_process(void) {
             .blob_end = _binary_userprog_open_end,
             .expected_exit_code = 0,
         },
+        {
+            .name = "syscall_read",
+            .blob_start = _binary_userprog_read_start,
+            .blob_end = _binary_userprog_read_end,
+            .expected_exit_code = 0,
+        }
+
     };
 
     uint32_t failed =

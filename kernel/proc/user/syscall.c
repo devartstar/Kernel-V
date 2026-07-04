@@ -13,6 +13,8 @@
 static uint8_t usr_ptr_validate(uint32_t ptr);
 static uint8_t usr_range_is_valid(uint32_t ptr, uint32_t len);
 static int copy_user_string(char *kdst, const char *usrc, uint32_t max_len);
+static int copy_from_user(void *kdst, const void *usrc, uint32_t len);
+static int copy_to_user(void *udst, const void *ksrc, uint32_t len);
 
 syscall_handler_t syscall_table[NUM_SYSCALLS] = {0};
 
@@ -162,6 +164,101 @@ static int32_t syscall_open(uint32_t path_ptr, uint32_t flags, uint32_t _3,
     return fd_open_path(current_proc, kpath, flags);
 }
 
+static int32_t syscall_read(uint32_t _fd, uint32_t _user_buf, uint32_t _len,
+                            uint32_t _4, uint32_t _5, uint32_t _6) {
+    (void)_4;
+    (void)_5;
+    (void)_6;
+
+    int fd = (int)_fd;
+    uint32_t ubuf = (void *)_user_buf;
+    uint32_t len_to_read = _len;
+
+    char kbuf[SYSCALL_IO_BUFSZ];
+    int ret;
+    uint32_t chunk_to_read;
+    uint32_t total_read_len = 0;
+
+    /* fd belongs to the current process, hence it should be running */
+    if (!current_proc) {
+        KLOG_ERROR("SYSCALL",
+                   "syscall_read failed for fd %u. invalid reference to "
+                   "current process.\n",
+                   fd);
+        return VFS_ERR_INVALID;
+    }
+
+    /* handle case of nothing to read */
+    if (len_to_read == 0) {
+        return 0;
+    }
+
+    /* validate the user buffer passed as argument
+     * 1. the buffer should be valid
+     * 2. entire buffer should be inside user memory region.
+     */
+    if (!ubuf) {
+        KLOG_ERROR("SYSCALL",
+                   "syscall_read failed for fd %u. invalid user buffer to read "
+                   "into.\n",
+                   fd);
+        return VFS_ERR_INVALID;
+    }
+
+    if (!usr_range_is_valid(ubuf, len_to_read)) {
+        KLOG_ERROR("SYSCALL",
+                   "syscall_read failed for fd = %u. user buffer %p of length "
+                   "%u references memory outside user region.\n",
+                   fd, ubuf, len_to_read);
+        return VFS_ERR_INVALID;
+    }
+
+    /* read in chunks of max buffer into kernel buffer and copy it to user
+     * buffer */
+    while (total_read_len < len_to_read) {
+        /* construct the chunk size based of the size left to read */
+        chunk_to_read = len_to_read - total_read_len;
+        if (chunk_to_read > SYSCALL_IO_BUFSZ) {
+            chunk_to_read = SYSCALL_IO_BUFSZ;
+        }
+
+        /* read chunk size of data from the file referenced by fd */
+        ret = fd_read(current_proc, fd, kbuf, chunk_to_read);
+
+        /* verify for successful read before copying to user buffer
+         * if read of current chunk failed, return the total read upto now as
+         * data is already copied to buffer. */
+        if (ret < 0) {
+            KLOG_WARN("SYSCALL",
+                      "syscall_read: failed to read complete data. total read "
+                      "length = %u, expected read length = %u.\n",
+                      total_read_len, len_to_read);
+            return total_read_len;
+        }
+
+        if (ret == 0) {
+            break;
+        }
+
+        /* copy the chunk of data read into the user buffer */
+        if (copy_to_user(ubuf + total_read_len, kbuf, (uint32_t)ret) !=
+            VFS_OK) {
+            KLOG_WARN("SYSCALL",
+                      "syscall_read: failed to copy data to user buffer. total "
+                      "read length = %u, expected read length = %u.\n",
+                      total_read_len, len_to_read);
+            return total_read_len;
+        }
+
+        /* update the toal read length */
+        total_read_len += (uint32_t)ret;
+    }
+
+    KLOG_VERBOSE("SYSCALL", "syscall_read: completed. read length = %u.\n",
+                 total_read_len);
+    return total_read_len;
+}
+
 void syscall_table_init(void) {
     /* Register default handler (ENOSYS) for all syscalls */
     for (int8_t i = 0; i < NUM_SYSCALLS; i++) {
@@ -173,6 +270,7 @@ void syscall_table_init(void) {
     syscall_table[SYS_GETPID] = syscall_getpid;
     syscall_table[SYS_SCHED_YIELD] = syscall_sched_yield;
     syscall_table[SYS_OPEN] = syscall_open;
+    syscall_table[SYS_READ] = syscall_read;
 }
 
 void syscall_interrupt_handler(uint32_t idt_index, regs_t *regs) {

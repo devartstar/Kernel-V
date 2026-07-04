@@ -1,9 +1,9 @@
 #include "mm/pmm.h"
 #include "core/debug.h"
+#include "core/panik.h"
 #include "lib/printk.h"
 #include "mm/memory_map.h"
 #include "mm/paging.h"
-#include "core/panik.h"
 
 static uint8_t *frame_bitmap = NULL;
 static uint32_t max_frame_idx = 0;
@@ -211,6 +211,7 @@ phys_addr_t pmm_alloc_frames_v1(uint32_t count) {
             break;
         }
 
+        /* Q: Why do we need consecutive emmory? */
         int all_free = 1;
         for (uint32_t idx = start_idx; idx <= end_idx; idx++) {
             if (BITMAP_GET(idx)) {
