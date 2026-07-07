@@ -46,7 +46,8 @@ static int32_t syscall_marshal_probe(uint32_t a1, uint32_t a2, uint32_t a3,
 
 /* Build a register snapshot as the syscall stub would present it:
  *   eax = syscall number
- *   ebx -> arg1, ecx -> arg2, edx -> arg3, esi -> arg4, edi -> arg5, ebp -> arg6
+ *   ebx -> arg1, ecx -> arg2, edx -> arg3, esi -> arg4, edi -> arg5, ebp ->
+ * arg6
  */
 static void make_regs(regs_t *r, uint32_t num, uint32_t a1, uint32_t a2,
                       uint32_t a3, uint32_t a4, uint32_t a5, uint32_t a6) {
@@ -67,7 +68,8 @@ uint8_t syscall_table_init_test(void) {
 
     if (!syscall_table[SYS_EXIT] || !syscall_table[SYS_WRITE] ||
         !syscall_table[SYS_GETPID] || !syscall_table[SYS_SCHED_YIELD] ||
-        !syscall_table[SYS_OPEN]) {
+        !syscall_table[SYS_OPEN] || !syscall_table[SYS_READ] ||
+        !syscall_table[SYS_CLOSE] || !syscall_table[SYS_LSEEK]) {
         KLOG_ERROR("SYSCALL_TEST",
                    "table init test failed. one or more known handlers were "
                    "not registered.\n");

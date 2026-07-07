@@ -42,6 +42,10 @@ static char *syscall_get_name(uint32_t syscall_num) {
         return "SYSCALL_OPEN";
     case SYS_READ:
         return "SYSCALL_READ";
+    case SYS_CLOSE:
+        return "SYSCALL_CLOSE";
+    case SYS_LSEEK:
+        return "SYSCALL_SEEK";
     default:
         return "UNKNOWN_SYSCALL";
     }
@@ -79,50 +83,101 @@ static int32_t syscall_exit(uint32_t code, uint32_t _2, uint32_t _3,
     return code;
 }
 
-static int32_t syscall_write(uint32_t fd, uint32_t buf_ptr, uint32_t len,
+static int32_t syscall_write(uint32_t _fd, uint32_t _user_buf, uint32_t _len,
                              uint32_t _4, uint32_t _5, uint32_t _6) {
     (void)_4;
     (void)_5;
     (void)_6;
 
-    /* Only supports fd = 1 (stdout) */
-    if (fd != 1) {
-        return -1;
+    int32_t fd = (int32_t)_fd;
+    uint32_t len_to_write = _len;
+    uint32_t ubuf = (const void *)_user_buf;
+
+    char kbuf[SYSCALL_IO_BUFSZ + 1];
+    uint32_t total_write_len = 0;
+    uint32_t chunk_to_write = 0;
+    int32_t ret;
+
+    /* current process should be valid as fd refers to the file from current
+     * process */
+    if (!current_proc) {
+        KLOG_ERROR(
+            "SYSCALL",
+            "syscall_write: failed. invalid reference to current process.\n");
+        return VFS_ERR_INVALID;
     }
 
-    if (!usr_range_is_valid(buf_ptr, len)) {
+    /* if nothing to write just return */
+    if (len_to_write == 0) {
+        KLOG_VERBOSE("SYSCALL", "syscall_write: complete. nothing to write.\n");
+        return 0;
+    }
+
+    /* check for valid user buffer and range to be within user memory region*/
+    if (!ubuf) {
+        KLOG_ERROR(
+            "SYSCALL",
+            "syscall_write: failed. invalid reference to user buffer.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    if (!usr_range_is_valid(ubuf, len_to_write)) {
         KLOG_ERROR("SYSCALL",
                    "sycall_write: invalid user buffer=0x%08x, length=%u\n",
-                   buf_ptr, len);
-        return -1;
+                   ubuf, len_to_write);
+        return VFS_ERR_INVALID;
     }
 
-    /* Copy the buffer in kernel side before printing */
-
-    uint32_t copy_remaining_len = len;
-    uint32_t offset = 0;
-
-    while (copy_remaining_len > 0) {
-        uint32_t chunk_len = copy_remaining_len;
-
-        if (chunk_len > KBUF_CHUNK_SIZE - 1) {
-            chunk_len = KBUF_CHUNK_SIZE - 1;
+    /* write in size of chunks until entire buffer has been writen */
+    while (total_write_len < len_to_write) {
+        uint32_t chunk_to_write = len_to_write - total_write_len;
+        if (chunk_to_write > KBUF_CHUNK_SIZE) {
+            chunk_to_write = KBUF_CHUNK_SIZE;
         }
 
-        char kbuf[KBUF_CHUNK_SIZE];
+        /* Copy the buffer in kernel side before writing */
+        ret = copy_from_user(kbuf, (const uint8_t *)ubuf + total_write_len,
+                             chunk_to_write);
+        if (ret != VFS_OK) {
+            KLOG_WARN("SYSCALL",
+                      "syscall_write: partial. total write len = %u, expected "
+                      "write len = %u.\n",
+                      total_write_len, len_to_write);
+            return total_write_len > 0 ? (int32_t)total_write_len : ret;
+        }
 
-        memcpy(kbuf, (const void *)(buf_ptr + offset), chunk_len);
-        kbuf[chunk_len] = '\0';
+        /* fd=1 is reserved for stdout. handle seperately.
+         * fd=1 is not yet backed by /dev/tty or /dev/console
+         */
+        if (fd == 1) {
+            kbuf[chunk_to_write] = '\0';
+            KLOG_INFO("SYSCALL",
+                      "syscall_write: fd=%u, (len/total: %u/%u), (msg: %s).\n", fd,
+                      chunk_to_write, len_to_write, kbuf);
+            ret = (int32_t)chunk_to_write;
+        } else {
+            /* write to a file opned by process */
+            ret = fd_write(current_proc, fd, kbuf, chunk_to_write);
+        }
 
-        KLOG_INFO("SYSCALL",
-                  "syscall_write: fd=%u buf=0x%08x len=%u (msg: %s)\n", fd,
-                  (buf_ptr + offset), chunk_len, kbuf);
+        if (ret < 0) {
+            KLOG_WARN("SYSCALL",
+                      "syscall_write: partial. total write len = %u, expected "
+                      "write len = %u.\n",
+                      total_write_len, len_to_write);
+            return total_write_len > 0 ? (int32_t)total_write_len : ret;
+        }
 
-        copy_remaining_len = copy_remaining_len - chunk_len;
-        offset += chunk_len;
+        if (ret == 0) {
+            break;
+        }
+
+        total_write_len += (uint32_t)ret;
     }
 
-    return (int32_t)len;
+    KLOG_VERBOSE("SYSCALL", "syscall_write: completed. total write len = %u.\n",
+                 total_write_len);
+    return (int32_t)total_write_len;
 }
 
 static int32_t syscall_getpid(uint32_t _1, uint32_t _2, uint32_t _3,
@@ -193,7 +248,7 @@ static int32_t syscall_read(uint32_t _fd, uint32_t _user_buf, uint32_t _len,
     uint32_t ubuf = (void *)_user_buf;
     uint32_t len_to_read = _len;
 
-    char kbuf[SYSCALL_IO_BUFSZ];
+    char kbuf[SYSCALL_IO_BUFSZ + 1];
     int ret;
     uint32_t chunk_to_read;
     uint32_t total_read_len = 0;
@@ -252,7 +307,7 @@ static int32_t syscall_read(uint32_t _fd, uint32_t _user_buf, uint32_t _len,
                       "syscall_read: failed to read complete data. total read "
                       "length = %u, expected read length = %u.\n",
                       total_read_len, len_to_read);
-            return total_read_len;
+            return total_read_len > 0 ? (int32_t)total_read_len : ret;
         }
 
         if (ret == 0) {
@@ -279,6 +334,46 @@ static int32_t syscall_read(uint32_t _fd, uint32_t _user_buf, uint32_t _len,
     return total_read_len;
 }
 
+static int32_t syscall_close(uint32_t _fd, uint32_t _2, uint32_t _3,
+                             uint32_t _4, uint32_t _5, uint32_t _6) {
+    int32_t fd = (int32_t)_fd;
+
+    (void)_2;
+    (void)_3;
+    (void)_4;
+    (void)_5;
+    (void)_6;
+
+    if (!current_proc) {
+        KLOG_ERROR(
+            "SYSCALL",
+            "syscall_close: failed. invalid refernece for current process.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    return fd_close(current_proc, fd);
+}
+
+static int32_t syscall_lseek(uint32_t _fd, uint32_t _offset, uint32_t _whence,
+                             uint32_t _4, uint32_t _5, uint32_t _6) {
+    int32_t fd = (int32_t)_fd;
+    int32_t offset = (int32_t)_offset;
+    int32_t whence = (int32_t)_whence;
+
+    (void)_4;
+    (void)_5;
+    (void)_6;
+
+    if (!current_proc) {
+        KLOG_ERROR(
+            "SYSCALL",
+            "syscall_lseek: failed. invalid reference to current process.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    return fd_lseek(current_proc, fd, offset, whence);
+}
+
 void syscall_table_init(void) {
     /* Register default handler (ENOSYS) for all syscalls */
     for (int8_t i = 0; i < NUM_SYSCALLS; i++) {
@@ -291,6 +386,8 @@ void syscall_table_init(void) {
     syscall_table[SYS_SCHED_YIELD] = syscall_sched_yield;
     syscall_table[SYS_OPEN] = syscall_open;
     syscall_table[SYS_READ] = syscall_read;
+    syscall_table[SYS_CLOSE] = syscall_close;
+    syscall_table[SYS_LSEEK] = syscall_lseek;
 }
 
 void syscall_interrupt_handler(uint32_t idt_index, regs_t *regs) {
@@ -334,11 +431,13 @@ void syscall_interrupt_handler(uint32_t idt_index, regs_t *regs) {
     int32_t retval = ENOSYS;
 
     if (num < NUM_SYSCALLS && syscall_table[num]) {
-        KLOG_VERBOSE("SYSCALL", "Invoking syscall handler for %s at address 0x%08x\n",
+        KLOG_VERBOSE("SYSCALL",
+                     "Invoking syscall handler for %s at address 0x%08x\n",
                      syscall_get_name(num), syscall_table[num]);
         retval = syscall_table[num](arg1, arg2, arg3, arg4, arg5, arg6);
     } else {
-        KLOG_VERBOSE("SYSCALL", "No syscall handler for Number=0x%08x (%s)\n", num, syscall_get_name(num));
+        KLOG_VERBOSE("SYSCALL", "No syscall handler for Number=0x%08x (%s)\n",
+                     num, syscall_get_name(num));
     }
 
     KLOG_VERBOSE("SYSCALL", "Syscall handler returned value = 0x%08x\n",

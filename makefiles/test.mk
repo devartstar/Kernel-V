@@ -31,6 +31,12 @@ USERPROG_READ_ELF 			:= $(BUILD_TEST)/userprog_read.elf
 USERPROG_READ_BIN 			:= $(BUILD_TEST)/userprog_read.bin
 USERPROG_READ_OBJ 			:= $(BUILD_TEST)/userprog_read.o
 
+USERPROG_RWS_SRC 			:= $(KERN_ARCH_DIR)/user/userprog_rws.c
+USERPROG_RWS_CMPL 			:= $(BUILD_TEST)/userprog_rws.user.o
+USERPROG_RWS_ELF 			:= $(BUILD_TEST)/userprog_rws.elf
+USERPROG_RWS_BIN 			:= $(BUILD_TEST)/userprog_rws.bin
+USERPROG_RWS_OBJ 			:= $(BUILD_TEST)/userprog_rws.o
+
 # Test-specific sources
 ifeq ($(CONFIG_TESTS_UNIT), y)
 UNIT_TEST_SOURCES 			:= $(shell find $(TESTDIR)/unit -type f -name "*.c")
@@ -43,7 +49,7 @@ endif
 ifeq ($(CONFIG_TESTS_INTEGRATION), y)
 INTEGRATION_TEST_SOURCES 	:= $(shell find $(TESTDIR)/integration -type f -name "*.c") \
 							   $(shell find $(TESTDIR)/interrupt -type f -name "*.c" 2>/dev/null || true)
-INTEGRATION_TEST_OBJS 		:= $(patsubst $(KERNDIR)/%.c,$(BUILD_TEST)/%.o,$(INTEGRATION_TEST_SOURCES)) $(USERPROG_OBJ) $(USERPROG_A_OBJ) $(USERPROG_B_OBJ) $(USERPROG_SYSCALL_OBJ) $(USERPROG_OPEN_OBJ) $(USERPROG_READ_OBJ)
+INTEGRATION_TEST_OBJS 		:= $(patsubst $(KERNDIR)/%.c,$(BUILD_TEST)/%.o,$(INTEGRATION_TEST_SOURCES)) $(USERPROG_OBJ) $(USERPROG_A_OBJ) $(USERPROG_B_OBJ) $(USERPROG_SYSCALL_OBJ) $(USERPROG_OPEN_OBJ) $(USERPROG_READ_OBJ) $(USERPROG_RWS_OBJ)
 else
 INTEGRATION_TEST_SOURCES 	:=
 INTEGRATION_TEST_OBJS 		:=
@@ -312,6 +318,27 @@ $(USERPROG_READ_OBJ): $(USERPROG_READ_BIN) | $(BUILD_TEST)
 		--redefine-sym _binary_userprog_read_bin_start=_binary_userprog_read_start \
 		--redefine-sym _binary_userprog_read_bin_end=_binary_userprog_read_end \
 		userprog_read.bin userprog_read.o)
+
+$(USERPROG_RWS_CMPL): $(USERPROG_RWS_SRC) | $(BUILD_TEST)
+	$(ECHO) "  CC-USER $@"
+	$(Q)$(CC) $(USER_CFLAGS) -c $< -o $@
+
+$(USERPROG_RWS_ELF): $(USERPROG_RWS_CMPL) $(USER_LD) | $(BUILD_TEST)
+	$(ECHO) "  LD-USER $@"
+	$(Q)$(LD) $(LDFLAGS) -T $(USER_LD) -o $@ $(USERPROG_RWS_CMPL)
+
+$(USERPROG_RWS_BIN): $(USERPROG_RWS_ELF) | $(BUILD_TEST)
+	$(ECHO) "  BIN-USER $@"
+	$(Q)$(OBJCOPY) -O binary $< $@
+
+$(USERPROG_RWS_OBJ): $(USERPROG_RWS_BIN) | $(BUILD_TEST)
+	$(ECHO) "  OBJCOPY $@"
+	$(Q)(cd $(BUILD_TEST) && \
+	$(OBJCOPY) -I binary -O elf32-i386 -B i386 \
+		--rename-section .data=.rodata,contents,alloc,load,readonly,data \
+		--redefine-sym _binary_userprog_rws_bin_start=_binary_userprog_rws_start \
+		--redefine-sym _binary_userprog_rws_bin_end=_binary_userprog_rws_end \
+		userprog_rws.bin userprog_rws.o)
 endif
 
 endif
@@ -321,7 +348,7 @@ endif
 ifeq ($(CONFIG_BUILD_TEST), y)
 
 ifeq ($(CONFIG_TESTS_INTEGRATION), y)
-$(KERNEL_TEST_ELF): $(USERPROG_OBJ) $(USERPROG_A_OBJ) $(USERPROG_B_OBJ) $(USERPROG_SYSCALL_OBJ) $(USERPROG_OPEN_OBJ) $(USERPROG_READ_OBJ) $(KERNEL_CORE_TEST_OBJS) $(ALL_TEST_OBJS) $(KERNEL_LD) | $(BUILD_TEST)
+$(KERNEL_TEST_ELF): $(USERPROG_OBJ) $(USERPROG_A_OBJ) $(USERPROG_B_OBJ) $(USERPROG_SYSCALL_OBJ) $(USERPROG_OPEN_OBJ) $(USERPROG_READ_OBJ) $(USERPROG_RWS_OBJ) $(KERNEL_CORE_TEST_OBJS) $(ALL_TEST_OBJS) $(KERNEL_LD) | $(BUILD_TEST)
 else
 $(KERNEL_TEST_ELF): $(KERNEL_CORE_TEST_OBJS) $(ALL_TEST_OBJS) $(KERNEL_LD) | $(BUILD_TEST)
 endif

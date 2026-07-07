@@ -14,6 +14,8 @@ enum {
 
     SYS_OPEN = 5,
     SYS_READ = 6,
+    SYS_CLOSE = 7,
+    SYS_LSEEK = 8,
     /* Add more syscall entries as needed */
 };
 
@@ -22,7 +24,10 @@ enum {
 typedef int32_t (*syscall_handler_t)(uint32_t, uint32_t, uint32_t, uint32_t,
                                      uint32_t, uint32_t);
 
-#define NUM_SYSCALLS 8
+/* Syscalls are 1-indexed and the table is indexed directly by syscall number,
+ * so the table must have one slot per number including the highest one
+ * (SYS_LSEEK). Keep this as (highest syscall + 1) when adding new syscalls. */
+#define NUM_SYSCALLS (SYS_LSEEK + 1)
 #define ENOSYS -38
 
 /* An array of function pointers - different syscall handlers for different

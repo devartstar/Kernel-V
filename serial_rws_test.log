@@ -1,0 +1,168 @@
+[VERBOSE][116][pid=2:kernel_main][sc=0][cpu=0][proc.c:print_proc_info:854][PROC] [Identity] pid=11 name=syscall_rws type=USER state=NEW
+[VERBOSE][118][pid=2:kernel_main][sc=0][cpu=0][scheduler.c:enqueue_ready:25][SCHEDULER] Enqueue to ready list successful: name=syscall_rws (pid=11, type=USER)
+[VERBOSE][119][pid=2:kernel_main][sc=0][cpu=0][syscall_itest.c:syscall_itest_run_all:100][SYSCALL_ITEST] spawned case 'syscall_rws' as pid=11 (expecting exit code 0).
+[VERBOSE][140][pid=8:user_b][sc=49][cpu=0][proc.c:yield:630][PROCESS_MGMT] New current process: syscall_rws (pid=11, type=USER)
+[VERBOSE][140][pid=11:syscall_rws][sc=19][cpu=0][userproc.c:switch_to_usermode:21][PRIVILEGE] Switching to user mode privilege for test
+[INFO][140][pid=11:syscall_rws][sc=19][cpu=0][handlers.c:isr_common_handler:95][IDT] Interrupt 128 (SYSCALL) fired: (count=36, eip=0x0040002f)
+[VERBOSE][140][pid=11:syscall_rws][sc=50][cpu=0][syscall.c:syscall_interrupt_handler:425][SYSCALL] Syscall interrupt fired! Number=0x00000002 (SYSCALL_WRITE)
+[VERBOSE][140][pid=11:syscall_rws][sc=50][cpu=0][syscall.c:syscall_interrupt_handler:434][SYSCALL] Invoking syscall handler for SYSCALL_WRITE at address 0x0001f040
+[INFO][140][pid=11:syscall_rws][sc=50][cpu=0][syscall.c:copy_from_user:585][SYSCALL] copy to kernel buffer completed. copied content = rws-test: starting, length = 18.
+[INFO][140][pid=11:syscall_rws][sc=50][cpu=0][syscall.c:syscall_write:154][SYSCALL] syscall_write: fd=1, (len/total: 0/18), (msg: rws-test: starting)[VERBOSE][140][pid=11:syscall_rws][sc=50][cpu=0][syscall.c:syscall_write:178][SYSCALL] syscall_write: completed. total write len = 18.
+[VERBOSE][140][pid=11:syscall_rws][sc=50][cpu=0][syscall.c:syscall_interrupt_handler:443][SYSCALL] Syscall handler returned value = 0x00000012
+[INFO][140][pid=11:syscall_rws][sc=19][cpu=0][handlers.c:isr_common_handler:95][IDT] Interrupt 128 (SYSCALL) fired: (count=37, eip=0x0040003f)
+[VERBOSE][140][pid=11:syscall_rws][sc=51][cpu=0][syscall.c:syscall_interrupt_handler:425][SYSCALL] Syscall interrupt fired! Number=0x00000005 (SYSCALL_OPEN)
+[VERBOSE][140][pid=11:syscall_rws][sc=51][cpu=0][syscall.c:syscall_interrupt_handler:434][SYSCALL] Invoking syscall handler for SYSCALL_OPEN at address 0x0001f53a
+[INFO][140][pid=11:syscall_rws][sc=51][cpu=0][syscall.c:copy_user_string:700][SYSCALL] copy string to kernel buffer completed. string = /hello.txt, length = 11.
+[VERBOSE][140][pid=11:syscall_rws][sc=51][cpu=0][syscall.c:syscall_open:235][SYSCALL] syscall_open: path=/hello.txt flags=0x0 for process syscall_rws (pid=11).
+[VERBOSE][140][pid=11:syscall_rws][sc=51][cpu=0][vfs.c:vfs_lookup_absolute:105][VFS] Looking up component hello.txt in the absolute path /hello.txt.
+[INFO][140][pid=11:syscall_rws][sc=51][cpu=0][vfs.c:vfs_lookup_absolute:146][VFS] lookup completed. found vfs node hello.txt (type=FILE) for path /hello.txt.
+[INFO][140][pid=11:syscall_rws][sc=51][cpu=0][fd.c:fd_open_path:208][FD] opened path=/hello.txt fd=3 flags=0x0 for process syscall_rws.
+[VERBOSE][140][pid=11:syscall_rws][sc=51][cpu=0][syscall.c:syscall_interrupt_handler:443][SYSCALL] Syscall handler returned value = 0x00000003
+[INFO][140][pid=11:syscall_rws][sc=19][cpu=0][handlers.c:isr_common_handler:95][IDT] Interrupt 128 (SYSCALL) fired: (count=38, eip=0x0040004d)
+[VERBOSE][140][pid=11:syscall_rws][sc=52][cpu=0][syscall.c:syscall_interrupt_handler:425][SYSCALL] Syscall interrupt fired! Number=0x00000008 (SYSCALL_SEEK)
+[VERBOSE][140][pid=11:syscall_rws][sc=52][cpu=0][syscall.c:syscall_interrupt_handler:434][SYSCALL] Invoking syscall handler for SYSCALL_SEEK at address 0x0001fa35
+[VERBOSE][140][pid=11:syscall_rws][sc=52][cpu=0][syscall.c:syscall_interrupt_handler:443][SYSCALL] Syscall handler returned value = 0x00000000
+[INFO][140][pid=11:syscall_rws][sc=19][cpu=0][handlers.c:isr_common_handler:95][IDT] Interrupt 128 (SYSCALL) fired: (count=39, eip=0x004000bd)
+[VERBOSE][140][pid=11:syscall_rws][sc=53][cpu=0][syscall.c:syscall_interrupt_handler:425][SYSCALL] Syscall interrupt fired! Number=0x00000002 (SYSCALL_WRITE)
+[VERBOSE][140][pid=11:syscall_rws][sc=53][cpu=0][syscall.c:syscall_interrupt_handler:434][SYSCALL] Invoking syscall handler for SYSCALL_WRITE at address 0x0001f040
+[INFO][140][pid=11:syscall_rws][sc=53][cpu=0][syscall.c:copy_from_user:585][SYSCALL] copy to kernel buffer completed. copied content = ABCDEFGHIJstarting, length = 10.
+[INFO][140][pid=11:syscall_rws][sc=53][cpu=0][ramfs.c:ramfs_write:159][RAMFS] [hello.txt] write_completed: bytes=10 off=0 size=23.
+[INFO][140][pid=11:syscall_rws][sc=53][cpu=0][fd.c:fd_write:323][FD] fd write completed. fd=3 len=10 bytes=10 new_off=10 status=SUCCESS.
+[VERBOSE][140][pid=11:syscall_rws][sc=53][cpu=0][syscall.c:syscall_write:178][SYSCALL] syscall_write: completed. total write len = 10.
+[VERBOSE][140][pid=11:syscall_rws][sc=53][cpu=0][syscall.c:syscall_interrupt_handler:443][SYSCALL] Syscall handler returned value = 0x0000000a
+[INFO][140][pid=11:syscall_rws][sc=19][cpu=0][handlers.c:isr_common_handler:95][IDT] Interrupt 128 (SYSCALL) fired: (count=40, eip=0x00400109)
+[VERBOSE][140][pid=11:syscall_rws][sc=54][cpu=0][syscall.c:syscall_interrupt_handler:425][SYSCALL] Syscall interrupt fired! Number=0x00000008 (SYSCALL_SEEK)
+[VERBOSE][140][pid=11:syscall_rws][sc=54][cpu=0][syscall.c:syscall_interrupt_handler:434][SYSCALL] Invoking syscall handler for SYSCALL_SEEK at address 0x0001fa35
+[VERBOSE][140][pid=11:syscall_rws][sc=54][cpu=0][syscall.c:syscall_interrupt_handler:443][SYSCALL] Syscall handler returned value = 0x00000000
+[INFO][140][pid=11:syscall_rws][sc=19][cpu=0][handlers.c:isr_common_handler:95][IDT] Interrupt 128 (SYSCALL) fired: (count=41, eip=0x0040011c)
+[VERBOSE][140][pid=11:syscall_rws][sc=55][cpu=0][syscall.c:syscall_interrupt_handler:425][SYSCALL] Syscall interrupt fired! Number=0x00000006 (SYSCALL_READ)
+[VERBOSE][140][pid=11:syscall_rws][sc=55][cpu=0][syscall.c:syscall_interrupt_handler:434][SYSCALL] Invoking syscall handler for SYSCALL_READ at address 0x0001f66d
+[INFO][140][pid=11:syscall_rws][sc=55][cpu=0][ramfs.c:ramfs_read:78][RAMFS] [hello.txt] read_completed: bytes=10 off=0 size=23.
+[INFO][140][pid=11:syscall_rws][sc=55][cpu=0][fd.c:fd_read:265][FD] fd read completed. fd=3 len=10 bytes=10 new_off=10 status=SUCCESS.
+[INFO][140][pid=11:syscall_rws][sc=55][cpu=0][syscall.c:copy_to_user:643][SYSCALL] copy to user buffer completed. copied content = ABCDEFGHIJ, length = 10.
+[VERBOSE][140][pid=11:syscall_rws][sc=55][cpu=0][syscall.c:syscall_read:331][SYSCALL] syscall_read: completed. fd=3 requested=10 read=10
+[VERBOSE][140][pid=11:syscall_rws][sc=55][cpu=0][syscall.c:syscall_interrupt_handler:443][SYSCALL] Syscall handler returned value = 0x0000000a
+[INFO][140][pid=11:syscall_rws][sc=19][cpu=0][handlers.c:isr_common_handler:95][IDT] Interrupt 128 (SYSCALL) fired: (count=42, eip=0x0040021f)
+[VERBOSE][140][pid=11:syscall_rws][sc=56][cpu=0][syscall.c:syscall_interrupt_handler:425][SYSCALL] Syscall interrupt fired! Number=0x00000008 (SYSCALL_SEEK)
+[VERBOSE][140][pid=11:syscall_rws][sc=56][cpu=0][syscall.c:syscall_interrupt_handler:434][SYSCALL] Invoking syscall handler for SYSCALL_SEEK at address 0x0001fa35
+[VERBOSE][140][pid=11:syscall_rws][sc=56][cpu=0][syscall.c:syscall_interrupt_handler:443][SYSCALL] Syscall handler returned value = 0x00000005
+[INFO][140][pid=11:syscall_rws][sc=19][cpu=0][handlers.c:isr_common_handler:95][IDT] Interrupt 128 (SYSCALL) fired: (count=43, eip=0x00400265)
+[VERBOSE][140][pid=11:syscall_rws][sc=57][cpu=0][syscall.c:syscall_interrupt_handler:425][SYSCALL] Syscall interrupt fired! Number=0x00000006 (SYSCALL_READ)
+[VERBOSE][140][pid=11:syscall_rws][sc=57][cpu=0][syscall.c:syscall_interrupt_handler:434][SYSCALL] Invoking syscall handler for SYSCALL_READ at address 0x0001f66d
+[INFO][140][pid=11:syscall_rws][sc=57][cpu=0][ramfs.c:ramfs_read:78][RAMFS] [hello.txt] read_completed: bytes=1 off=5 size=23.
+[INFO][140][pid=11:syscall_rws][sc=57][cpu=0][fd.c:fd_read:265][FD] fd read completed. fd=3 len=1 bytes=1 new_off=6 status=SUCCESS.
+[INFO][140][pid=11:syscall_rws][sc=57][cpu=0][syscall.c:copy_to_user:643][SYSCALL] copy to user buffer completed. copied content = FBCDEFGHIJ, length = 1.
+[VERBOSE][140][pid=11:syscall_rws][sc=57][cpu=0][syscall.c:syscall_read:331][SYSCALL] syscall_read: completed. fd=3 requested=1 read=1
+[VERBOSE][140][pid=11:syscall_rws][sc=57][cpu=0][syscall.c:syscall_interrupt_handler:443][SYSCALL] Syscall handler returned value = 0x00000001
+[INFO][140][pid=11:syscall_rws][sc=19][cpu=0][handlers.c:isr_common_handler:95][IDT] Interrupt 128 (SYSCALL) fired: (count=44, eip=0x004002ae)
+[VERBOSE][140][pid=11:syscall_rws][sc=58][cpu=0][syscall.c:syscall_interrupt_handler:425][SYSCALL] Syscall interrupt fired! Number=0x00000008 (SYSCALL_SEEK)
+[VERBOSE][140][pid=11:syscall_rws][sc=58][cpu=0][syscall.c:syscall_interrupt_handler:434][SYSCALL] Invoking syscall handler for SYSCALL_SEEK at address 0x0001fa35
+[VERBOSE][140][pid=11:syscall_rws][sc=58][cpu=0][syscall.c:syscall_interrupt_handler:443][SYSCALL] Syscall handler returned value = 0x00000002
+[INFO][140][pid=11:syscall_rws][sc=19][cpu=0][handlers.c:isr_common_handler:95][IDT] Interrupt 128 (SYSCALL) fired: (count=45, eip=0x004002f4)
+[VERBOSE][140][pid=11:syscall_rws][sc=59][cpu=0][syscall.c:syscall_interrupt_handler:425][SYSCALL] Syscall interrupt fired! Number=0x00000006 (SYSCALL_READ)
+[VERBOSE][140][pid=11:syscall_rws][sc=59][cpu=0][syscall.c:syscall_interrupt_handler:434][SYSCALL] Invoking syscall handler for SYSCALL_READ at address 0x0001f66d
+[INFO][140][pid=11:syscall_rws][sc=59][cpu=0][ramfs.c:ramfs_read:78][RAMFS] [hello.txt] read_completed: bytes=3 off=2 size=23.
+[INFO][140][pid=11:syscall_rws][sc=59][cpu=0][fd.c:fd_read:265][FD] fd read completed. fd=3 len=3 bytes=3 new_off=5 status=SUCCESS.
+[INFO][140][pid=11:syscall_rws][sc=59][cpu=0][syscall.c:copy_to_user:643][SYSCALL] copy to user buffer completed. copied content = CDEDEFGHIJ, length = 3.
+[VERBOSE][140][pid=11:syscall_rws][sc=59][cpu=0][syscall.c:syscall_read:331][SYSCALL] syscall_read: completed. fd=3 requested=3 read=3
+[VERBOSE][140][pid=11:syscall_rws][sc=59][cpu=0][syscall.c:syscall_interrupt_handler:443][SYSCALL] Syscall handler returned value = 0x00000003
+[INFO][140][pid=11:syscall_rws][sc=19][cpu=0][handlers.c:isr_common_handler:95][IDT] Interrupt 128 (SYSCALL) fired: (count=46, eip=0x0040035a)
+[VERBOSE][140][pid=11:syscall_rws][sc=60][cpu=0][syscall.c:syscall_interrupt_handler:425][SYSCALL] Syscall interrupt fired! Number=0x00000008 (SYSCALL_SEEK)
+[VERBOSE][140][pid=11:syscall_rws][sc=60][cpu=0][syscall.c:syscall_interrupt_handler:434][SYSCALL] Invoking syscall handler for SYSCALL_SEEK at address 0x0001fa35
+[VERBOSE][140][pid=11:syscall_rws][sc=60][cpu=0][syscall.c:syscall_interrupt_handler:443][SYSCALL] Syscall handler returned value = 0x00000017
+[INFO][140][pid=11:syscall_rws][sc=19][cpu=0][handlers.c:isr_common_handler:95][IDT] Interrupt 128 (SYSCALL) fired: (count=47, eip=0x00400377)
+[VERBOSE][140][pid=11:syscall_rws][sc=61][cpu=0][syscall.c:syscall_interrupt_handler:425][SYSCALL] Syscall interrupt fired! Number=0x00000006 (SYSCALL_READ)
+[VERBOSE][140][pid=11:syscall_rws][sc=61][cpu=0][syscall.c:syscall_interrupt_handler:434][SYSCALL] Invoking syscall handler for SYSCALL_READ at address 0x0001f66d
+[ERROR][140][pid=11:syscall_rws][sc=61][cpu=0][ramfs.c:ramfs_read:53][RAMFS] [hello.txt] read failed. offset to read 23 exceeds file size 23.
+[INFO][140][pid=11:syscall_rws][sc=61][cpu=0][fd.c:fd_read:265][FD] fd read completed. fd=3 len=4 bytes=0 new_off=23 status=OK.
+[VERBOSE][140][pid=11:syscall_rws][sc=61][cpu=0][syscall.c:syscall_read:331][SYSCALL] syscall_read: completed. fd=3 requested=4 read=0
+[VERBOSE][140][pid=11:syscall_rws][sc=61][cpu=0][syscall.c:syscall_interrupt_handler:443][SYSCALL] Syscall handler returned value = 0x00000000
+[INFO][140][pid=11:syscall_rws][sc=19][cpu=0][handlers.c:isr_common_handler:95][IDT] Interrupt 128 (SYSCALL) fired: (count=48, eip=0x004003bf)
+[VERBOSE][140][pid=11:syscall_rws][sc=62][cpu=0][syscall.c:syscall_interrupt_handler:425][SYSCALL] Syscall interrupt fired! Number=0x00000008 (SYSCALL_SEEK)
+[VERBOSE][140][pid=11:syscall_rws][sc=62][cpu=0][syscall.c:syscall_interrupt_handler:434][SYSCALL] Invoking syscall handler for SYSCALL_SEEK at address 0x0001fa35
+[VERBOSE][140][pid=11:syscall_rws][sc=62][cpu=0][syscall.c:syscall_interrupt_handler:443][SYSCALL] Syscall handler returned value = 0x00000016
+[INFO][140][pid=11:syscall_rws][sc=19][cpu=0][handlers.c:isr_common_handler:95][IDT] Interrupt 128 (SYSCALL) fired: (count=49, eip=0x0040040a)
+[VERBOSE][140][pid=11:syscall_rws][sc=63][cpu=0][syscall.c:syscall_interrupt_handler:425][SYSCALL] Syscall interrupt fired! Number=0x00000006 (SYSCALL_READ)
+[VERBOSE][140][pid=11:syscall_rws][sc=63][cpu=0][syscall.c:syscall_interrupt_handler:434][SYSCALL] Invoking syscall handler for SYSCALL_READ at address 0x0001f66d
+[INFO][140][pid=11:syscall_rws][sc=63][cpu=0][ramfs.c:ramfs_read:78][RAMFS] [hello.txt] read_completed: bytes=1 off=22 size=23.
+[INFO][140][pid=11:syscall_rws][sc=63][cpu=0][fd.c:fd_read:265][FD] fd read completed. fd=3 len=1 bytes=1 new_off=23 status=SUCCESS.
+[INFO][140][pid=11:syscall_rws][sc=63][cpu=0][syscall.c:copy_to_user:643][SYSCALL] copy to user buffer completed. copied content = .DEDEFGHIJ, length = 1.
+[VERBOSE][140][pid=11:syscall_rws][sc=63][cpu=0][syscall.c:syscall_read:331][SYSCALL] syscall_read: completed. fd=3 requested=1 read=1
+[VERBOSE][140][pid=11:syscall_rws][sc=63][cpu=0][syscall.c:syscall_interrupt_handler:443][SYSCALL] Syscall handler returned value = 0x00000001
+[INFO][140][pid=11:syscall_rws][sc=19][cpu=0][handlers.c:isr_common_handler:95][IDT] Interrupt 128 (SYSCALL) fired: (count=50, eip=0x00400456)
+[VERBOSE][140][pid=11:syscall_rws][sc=64][cpu=0][syscall.c:syscall_interrupt_handler:425][SYSCALL] Syscall interrupt fired! Number=0x00000008 (SYSCALL_SEEK)
+[VERBOSE][140][pid=11:syscall_rws][sc=64][cpu=0][syscall.c:syscall_interrupt_handler:434][SYSCALL] Invoking syscall handler for SYSCALL_SEEK at address 0x0001fa35
+[ERROR][140][pid=11:syscall_rws][sc=64][cpu=0][fd.c:fd_lseek:385][FD] fd seek failed. offset is invalid after update. base offset = 0, offset to update = -1000, new offset = -1000.
+[VERBOSE][140][pid=11:syscall_rws][sc=64][cpu=0][syscall.c:syscall_interrupt_handler:443][SYSCALL] Syscall handler returned value = 0xffffffff
+[INFO][140][pid=11:syscall_rws][sc=19][cpu=0][handlers.c:isr_common_handler:95][IDT] Interrupt 128 (SYSCALL) fired: (count=51, eip=0x00400498)
+[VERBOSE][140][pid=11:syscall_rws][sc=65][cpu=0][syscall.c:syscall_interrupt_handler:425][SYSCALL] Syscall interrupt fired! Number=0x00000008 (SYSCALL_SEEK)
+[VERBOSE][140][pid=11:syscall_rws][sc=65][cpu=0][syscall.c:syscall_interrupt_handler:434][SYSCALL] Invoking syscall handler for SYSCALL_SEEK at address 0x0001fa35
+[VERBOSE][140][pid=11:syscall_rws][sc=65][cpu=0][syscall.c:syscall_interrupt_handler:443][SYSCALL] Syscall handler returned value = 0x00000000
+[INFO][140][pid=11:syscall_rws][sc=19][cpu=0][handlers.c:isr_common_handler:95][IDT] Interrupt 128 (SYSCALL) fired: (count=52, eip=0x004004ba)
+[VERBOSE][140][pid=11:syscall_rws][sc=66][cpu=0][syscall.c:syscall_interrupt_handler:425][SYSCALL] Syscall interrupt fired! Number=0x00000008 (SYSCALL_SEEK)
+[VERBOSE][140][pid=11:syscall_rws][sc=66][cpu=0][syscall.c:syscall_interrupt_handler:434][SYSCALL] Invoking syscall handler for SYSCALL_SEEK at address 0x0001fa35
+[ERROR][140][pid=11:syscall_rws][sc=66][cpu=0][fd.c:fd_lseek:385][FD] fd seek failed. offset is invalid after update. base offset = 0, offset to update = -1, new offset = -1.
+[VERBOSE][140][pid=11:syscall_rws][sc=66][cpu=0][syscall.c:syscall_interrupt_handler:443][SYSCALL] Syscall handler returned value = 0xffffffff
+[INFO][140][pid=11:syscall_rws][sc=19][cpu=0][handlers.c:isr_common_handler:95][IDT] Interrupt 128 (SYSCALL) fired: (count=53, eip=0x00400534)
+[VERBOSE][140][pid=11:syscall_rws][sc=67][cpu=0][syscall.c:syscall_interrupt_handler:425][SYSCALL] Syscall interrupt fired! Number=0x00000008 (SYSCALL_SEEK)
+[VERBOSE][140][pid=11:syscall_rws][sc=67][cpu=0][syscall.c:syscall_interrupt_handler:434][SYSCALL] Invoking syscall handler for SYSCALL_SEEK at address 0x0001fa35
+[ERROR][140][pid=11:syscall_rws][sc=67][cpu=0][fd.c:fd_lseek:373][FD] fd seek failed. invalid seek type 99 to set base offset for update.
+[VERBOSE][140][pid=11:syscall_rws][sc=67][cpu=0][syscall.c:syscall_interrupt_handler:443][SYSCALL] Syscall handler returned value = 0xffffffff
+[INFO][140][pid=11:syscall_rws][sc=19][cpu=0][handlers.c:isr_common_handler:95][IDT] Interrupt 128 (SYSCALL) fired: (count=54, eip=0x00400576)
+[VERBOSE][140][pid=11:syscall_rws][sc=68][cpu=0][syscall.c:syscall_interrupt_handler:425][SYSCALL] Syscall interrupt fired! Number=0x00000002 (SYSCALL_WRITE)
+[VERBOSE][140][pid=11:syscall_rws][sc=68][cpu=0][syscall.c:syscall_interrupt_handler:434][SYSCALL] Invoking syscall handler for SYSCALL_WRITE at address 0x0001f040
+[ERROR][140][pid=11:syscall_rws][sc=68][cpu=0][syscall.c:syscall_write:118][SYSCALL] syscall_write: failed. invalid reference to user buffer.
+[VERBOSE][140][pid=11:syscall_rws][sc=68][cpu=0][syscall.c:syscall_interrupt_handler:443][SYSCALL] Syscall handler returned value = 0xffffffff
+[INFO][140][pid=11:syscall_rws][sc=19][cpu=0][handlers.c:isr_common_handler:95][IDT] Interrupt 128 (SYSCALL) fired: (count=55, eip=0x004005b8)
+[VERBOSE][140][pid=11:syscall_rws][sc=69][cpu=0][syscall.c:syscall_interrupt_handler:425][SYSCALL] Syscall interrupt fired! Number=0x00000006 (SYSCALL_READ)
+[VERBOSE][140][pid=11:syscall_rws][sc=69][cpu=0][syscall.c:syscall_interrupt_handler:434][SYSCALL] Invoking syscall handler for SYSCALL_READ at address 0x0001f66d
+[ERROR][140][pid=11:syscall_rws][sc=69][cpu=0][syscall.c:syscall_read:275][SYSCALL] syscall_read failed for fd 3. invalid user buffer to read into.
+[VERBOSE][140][pid=11:syscall_rws][sc=69][cpu=0][syscall.c:syscall_interrupt_handler:443][SYSCALL] Syscall handler returned value = 0xffffffff
+[INFO][140][pid=11:syscall_rws][sc=19][cpu=0][handlers.c:isr_common_handler:95][IDT] Interrupt 128 (SYSCALL) fired: (count=56, eip=0x00400608)
+[VERBOSE][140][pid=11:syscall_rws][sc=70][cpu=0][syscall.c:syscall_interrupt_handler:425][SYSCALL] Syscall interrupt fired! Number=0x00000008 (SYSCALL_SEEK)
+[VERBOSE][140][pid=11:syscall_rws][sc=70][cpu=0][syscall.c:syscall_interrupt_handler:434][SYSCALL] Invoking syscall handler for SYSCALL_SEEK at address 0x0001fa35
+[VERBOSE][140][pid=11:syscall_rws][sc=70][cpu=0][syscall.c:syscall_interrupt_handler:443][SYSCALL] Syscall handler returned value = 0x00000000
+[INFO][140][pid=11:syscall_rws][sc=19][cpu=0][handlers.c:isr_common_handler:95][IDT] Interrupt 128 (SYSCALL) fired: (count=57, eip=0x00400628)
+[VERBOSE][140][pid=11:syscall_rws][sc=71][cpu=0][syscall.c:syscall_interrupt_handler:425][SYSCALL] Syscall interrupt fired! Number=0x00000002 (SYSCALL_WRITE)
+[VERBOSE][140][pid=11:syscall_rws][sc=71][cpu=0][syscall.c:syscall_interrupt_handler:434][SYSCALL] Invoking syscall handler for SYSCALL_WRITE at address 0x0001f040
+[INFO][140][pid=11:syscall_rws][sc=71][cpu=0][syscall.c:copy_from_user:585][SYSCALL] copy to kernel buffer completed. copied content = xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, length = 100.
+[ERROR][140][pid=11:syscall_rws][sc=71][cpu=0][ramfs.c:ramfs_write:142][RAMFS] [hello.txt] write_failed: write offset 0 + len 100 exceeds the file capacity 64.
+[INFO][140][pid=11:syscall_rws][sc=71][cpu=0][fd.c:fd_write:323][FD] fd write completed. fd=3 len=100 bytes=-5 new_off=0 status=ERR_NOMEM.
+[WARN][140][pid=11:syscall_rws][sc=71][cpu=0][syscall.c:syscall_write:164][SYSCALL] syscall_write: partial. total write len = 0, expected write len = 100.
+[VERBOSE][140][pid=11:syscall_rws][sc=71][cpu=0][syscall.c:syscall_interrupt_handler:443][SYSCALL] Syscall handler returned value = 0xfffffffb
+[INFO][140][pid=11:syscall_rws][sc=19][cpu=0][handlers.c:isr_common_handler:95][IDT] Interrupt 128 (SYSCALL) fired: (count=58, eip=0x0040063c)
+[VERBOSE][140][pid=11:syscall_rws][sc=72][cpu=0][syscall.c:syscall_interrupt_handler:425][SYSCALL] Syscall interrupt fired! Number=0x00000007 (SYSCALL_CLOSE)
+[VERBOSE][140][pid=11:syscall_rws][sc=72][cpu=0][syscall.c:syscall_interrupt_handler:434][SYSCALL] Invoking syscall handler for SYSCALL_CLOSE at address 0x0001f9ac
+[INFO][140][pid=11:syscall_rws][sc=72][cpu=0][fd.c:fd_close:101][FD] closed fd 3 successfully.
+[VERBOSE][140][pid=11:syscall_rws][sc=72][cpu=0][syscall.c:syscall_interrupt_handler:443][SYSCALL] Syscall handler returned value = 0x00000000
+[INFO][140][pid=11:syscall_rws][sc=19][cpu=0][handlers.c:isr_common_handler:95][IDT] Interrupt 128 (SYSCALL) fired: (count=59, eip=0x00400656)
+[VERBOSE][140][pid=11:syscall_rws][sc=73][cpu=0][syscall.c:syscall_interrupt_handler:425][SYSCALL] Syscall interrupt fired! Number=0x00000006 (SYSCALL_READ)
+[VERBOSE][140][pid=11:syscall_rws][sc=73][cpu=0][syscall.c:syscall_interrupt_handler:434][SYSCALL] Invoking syscall handler for SYSCALL_READ at address 0x0001f66d
+[ERROR][140][pid=11:syscall_rws][sc=73][cpu=0][fd.c:fd_get:44][FD] fd get from process failed. fd is not present.
+[ERROR][140][pid=11:syscall_rws][sc=73][cpu=0][fd.c:fd_read:232][FD] fd read failed. failed to get file referenced by fd 3 in process syscall_rws.
+[WARN][140][pid=11:syscall_rws][sc=73][cpu=0][syscall.c:syscall_read:306][SYSCALL] syscall_read: failed to read complete data. total read length = 0, expected read length = 1.
+[VERBOSE][140][pid=11:syscall_rws][sc=73][cpu=0][syscall.c:syscall_interrupt_handler:443][SYSCALL] Syscall handler returned value = 0xfffffffe
+[INFO][140][pid=11:syscall_rws][sc=19][cpu=0][handlers.c:isr_common_handler:95][IDT] Interrupt 128 (SYSCALL) fired: (count=60, eip=0x00400697)
+[VERBOSE][140][pid=11:syscall_rws][sc=74][cpu=0][syscall.c:syscall_interrupt_handler:425][SYSCALL] Syscall interrupt fired! Number=0x00000008 (SYSCALL_SEEK)
+[VERBOSE][140][pid=11:syscall_rws][sc=74][cpu=0][syscall.c:syscall_interrupt_handler:434][SYSCALL] Invoking syscall handler for SYSCALL_SEEK at address 0x0001fa35
+[ERROR][140][pid=11:syscall_rws][sc=74][cpu=0][fd.c:fd_get:44][FD] fd get from process failed. fd is not present.
+[ERROR][140][pid=11:syscall_rws][sc=74][cpu=0][fd.c:fd_lseek:345][FD] fd seek failed. failed to get file referenced by fd 3 in process syscall_rws.
+[VERBOSE][140][pid=11:syscall_rws][sc=74][cpu=0][syscall.c:syscall_interrupt_handler:443][SYSCALL] Syscall handler returned value = 0xfffffffe
+[INFO][140][pid=11:syscall_rws][sc=19][cpu=0][handlers.c:isr_common_handler:95][IDT] Interrupt 128 (SYSCALL) fired: (count=61, eip=0x004006ee)
+[VERBOSE][140][pid=11:syscall_rws][sc=75][cpu=0][syscall.c:syscall_interrupt_handler:425][SYSCALL] Syscall interrupt fired! Number=0x00000002 (SYSCALL_WRITE)
+[VERBOSE][140][pid=11:syscall_rws][sc=75][cpu=0][syscall.c:syscall_interrupt_handler:434][SYSCALL] Invoking syscall handler for SYSCALL_WRITE at address 0x0001f040
+[INFO][140][pid=11:syscall_rws][sc=75][cpu=0][syscall.c:copy_from_user:585][SYSCALL] copy to kernel buffer completed. copied content = rws-test: all checks passedxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, length = 27.
+[INFO][140][pid=11:syscall_rws][sc=75][cpu=0][syscall.c:syscall_write:154][SYSCALL] syscall_write: fd=1, (len/total: 0/27), (msg: rws-test: all checks passed)[VERBOSE][140][pid=11:syscall_rws][sc=75][cpu=0][syscall.c:syscall_write:178][SYSCALL] syscall_write: completed. total write len = 27.
+[VERBOSE][140][pid=11:syscall_rws][sc=75][cpu=0][syscall.c:syscall_interrupt_handler:443][SYSCALL] Syscall handler returned value = 0x0000001b
+[INFO][140][pid=11:syscall_rws][sc=19][cpu=0][handlers.c:isr_common_handler:95][IDT] Interrupt 128 (SYSCALL) fired: (count=62, eip=0x004006f8)
+[VERBOSE][140][pid=11:syscall_rws][sc=76][cpu=0][syscall.c:syscall_interrupt_handler:425][SYSCALL] Syscall interrupt fired! Number=0x00000001 (SYSCALL_EXIT)
+[VERBOSE][140][pid=11:syscall_rws][sc=76][cpu=0][syscall.c:syscall_interrupt_handler:434][SYSCALL] Invoking syscall handler for SYSCALL_EXIT at address 0x0001ef34
+[INFO][140][pid=11:syscall_rws][sc=76][cpu=0][syscall.c:syscall_exit:66][SYSCALL] syscall_exit called: code=0, pid=11 name=syscall_rws, type=USER
+[INFO][140][pid=11:syscall_rws][sc=76][cpu=0][proc.c:proc_mark_terminated:504][PROCESS_MGMT] Process is marked as terminated: name=syscall_rws (pid=11, type=USER) with exit code=0x00000000
+[VERBOSE][140][pid=11:syscall_rws][sc=76][cpu=0][scheduler.c:dequeue_ready:57][SCHEDULER] Dequeue from ready list successful: name=syscall_rws (pid=11, type=USER)
+[VERBOSE][140][pid=11:syscall_rws][sc=76][cpu=0][proc.c:yield:608][PROCESS_MGMT] Switching to idle: EIP=0x0001e232 ESP=0x00114f68 EFLAGS=0x00000202
+[VERBOSE][140][pid=11:syscall_rws][sc=76][cpu=0][proc.c:yield:630][PROCESS_MGMT] New current process: idle (pid=1, type=IDLE)
+[VERBOSE][140][pid=11:syscall_rws][sc=76][cpu=0][proc.c:yield:635][PROCESS_MGMT] About to switch: 
+[INFO][185][pid=2:kernel_main][sc=0][cpu=0][syscall_itest.c:syscall_itest_run_all:153][SYSCALL_ITEST] [PASS] syscall_rws (pid=11): exit code 0.
+[VERBOSE][301][pid=1:idle][sc=2][cpu=0][proc.c:cleanup_terminated_processes:29][PROCESS_MGMT] Reclaiming process: syscall_rws (pid=11, type=USER)
+[VERBOSE][306][pid=1:idle][sc=2][cpu=0][proc.c:proc_cleanup_user:228][PROCESS_MGMT] Cleaning up user process: name=syscall_rws (pid=11, type=USER) user_entry=0x00400000, user_stack_top=0xbffff000, user_code_size=0x00000afb

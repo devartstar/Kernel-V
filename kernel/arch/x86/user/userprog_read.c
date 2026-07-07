@@ -55,12 +55,12 @@ static int32_t uread_file(const int fd, const char *buf, const uint32_t len) {
     return do_syscall(SYS_READ, fd, (uint32_t)buf, len);
 }
 
-static void uwrite_file(const int fd, const char *buf, const uint32_t len) {
-    do_syscall(SYS_WRITE, fd, (uint32_t)buf, len);
+static int32_t uwrite_file(const int fd, const char *buf, const uint32_t len) {
+    return do_syscall(SYS_WRITE, fd, (uint32_t)buf, len);
 }
 
-static void uwrite_stdout(const char *s) {
-    do_syscall(SYS_WRITE, STDOUT_FD, (uint32_t)s, ustrlen(s));
+static int32_t uwrite_stdout(const char *s) {
+    return do_syscall(SYS_WRITE, STDOUT_FD, (uint32_t)s, ustrlen(s));
 }
 
 static __attribute__((noreturn)) void uexit(int32_t code) {
@@ -95,6 +95,9 @@ __attribute__((section(".text.start"), used, noreturn)) void _start(void) {
         uwrite_stdout("read-test: FAIL, read length mismatch.");
         uexit(3);
     }
+
+    /* Step 4: write to thte file */
+    uwrite_file(fd, "Hello World", 11);
 
     /* Step 4: check negative case when buffer is invalid */
     read_len = uread_file(fd, NULL, 5);

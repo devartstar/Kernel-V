@@ -51,6 +51,12 @@ ifeq ($(CONFIG_TESTS_INTEGRATION), y)
     USERPROG_READ_BIN := $(BUILD_KERN)/userprog_read.bin
     USERPROG_READ_OBJ := $(BUILD_KERN)/userprog_read.o
 
+    USERPROG_RWS_SRC := $(KERN_ARCH_DIR)/user/userprog_rws.c
+    USERPROG_RWS_CMPL := $(BUILD_KERN)/userprog_rws.user.o
+    USERPROG_RWS_ELF := $(BUILD_KERN)/userprog_rws.elf
+    USERPROG_RWS_BIN := $(BUILD_KERN)/userprog_rws.bin
+    USERPROG_RWS_OBJ := $(BUILD_KERN)/userprog_rws.o
+
 endif
 
 # --- Test Sources (conditional) ---
@@ -58,7 +64,7 @@ ifeq ($(CONFIG_BUILD_TEST), y)
     TEST_C_SOURCES := $(shell find $(TESTDIR) -name "*.c")
     TEST_C_OBJECTS := $(patsubst $(KERNDIR)/%.c,$(BUILD_KERN)/%.o,$(TEST_C_SOURCES))
     ifeq ($(CONFIG_TESTS_INTEGRATION), y)
-        KERNEL_OBJECTS := $(KERNEL_ENTRY_OBJ) $(KERNEL_C_OBJECTS) $(KERNEL_ASM_OBJECTS) $(TEST_C_OBJECTS) $(USERPROG_OBJ_MAIN) $(USERPROG_A_OBJ) $(USERPROG_B_OBJ) $(USERPROG_SYSCALL_OBJ) $(USERPROG_OPEN_OBJ) $(USERPROG_READ_OBJ)
+        KERNEL_OBJECTS := $(KERNEL_ENTRY_OBJ) $(KERNEL_C_OBJECTS) $(KERNEL_ASM_OBJECTS) $(TEST_C_OBJECTS) $(USERPROG_OBJ_MAIN) $(USERPROG_A_OBJ) $(USERPROG_B_OBJ) $(USERPROG_SYSCALL_OBJ) $(USERPROG_OPEN_OBJ) $(USERPROG_READ_OBJ) $(USERPROG_RWS_OBJ)
     else
         KERNEL_OBJECTS := $(KERNEL_ENTRY_OBJ) $(KERNEL_C_OBJECTS) $(KERNEL_ASM_OBJECTS) $(TEST_C_OBJECTS)
     endif
@@ -196,6 +202,27 @@ $(USERPROG_READ_OBJ): $(USERPROG_READ_BIN) | $(BUILD_KERN)
 		--redefine-sym _binary_userprog_read_bin_start=_binary_userprog_read_start \
 		--redefine-sym _binary_userprog_read_bin_end=_binary_userprog_read_end \
 		userprog_read.bin userprog_read.o)
+
+$(USERPROG_RWS_CMPL): $(USERPROG_RWS_SRC) | $(BUILD_KERN)
+	$(ECHO) "  CC-USER $@"
+	$(Q)$(CC) $(USER_CFLAGS) -c $< -o $@
+
+$(USERPROG_RWS_ELF): $(USERPROG_RWS_CMPL) $(USER_LD) | $(BUILD_KERN)
+	$(ECHO) "  LD-USER $@"
+	$(Q)$(LD) $(LDFLAGS) -T $(USER_LD) -o $@ $(USERPROG_RWS_CMPL)
+
+$(USERPROG_RWS_BIN): $(USERPROG_RWS_ELF) | $(BUILD_KERN)
+	$(ECHO) "  BIN-USER $@"
+	$(Q)$(OBJCOPY) -O binary $< $@
+
+$(USERPROG_RWS_OBJ): $(USERPROG_RWS_BIN) | $(BUILD_KERN)
+	$(ECHO) "  OBJCOPY $@"
+	$(Q)(cd $(BUILD_KERN) && \
+	$(OBJCOPY) -I binary -O elf32-i386 -B i386 \
+		--rename-section .data=.rodata,contents,alloc,load,readonly,data \
+		--redefine-sym _binary_userprog_rws_bin_start=_binary_userprog_rws_start \
+		--redefine-sym _binary_userprog_rws_bin_end=_binary_userprog_rws_end \
+		userprog_rws.bin userprog_rws.o)
 endif
 
 # --- Kernel Linking ---

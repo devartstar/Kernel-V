@@ -11,7 +11,7 @@ global _start
 ;   exit 0 -> all checks passed
 ;   exit 1 -> SYS_GETPID returned a negative pid
 ;   exit 2 -> SYS_WRITE to stdout did not return the byte count
-;   exit 3 -> SYS_WRITE with an invalid fd did not return -1
+;   exit 3 -> SYS_WRITE with an invalid fd was not rejected (expected < 0)
 ;
 ; The kernel-side harness (syscall_itest.c) spawns this blob and asserts that it
 ; terminates with exit code 0.
@@ -43,14 +43,14 @@ _start:
     cmp eax, msg_len
     jne  .fail_write
 
-    ; --- check 3: write to an invalid fd is rejected with -1 ---
+    ; --- check 3: write to an invalid fd is rejected with a negative error ---
     mov eax, SYS_WRITE
     mov ebx, 7                  ; invalid fd (not stdout)
     mov ecx, msg
     mov edx, msg_len
     int 0x80
-    cmp eax, -1
-    jne  .fail_badfd
+    test eax, eax
+    jns  .fail_badfd            ; not negative => not rejected => fail
 
     ; --- all checks passed ---
     mov eax, SYS_EXIT
