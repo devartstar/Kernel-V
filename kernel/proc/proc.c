@@ -3,6 +3,7 @@
 #include "arch/x86/tss.h"
 #include "core/debug.h"
 #include "core/panik.h"
+#include "fs/fd.h"
 #include "lib/printk.h"
 #include "lib/string.h"
 #include "mm/paging.h"

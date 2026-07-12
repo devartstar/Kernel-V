@@ -7,7 +7,6 @@ int fd_alloc_free_test() {
     vfs_file_t *file;
 
     /* create a pcb object */
-    proc = pcb_alloc();
     if (!proc) {
         KLOG_ERROR(
             "FD_TEST",
@@ -54,9 +53,6 @@ int fd_alloc_free_test() {
         return 0;
     }
 
-    /* free the memory allocated for the pcb */
-    pcb_free(proc);
-
     KLOG_INFO("FD_TEST", "alloc test passed.\n");
     return 1;
 }
@@ -66,7 +62,6 @@ uint8_t fd_get_test() {
     vfs_file_t *file;
 
     /* allocate memory for pcb block */
-    proc = pcb_alloc();
     if (!proc) {
         KLOG_ERROR("FD_TEST",
                    "get test failed. failed to allocate memory for pcb.\n");
@@ -145,7 +140,6 @@ uint8_t fd_close_test() {
     vfs_file_t *file;
 
     /* allocate memory for pcb block */
-    proc = pcb_alloc();
     if (!proc) {
         KLOG_ERROR("FD_TEST",
                    "close test failed. failed to allocate memory for pcb.\n");
@@ -211,7 +205,6 @@ uint8_t fd_reuse_test() {
     vfs_file_t *file1, *file2;
 
     /* simulate a process structure */
-    proc = pcb_alloc();
     if (!proc) {
         KLOG_ERROR(
             "FD_TEST",
@@ -300,7 +293,6 @@ uint8_t fd_close_all_test() {
     uint32_t fd1, fd2;
 
     /* allocate memory to simulate a test process */
-    proc = pcb_alloc();
     if (!proc) {
         KLOG_ERROR(
             "FD_TEST",
@@ -359,7 +351,6 @@ uint8_t fd_open_path_test() {
     int fd;
 
     /* allocate memory for the process */
-    proc = pcb_alloc();
     if (!proc) {
         KLOG_ERROR(
             "FD_TEST",
@@ -434,7 +425,6 @@ uint8_t fd_read_test() {
     char buf[8];
 
     /* create a process object */
-    proc = pcb_alloc();
     if (!proc) {
         KLOG_ERROR(
             "FD_TEST",
@@ -502,7 +492,6 @@ uint8_t fd_write_test() {
     uint32_t msg_len = 4;
 
     /* create a process object */
-    proc = pcb_alloc();
     if (!proc) {
         KLOG_ERROR(
             "FD_TEST",
@@ -566,7 +555,6 @@ uint8_t fd_seek_test() {
     char buf[8];
 
     /* create a process object */
-    proc = pcb_alloc();
     if (!proc) {
         KLOG_ERROR(
             "FD_TEST",

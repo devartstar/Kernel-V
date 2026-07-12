@@ -1,4 +1,5 @@
 #include "proc/syscall.h"
+#include "fs/fd.h"
 #include "fs/vfs.h"
 #include "fs/vfs_utils.h"
 #include "lib/print_macros.h"
@@ -10,8 +11,8 @@
 
 #define KBUF_CHUNK_SIZE 128
 
-static uint8_t usr_ptr_validate(uint32_t ptr);
-static uint8_t usr_range_is_valid(uint32_t ptr, uint32_t len);
+static uint8_t usr_ptr_validate(const void *ptr);
+static uint8_t usr_range_is_valid(const void *ptr, uint32_t len);
 static int copy_user_string(char *kdst, const char *usrc, uint32_t max_len);
 static int copy_from_user(void *kdst, const void *usrc, uint32_t len);
 static int copy_to_user(void *udst, const void *ksrc, uint32_t len);
@@ -91,7 +92,7 @@ static int32_t syscall_write(uint32_t _fd, uint32_t _user_buf, uint32_t _len,
 
     int32_t fd = (int32_t)_fd;
     uint32_t len_to_write = _len;
-    uint32_t ubuf = (const void *)_user_buf;
+    const void *ubuf = (const void *)_user_buf;
 
     char kbuf[SYSCALL_IO_BUFSZ + 1];
     uint32_t total_write_len = 0;
@@ -152,8 +153,8 @@ static int32_t syscall_write(uint32_t _fd, uint32_t _user_buf, uint32_t _len,
         if (fd == 1) {
             kbuf[chunk_to_write] = '\0';
             KLOG_INFO("SYSCALL",
-                      "syscall_write: fd=%u, (len/total: %u/%u), (msg: %s).\n", fd,
-                      chunk_to_write, len_to_write, kbuf);
+                      "syscall_write: fd=%u, (len/total: %u/%u), (msg: %s).\n",
+                      fd, chunk_to_write, len_to_write, kbuf);
             ret = (int32_t)chunk_to_write;
         } else {
             /* write to a file opned by process */
@@ -245,7 +246,7 @@ static int32_t syscall_read(uint32_t _fd, uint32_t _user_buf, uint32_t _len,
     (void)_6;
 
     int fd = (int)_fd;
-    uint32_t ubuf = (void *)_user_buf;
+    const void *ubuf = (const void *)_user_buf;
     uint32_t len_to_read = _len;
 
     char kbuf[SYSCALL_IO_BUFSZ + 1];
@@ -459,8 +460,8 @@ void syscall_interrupt_handler(uint32_t idt_index, regs_t *regs) {
  *
  * @return 1 if valid and 0 if invalid
  */
-static uint8_t usr_ptr_validate(uint32_t ptr) {
-    if (ptr < USER_VIRT_MIN) {
+static uint8_t usr_ptr_validate(const void *ptr) {
+    if ((uint32_t)ptr < USER_VIRT_MIN) {
         KLOG_ERROR(
             "SYSCALL",
             "Invalid vitual address for the buffer=0x%08x < Min=0x%08x\n", ptr,
@@ -478,7 +479,7 @@ static uint8_t usr_ptr_validate(uint32_t ptr) {
     }
 
     if (paging_get_physical_address_in_pd(current_proc->page_directory_virt,
-                                          ptr) == 0) {
+                                          (uint32_t)ptr) == 0) {
         KLOG_ERROR("SYSCALL",
                    "Invalid physical address for the buffer=0x%08x\n", ptr);
 
@@ -494,7 +495,7 @@ static uint8_t usr_ptr_validate(uint32_t ptr) {
  *
  * @return 1 if valid and 0 if invalid
  */
-static uint8_t usr_range_is_valid(uint32_t ptr, uint32_t len) {
+static uint8_t usr_range_is_valid(const void *ptr, uint32_t len) {
     uint32_t start, end;
 
     if (len == 0) {
@@ -512,8 +513,8 @@ static uint8_t usr_range_is_valid(uint32_t ptr, uint32_t len) {
         return 0;
     }
 
-    start = PAGE_ALIGN_DOWN(ptr);
-    end = PAGE_ALIGN_UP(ptr + len);
+    start = PAGE_ALIGN_DOWN((uint32_t)ptr);
+    end = PAGE_ALIGN_UP((uint32_t)ptr + len);
 
     for (uint32_t addr = start; addr < end; addr += PAGE_SIZE) {
         if (paging_get_physical_address_in_pd(current_proc->page_directory_virt,
@@ -691,7 +692,7 @@ static int copy_user_string(char *kdst, const char *usrc, uint32_t max_len) {
         /* validate if the memory ref. is in user region
          * if fails before copying entire string, update dest buffer with empty
          * string */
-        if (!usr_ptr_validate((const void *)(usrc + i))) {
+        if (!usr_ptr_validate((const void *)usrc + i)) {
             kdst[0] = '\0';
         }
 
