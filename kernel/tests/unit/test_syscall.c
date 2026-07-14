@@ -23,9 +23,10 @@
  * return value back into regs->eax unchanged. */
 #define SYSCALL_TEST_SENTINEL 0x5A5A1234
 
-/* A free table slot (NUM_SYSCALLS == 8, slots 1..5 are used by real handlers).
- * Slot 6 is guaranteed NULL after syscall_table_init(). */
-#define SYSCALL_TEST_FREE_SLOT 6
+/* An in-range table slot with no handler installed. Slots 1..SYS_LSEEK are all
+ * populated by syscall_table_init(), so slot 0 - a valid index (< NUM_SYSCALLS)
+ * that is guaranteed to stay NULL - stands in for an unregistered syscall. */
+#define SYSCALL_TEST_FREE_SLOT 0
 
 /* Records the arguments the probe handler was invoked with, so the test can
  * assert the register -> argument marshaling order. */
@@ -184,15 +185,19 @@ uint8_t syscall_dispatch_marshal_test(void) {
     return 1;
 }
 
-/* syscall_write_bad_fd_test - SYS_WRITE rejects any descriptor other than
- * stdout (fd == 1) before touching user memory, returning -1. */
+/* syscall_write_bad_fd_test - SYS_WRITE rejects invalid input early (before
+ * touching user memory), returning VFS_ERR_INVALID (-1). A NULL user buffer
+ * with a non-zero length trips this guard in plain kernel context. Real
+ * fd-backed writes (valid buffer, arbitrary fd) need a mapped user address
+ * space and are exercised by the integration suite. */
 uint8_t syscall_write_bad_fd_test(void) {
     int32_t ret;
 
     syscall_table_init();
 
-    /* fd = 2 is not stdout; handler must bail out early with -1. */
-    ret = syscall_table[SYS_WRITE](2, 0, 0, 0, 0, 0);
+    /* NULL buffer with non-zero length: handler must bail out early with -1
+     * without consulting the fd table or user memory. */
+    ret = syscall_table[SYS_WRITE](2, 0, 8, 0, 0, 0);
 
     if (ret != -1) {
         KLOG_ERROR("SYSCALL_TEST",

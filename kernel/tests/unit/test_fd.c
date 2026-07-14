@@ -3,7 +3,8 @@
 #include "lib/printk.h"
 
 int fd_alloc_free_test() {
-    pcb_t *proc;
+    pcb_t proc_obj;
+    pcb_t *proc = &proc_obj;
     vfs_file_t *file;
 
     /* create a pcb object */
@@ -58,7 +59,8 @@ int fd_alloc_free_test() {
 }
 
 uint8_t fd_get_test() {
-    pcb_t *proc;
+    pcb_t proc_obj;
+    pcb_t *proc = &proc_obj;
     vfs_file_t *file;
 
     /* allocate memory for pcb block */
@@ -136,7 +138,8 @@ uint8_t fd_get_test() {
 }
 
 uint8_t fd_close_test() {
-    pcb_t *proc;
+    pcb_t proc_obj;
+    pcb_t *proc = &proc_obj;
     vfs_file_t *file;
 
     /* allocate memory for pcb block */
@@ -200,7 +203,8 @@ uint8_t fd_close_test() {
 }
 
 uint8_t fd_reuse_test() {
-    pcb_t *proc;
+    pcb_t proc_obj;
+    pcb_t *proc = &proc_obj;
     uint8_t fd1, fd2;
     vfs_file_t *file1, *file2;
 
@@ -288,7 +292,8 @@ uint8_t fd_reuse_test() {
 }
 
 uint8_t fd_close_all_test() {
-    pcb_t *proc;
+    pcb_t proc_obj;
+    pcb_t *proc = &proc_obj;
     vfs_file_t *file1, *file2;
     uint32_t fd1, fd2;
 
@@ -299,7 +304,7 @@ uint8_t fd_close_all_test() {
             "close_all test failed. failed to allocate memory to process.\n");
         return 0;
     }
-    memset(proc, 0, sizeof(proc));
+    memset(proc, 0, sizeof(pcb_t));
     strncpy(proc->name, "close_all_test", PROC_NAME_MAX);
     proc->pid = 102;
 
@@ -346,7 +351,8 @@ uint8_t fd_close_all_test() {
 }
 
 uint8_t fd_open_path_test() {
-    pcb_t *proc;
+    pcb_t proc_obj;
+    pcb_t *proc = &proc_obj;
     vfs_file_t *file;
     int fd;
 
@@ -419,7 +425,8 @@ uint8_t fd_open_path_test() {
 }
 
 uint8_t fd_read_test() {
-    pcb_t *proc;
+    pcb_t proc_obj;
+    pcb_t *proc = &proc_obj;
     int fd;
     int ret;
     char buf[8];
@@ -484,7 +491,8 @@ uint8_t fd_read_test() {
 }
 
 uint8_t fd_write_test() {
-    pcb_t *proc;
+    pcb_t proc_obj;
+    pcb_t *proc = &proc_obj;
     vfs_file_t *file;
     int fd;
     int ret;
@@ -548,7 +556,8 @@ uint8_t fd_write_test() {
 }
 
 uint8_t fd_seek_test() {
-    pcb_t *proc;
+    pcb_t proc_obj;
+    pcb_t *proc = &proc_obj;
     vfs_file_t *file;
     int fd;
     int ret;

@@ -1,6 +1,6 @@
 set architecture i386
 target remote :1234
-symbol-file build/tests/kernel_integration.elf  
+symbol-file build/tests/kernel_test.elf
 # Enable TUI mode with source layout
 tui enable
 layout src

@@ -150,6 +150,7 @@ vfs_node_t *vfs_lookup_absolute(const char *path) {
 }
 
 void vfs_system_init() {
+    KLOG_EMERG("DEBUG_FD", "reached here!");
     if (pool_init(&vfs_file_pool, sizeof(vfs_file_t)) < 0) {
         KLOG_ERROR("FD", "failed to intialize vfs_file pool.\n");
         return;
