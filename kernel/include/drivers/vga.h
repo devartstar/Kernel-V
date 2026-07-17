@@ -27,24 +27,23 @@
 #define VGA_DATA_PORT 0x3d5
 
 //  VGA Color Definitions
-enum vga_color
-{
-	VGA_BLACK = 0,
-	VGA_BLUE = 1,
-	VGA_GREEN = 2,
-	VGA_CYAN = 3,
-	VGA_RED = 4,
-	VGA_MAGENTA = 5,
-	VGA_BROWN = 6,
-	VGA_LIGHT_GREY = 7,
-	VGA_DARK_GREY = 8,
-	VGA_LIGHT_BLUE = 9,
-	VGA_LIGHT_GREEN = 10,
-	VGA_LIGHT_CYAN = 11,
-	VGA_LIGHT_RED = 12,
-	VGA_LIGHT_MAGENTA = 13,
-	VGA_YELLOW = 14,
-	VGA_WHITE = 15,
+enum vga_color {
+    VGA_BLACK = 0,
+    VGA_BLUE = 1,
+    VGA_GREEN = 2,
+    VGA_CYAN = 3,
+    VGA_RED = 4,
+    VGA_MAGENTA = 5,
+    VGA_BROWN = 6,
+    VGA_LIGHT_GREY = 7,
+    VGA_DARK_GREY = 8,
+    VGA_LIGHT_BLUE = 9,
+    VGA_LIGHT_GREEN = 10,
+    VGA_LIGHT_CYAN = 11,
+    VGA_LIGHT_RED = 12,
+    VGA_LIGHT_MAGENTA = 13,
+    VGA_YELLOW = 14,
+    VGA_WHITE = 15,
 };
 
 //  VGA Color Macros
@@ -59,10 +58,11 @@ enum vga_color
 void vga_init(void);
 void vga_clear_screen(void);
 void vga_put_char(char c, char color);
-void vga_print_string(const char* str, char color);
+void vga_print_string(const char *str, char color);
 void vga_move_cursor(void);
 void vga_scroll_up(void);
 void vga_set_cursor_position(int row, int col);
-void vga_get_cursor_position(int* row, int* col);
+void vga_get_cursor_position(int *row, int *col);
+void vga_write(const char *data, uint32_t len, char color);
 
 #endif /* DRIVERS_VGA_H */

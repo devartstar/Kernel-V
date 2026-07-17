@@ -339,6 +339,6 @@ uint8_t ramfs_initial_vfs_tree_test() {
         return 0;
     }
 
-    KLOG_ERROR("RAMFS_TEST", "initial_vfs_tree test passed.\n");
+    KLOG_INFO("RAMFS_TEST", "initial_vfs_tree test passed.\n");
     return 1;
 }

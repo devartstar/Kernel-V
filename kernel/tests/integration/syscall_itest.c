@@ -97,6 +97,12 @@ uint32_t syscall_itest_run_all(const syscall_itest_case_t *cases,
         s->spawned = 1;
         remaining++;
 
+        /* Hold off the idle reaper until we have observed this process's exit
+         * code. Without this, a process can terminate and be reclaimed (its
+         * PCB freed back to the pool, which overwrites pid) before the harness
+         * thread next polls it, making it look like it never terminated. */
+        proc->reap_blocked = 1;
+
         KLOG_VERBOSE("SYSCALL_ITEST",
                      "spawned case '%s' as pid=%u (expecting exit code %d).\n",
                      s->spec->name, s->pid, s->spec->expected_exit_code);
@@ -122,6 +128,10 @@ uint32_t syscall_itest_run_all(const syscall_itest_case_t *cases,
                     (p->exit_code == s->spec->expected_exit_code) ? 1 : 0;
                 s->finished = 1;
                 remaining--;
+
+                /* We have snapshotted everything we need; let the idle reaper
+                 * reclaim this PCB now. */
+                p->reap_blocked = 0;
             }
         }
 
@@ -145,6 +155,11 @@ uint32_t syscall_itest_run_all(const syscall_itest_case_t *cases,
             KLOG_ERROR("SYSCALL_ITEST",
                        "[FAIL] %s (pid=%u): timed out, never terminated.\n",
                        s->spec->name, s->pid);
+            /* Release the reap hold so a later-terminating process is not
+             * leaked (harmless if it is still running). */
+            if (s->proc && s->proc->pid == s->pid) {
+                s->proc->reap_blocked = 0;
+            }
             failed++;
             continue;
         }

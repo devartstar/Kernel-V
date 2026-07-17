@@ -468,6 +468,10 @@ int proc_is_reclaimable(const pcb_t *proc) {
         return 0;
     }
 
+    if (proc->reap_blocked) {
+        return 0;
+    }
+
     return !proc_is_special(proc);
 }
 

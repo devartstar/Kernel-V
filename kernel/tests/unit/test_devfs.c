@@ -305,3 +305,54 @@ uint8_t devfs_seedroot_test() {
     KLOG_INFO("DEVFS_TEST", "seedroot test passed.\n");
     return 1;
 }
+
+uint8_t devfs_stdio_test() {
+    vfs_node_t *stdout_node;
+    vfs_node_t *stderr_node;
+
+    /* check if /dev/console device exists */
+    if (!vfs_lookup_absolute("/dev/console")) {
+        KLOG_ERROR("DEVFS_TEST",
+                   "stdio test failed. /dev/console does not exist.\n");
+        return 0;
+    }
+
+    /* check if /dev/stdin device exists */
+    if (!vfs_lookup_absolute("/dev/stdin")) {
+        KLOG_ERROR("DEVFS_TEST",
+                   "stdio test failed. /dev/stdin does not exist.\n");
+        return 0;
+    }
+
+    /* check if /dev/stdout device exists */
+    stdout_node = vfs_lookup_absolute("/dev/stdout");
+    if (!stdout_node) {
+        KLOG_ERROR("DEVFS_TEST",
+                   "stdio test failed. /dev/stdout does not exist.\n");
+        return 0;
+    }
+
+    /* check if /dev/stderr device exists */
+    stderr_node = vfs_lookup_absolute("/dev/stderr");
+    if (!stderr_node) {
+        KLOG_ERROR("DEVFS_TEST",
+                   "stdio test failed. /dev/stderr does not exist.\n");
+        return 0;
+    }
+    
+    /* stdout and stderr should have registered the WRITE opertion */
+    if (!stdout_node->ops || !stdout_node->ops->write) {
+        KLOG_ERROR("DEVFS_TEST",
+                   "stdio test failed. /dev/stdout write operation is NULL.\n");
+        return 0;
+    }
+
+    if (!stderr_node->ops || !stderr_node->ops->write) {
+        KLOG_ERROR("DEVFS_TEST",
+                   "stdio test failed. /dev/stderr write operation is NULL.\n");
+        return 0;
+    }
+
+    KLOG_INFO("DEVFS_TEST", "stdio test passed.\n");
+    return 1;
+}

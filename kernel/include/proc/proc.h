@@ -72,6 +72,13 @@ typedef struct pcb {
     uint8_t has_exited;
     int32_t exit_code;
 
+    /* When set, the idle reaper (cleanup_terminated_processes) must not free
+     * this PCB even after it has terminated. Used by observers (e.g. the
+     * syscall integration harness) that hold a raw PCB pointer and need to read
+     * the exit code after termination; the observer clears this flag once it
+     * has snapshotted what it needs so the PCB can be reclaimed. */
+    uint8_t reap_blocked;
+
     /* Kernel Stack */
     uint8_t *kernel_stack_base;
     uint8_t *kernel_stack_top;
