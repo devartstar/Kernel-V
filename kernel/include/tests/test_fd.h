@@ -1,6 +1,7 @@
 #ifndef TEST_FD_H
 #define TEST_FD_H
 
+#include "fs/devfs.h"
 #include "fs/fd.h"
 #include "lib/printk.h"
 
@@ -13,6 +14,7 @@ uint8_t fd_open_path_test(void);
 uint8_t fd_read_test(void);
 uint8_t fd_write_test(void);
 uint8_t fd_seek_test(void);
+uint8_t fd_setup_stdio_test(void);
 
 uint8_t test_setup() {
     /* Initialize file-object allocator pool before exercising fd APIs. */
@@ -23,6 +25,13 @@ uint8_t test_setup() {
     if (ramfs_seed_root() != VFS_OK) {
         KLOG_ERROR("FD_TEST",
                    "open_path test failed. failed to seed initial vfs tree.\n");
+        return 0;
+    }
+
+    /* seed /dev so /dev/stdin, /dev/stdout, /dev/stderr exist for stdio */
+    if (devfs_seed_root() != VFS_OK) {
+        KLOG_ERROR("FD_TEST",
+                   "setup failed. failed to seed devfs tree.\n");
         return 0;
     }
 
@@ -90,6 +99,12 @@ static inline void run_fd_tests(void) {
     /* test updating offset of a file ref. by a process */
     if (fd_seek_test() == 0) {
         KLOG_INFO("TEST", "Failed: FD seek test.\n");
+        failed_count++;
+    }
+
+    /* test the standard input/output file */
+    if (fd_setup_stdio_test() == 0) {
+        KLOG_ERROR("TEST", "Failed: FD stdio test.\n");
         failed_count++;
     }
 

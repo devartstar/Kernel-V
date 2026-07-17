@@ -92,7 +92,7 @@ int fd_close(pcb_t *proc, int fd) {
     /* case 3: if refcount after decrease becomes 0. free up resources */
     if (file->refcount == 0) {
         /* check if the associated node is valid and decrease node ref count */
-        if (!file->node && file->node->refcount > 0) {
+        if (file->node && file->node->refcount > 0) {
             file->node->refcount--;
         }
 
@@ -133,6 +133,46 @@ int fd_close_all(pcb_t *proc) {
     return VFS_OK;
 }
 
+int fd_install(pcb_t *proc, uint32_t target_fd, vfs_file_t *file) {
+
+    /* check for valid reference to process and path and target fd */
+    if (!proc) {
+        KLOG_ERROR("FD",
+                   "fd_install at fd %u failed. invalid process reference.\n",
+                   target_fd);
+        return VFS_ERR_INVALID;
+    }
+
+    if (!file) {
+        KLOG_ERROR("FD",
+                   "fd_install for proc %s (pid %u) at fd %u failed. invalid "
+                   "file reference.\n",
+                   proc->name, proc->pid, target_fd);
+        return VFS_ERR_INVALID;
+    }
+
+    if (target_fd < 0 || target_fd >= PROCESS_MAX_FDS) {
+        KLOG_ERROR(
+            "FD",
+            "fd_install for process %s (pid %u) at fd %u failed. invalid fd.\n",
+            proc->name, proc->pid, target_fd);
+        return VFS_ERR_INVALID;
+    }
+
+    /* verify if the process has a free slot at target_fd */
+    if (proc->fds[target_fd]) {
+        KLOG_ERROR("FD",
+                   "fd_install for process %s (pid %u) at fd %u failed. fd "
+                   "already occupied.\n",
+                   target_fd);
+        return VFS_ERR_INVALID;
+    }
+
+    /* update the fds table to link the file at target_fd */
+    proc->fds[target_fd] = file;
+    return VFS_OK;
+}
+
 int fd_open_path(pcb_t *proc, const char *path, uint32_t flags) {
     vfs_node_t *node;
     vfs_file_t *file;
@@ -161,18 +201,17 @@ int fd_open_path(pcb_t *proc, const char *path, uint32_t flags) {
     }
 
     if (node->refcount == UINT32_MAX) {
-        KLOG_ERROR("FD",
-                   "open file %s failed. vfs node ref count %u is max.\n", path,
-                   node->refcount);
+        KLOG_ERROR("FD", "open file %s failed. vfs node ref count %u is max.\n",
+                   path, node->refcount);
         return VFS_ERR_NOMEM;
     }
 
     /* create a vfs file object for the file to be ref. by the process */
     file = vfs_file_alloc();
     if (!file) {
-        KLOG_ERROR(
-            "FD",
-            "open file %s failed. failed to allocate memory for file.\n", path);
+        KLOG_ERROR("FD",
+                   "open file %s failed. failed to allocate memory for file.\n",
+                   path);
         return VFS_ERR_NOMEM;
     }
     file->node = node;
@@ -208,6 +247,96 @@ int fd_open_path(pcb_t *proc, const char *path, uint32_t flags) {
     KLOG_INFO("FD", "opened path=%s fd=%d flags=0x%x for process %s.\n", path,
               fd, flags, proc->name);
     return fd;
+}
+
+int fd_open_path_at(pcb_t *proc, char *path, uint32_t flags, uint32_t fd) {
+
+    vfs_node_t *node;
+    vfs_file_t *file;
+
+    int ret;
+
+    /* check for valid reference to process and path */
+    if (!proc) {
+        KLOG_ERROR("FD",
+                   "fd_open_path_at failed. invalid process reference.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    if (!path) {
+        KLOG_ERROR("FD",
+                   "fd_open_path_at for process %s (pid %u) failed. invalid "
+                   "path string reference.\n",
+                   proc->name, proc->pid);
+        return VFS_ERR_INVALID;
+    }
+
+    /* fd field validation */
+    if (fd < 0 || fd >= PROCESS_MAX_FDS) {
+        KLOG_ERROR("FD",
+                   "fd_open_path_at for process %s (pid %u) failed. invalid fd "
+                   "%u to open file at.\n",
+                   proc->name, proc->pid, fd);
+        return VFS_ERR_INVALID;
+    }
+
+    /* vfs node device to be present in the path */
+    node = vfs_lookup_absolute(path);
+    if (!node) {
+        KLOG_ERROR("FD",
+                   "fd_open_path_at for process %s (pid %u) failed. error "
+                   "finding node for path %s.\n",
+                   proc->name, proc->pid, path);
+        return VFS_ERR_NOTFOUND;
+    }
+
+    /* allocate a file object and reference to node */
+    file = vfs_file_alloc();
+    if (!file) {
+        KLOG_ERROR("FD",
+                   "fd_open_path_at for process %s (pid %u) failed. error "
+                   "opening file for path %s.\n",
+                   proc->name, proc->pid, path);
+        return VFS_ERR_NOMEM;
+    }
+    file->node = node;
+    file->flags = flags;
+    file->offset = 0;
+    file->refcount = 1;
+
+    /* update the device node reference count */
+    node->refcount++;
+
+    /* open the file */
+    if (!node->ops && !node->ops->open) {
+        ret = node->ops->open(file);
+        if (ret != VFS_OK) {
+            KLOG_ERROR("FD",
+                       "fd_open_path_at for process %s (pid %u) failed. error "
+                       "opening file at path %s.\n",
+                       proc->name, proc->pid, path);
+        }
+    }
+
+    /* next we link the reference to this file to the process fd table */
+    ret = fd_install(proc, fd, file);
+    if (ret != VFS_OK) {
+        KLOG_ERROR("FD",
+                   "fd_open_path_at for process %s (pid %u) failed. failed to "
+                   "install file at path %s to fd %u of process.\n",
+                   proc->name, proc->pid, path, fd);
+
+        /* do clean up of the file and decrease references */
+        node->refcount--;
+        vfs_file_free(file);
+        return ret;
+    }
+
+    KLOG_INFO("FD",
+              "successfully opened and linked file at %s to process %s (pid "
+              "%u) at fd %u.\n",
+              path, proc->name, proc->pid, fd);
+    return VFS_OK;
 }
 
 int fd_read(pcb_t *proc, int fd, void *buf, uint32_t len) {
@@ -263,8 +392,9 @@ int fd_read(pcb_t *proc, int fd, void *buf, uint32_t len) {
     }
 
     KLOG_INFO(
-        "FD", "fd read completed. fd=%d len=%u bytes=%d new_off=%u status=%s.\n",
-        fd, len, ret, file->offset, vfs_get_status_string(ret));
+        "FD",
+        "fd read completed. fd=%d len=%u bytes=%d new_off=%u status=%s.\n", fd,
+        len, ret, file->offset, vfs_get_status_string(ret));
     return ret;
 }
 
@@ -392,4 +522,53 @@ int fd_lseek(pcb_t *proc, int fd, int32_t offset, int whence) {
     /* update the file offset with the new offset calculated */
     file->offset = (uint32_t)new_offset;
     return file->offset;
+}
+
+int fd_setup_stdio(pcb_t *proc) {
+    int ret;
+
+    /* check for valid process reference */
+    if (!proc) {
+        KLOG_ERROR("FD", "setup_stdio failed. invalid process reference.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    /* open file ref for device /dev/stdin at fd 0 */
+    ret = fd_open_path_at(proc, "/dev/stdin", 0, 0);
+    if (ret != VFS_OK) {
+        KLOG_ERROR("FD",
+                   "Failed to setup stdio. linking of /dev/stdin file to fd 0 "
+                   "of process %s (pid %u) failed.\n",
+                   proc->name, proc->pid);
+        return ret;
+    }
+
+    /* open file ref for device /dev/stdout at fd 1 */
+    ret = fd_open_path_at(proc, "/dev/stdout", 0, 1);
+    if (ret != VFS_OK) {
+        KLOG_ERROR("FD",
+                   "Failed to setup stdio. linking of /dev/stdout file to fd 1 "
+                   "of process %s (pid %u) failed.\n",
+                   proc->name, proc->pid);
+        /* close /dev/stdin on failing to create /dev/stdout */
+        fd_close(proc, 0);
+        return ret;
+    }
+
+    /* open file ref for device /dev/stderr at fd 2 */
+    ret = fd_open_path_at(proc, "/dev/stderr", 0, 2);
+    if (ret != VFS_OK) {
+        KLOG_ERROR("FD",
+                   "Failed to setup stdio. linking of /dev/stderr file to fd 2 "
+                   "of process %s (pid %u) failed.\n",
+                   proc->name, proc->pid);
+        /* close /dev/stdin and /dev/stdout on failing to create /dev/stderr */
+        fd_close(proc, 0);
+        fd_close(proc, 1);
+        return ret;
+    }
+
+    KLOG_INFO("FD", "setup std io success for process %s (pid %u).\n",
+              proc->name, proc->pid);
+    return VFS_OK;
 }

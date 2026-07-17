@@ -672,3 +672,49 @@ uint8_t fd_seek_test() {
     KLOG_INFO("FD_TEST", "seek test passed.\n");
     return 1;
 }
+
+uint8_t fd_setup_stdio_test() {
+
+    /* simulate a process structure */
+    pcb_t proc;
+    memset(&proc, 0, sizeof(proc));
+    proc.pid = 101;
+    strncpy(proc.name, "stdio", PROC_NAME_MAX);
+    proc.name[PROC_NAME_MAX - 1] = '\0';
+
+    /* setup stdio for the process */
+    if (fd_setup_stdio(&proc) != VFS_OK) {
+        KLOG_ERROR("FD_TEST", "setup_stdio test failed. stdio setup failed.\n");
+        return 0;
+    }
+
+    /* check if the fd 0/1/2 is set properly */
+    if (!proc.fds[0] || !proc.fds[1] || !proc.fds[2]) {
+        KLOG_ERROR("FD_TEST",
+                   "setup_stdio test failed. fds are not initialized.\n");
+        return 0;
+    }
+
+    /* check for fd 0 to represent stdin */
+    if (!proc.fds[0]->node || strcmp(proc.fds[0]->node->name, "stdin") != 0) {
+        KLOG_ERROR("FD_TEST", "fd0 is not stdin.\n");
+        return 0;
+    }
+
+    /* check for fd 0 to represent stdin */
+    if (!proc.fds[1]->node || strcmp(proc.fds[1]->node->name, "stdout") != 0) {
+        KLOG_ERROR("FD_TEST", "fd1 is not stdout.\n");
+        return 0;
+    }
+
+    /* check for fd 0 to represent stdin */
+    if (!proc.fds[2]->node || strcmp(proc.fds[2]->node->name, "stderr") != 0) {
+        KLOG_ERROR("FD_TEST", "fd2 is not stderr.\n");
+        return 0;
+    }
+
+    fd_close_all(&proc);
+
+    KLOG_INFO("FD_TEST", "fd_setup_stdio test passed.\n");
+    return 1;
+}

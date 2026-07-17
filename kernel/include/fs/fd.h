@@ -105,4 +105,18 @@ int fd_write(pcb_t *proc, int fd, void *buf, uint32_t len);
  */
 int fd_lseek(pcb_t *proc, int fd, int32_t offset, int whence);
 
+/**
+ * fd_steup_stdio - setups the standard input output files.
+ * fd 0: /dev/stdin
+ * fd 1: /dev/stdout
+ * fd 2: /dev/stderr
+ * process opened files start from fd 3
+ *
+ * @proc - the process for which we need to setup the standard io file
+ * references
+ *
+ * @return setup status. < 0 for error else success.
+ */
+int fd_setup_stdio(pcb_t *proc);
+
 #endif /* FD_H */

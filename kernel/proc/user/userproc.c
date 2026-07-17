@@ -1,5 +1,6 @@
 #include "arch/x86/usermode_stub.h"
 #include "core/panik.h"
+#include "fs/fd.h"
 #include "lib/printk.h"
 #include "lib/string.h"
 #include "mm/paging.h"
@@ -74,6 +75,10 @@ pcb_t *userproc_alloc(const char *name) {
 
     if (paging_create_address_space(&proc->page_directory_virt,
                                     &proc->page_directory_phys) != 0) {
+        return NULL;
+    }
+
+    if (fd_setup_stdio(proc) != VFS_OK) {
         return NULL;
     }
 

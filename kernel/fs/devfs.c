@@ -124,10 +124,10 @@ static int devnull_write(vfs_node_t *node, uint32_t offset, const void *buf,
     }
 
     /* ceck if the buffer to write is valid */
-    if (len < 0 || !buf) {
+    if (!buf && len > 0) {
         KLOG_ERROR(
             "DEVFS",
-            "dev/null write fialed. invalid buffer or length to write.\n");
+            "dev/null write failed. invalid buffer or length to write.\n");
         return VFS_ERR_INVALID;
     }
 
@@ -188,11 +188,11 @@ static int devzero_write(vfs_node_t *node, uint32_t offset, const void *buf,
         return VFS_ERR_INVALID;
     }
 
-    /* ceck if the buffer to write is valid */
-    if (len < 0 || !buf) {
+    /* check if the buffer to write is valid */
+    if (!buf && len > 0) {
         KLOG_ERROR(
             "DEVFS",
-            "dev/zero write fialed. invalid buffer or length to write.\n");
+            "dev/zero write failed. invalid buffer or length to write.\n");
         return VFS_ERR_INVALID;
     }
 
@@ -222,7 +222,7 @@ static int devconsole_write(uint32_t offset, void *buf, uint32_t len) {
     /* check for the validity of the buffer passed */
     if (!buf) {
         KLOG_VERBOSE("DEVFS",
-                     "console_write fialed. buffer reffernce is invalid.\n");
+                     "console_write failed. buffer reference is invalid.\n");
         return VFS_ERR_INVALID;
     }
 

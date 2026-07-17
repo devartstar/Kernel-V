@@ -202,6 +202,9 @@ void proc_cleanup_kernel(pcb_t *proc) {
     // Don't set state here - should already be TERMINATED
     // Don't dequeue here - should already be dequeued
 
+    /* close all the file ref. for the process */
+    fd_close_all(proc);
+
     /* Free up the process kernel stack memory */
     if (proc->kernel_stack_base && proc->kernel_stack_size) {
         for (uint32_t offset = 0; offset < proc->kernel_stack_size;
@@ -213,9 +216,6 @@ void proc_cleanup_kernel(pcb_t *proc) {
     proc->kernel_stack_base = NULL;
     proc->kernel_stack_top = NULL;
     proc->kernel_stack_size = 0;
-
-    /* close all the file ref. for the process */
-    fd_close_all(proc);
 
     /* Free PCB */
     pcb_free(proc);
@@ -232,6 +232,9 @@ void proc_cleanup_user(pcb_t *proc) {
         "user_entry=0x%08x, user_stack_top=0x%08x, user_code_size=0x%08x\n",
         proc->name, proc->pid, proc_type_to_string(proc->type),
         proc->user_entry, proc->user_stack_top, proc->user_code_size)
+
+    /* close all the file ref. by the process */
+    fd_close_all(proc);
 
     /* Free user code backing frame */
     if (proc->user_entry && (proc->user_code_size > 0)) {
@@ -281,9 +284,6 @@ void proc_cleanup_user(pcb_t *proc) {
     proc->kernel_stack_base = NULL;
     proc->kernel_stack_top = NULL;
     proc->kernel_stack_size = 0;
-
-    /* close all the file ref. by the process */
-    fd_close_all(proc);
 
     pcb_free(proc);
 }
