@@ -450,7 +450,7 @@ int fd_write(pcb_t *proc, int fd, void *buf, uint32_t len) {
         file->offset += (uint32_t)ret;
     }
 
-    KLOG_INFO(
+    KLOG_VERBOSE(
         "FD",
         "fd write completed. fd=%d len=%u bytes=%d new_off=%u status=%s.\n", fd,
         len, ret, file->offset, vfs_get_status_string(ret));

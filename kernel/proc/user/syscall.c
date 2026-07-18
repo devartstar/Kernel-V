@@ -147,19 +147,9 @@ static int32_t syscall_write(uint32_t _fd, uint32_t _user_buf, uint32_t _len,
             return total_write_len > 0 ? (int32_t)total_write_len : ret;
         }
 
-        /* fd=1 is reserved for stdout. handle seperately.
-         * fd=1 is not yet backed by /dev/tty or /dev/console
-         */
-        if (fd == 1) {
-            kbuf[chunk_to_write] = '\0';
-            KLOG_INFO("SYSCALL",
-                      "syscall_write: fd=%u, (len/total: %u/%u), (msg: %s).\n",
-                      fd, chunk_to_write, len_to_write, kbuf);
-            ret = (int32_t)chunk_to_write;
-        } else {
-            /* write to a file opned by process */
-            ret = fd_write(current_proc, fd, kbuf, chunk_to_write);
-        }
+        /* write to the file referenced by fd */
+        /* for fd = 0/1/2 write to the standart input output */
+        ret = fd_write(current_proc, fd, kbuf, chunk_to_write);
 
         if (ret < 0) {
             KLOG_WARN("SYSCALL",

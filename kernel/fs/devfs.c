@@ -205,14 +205,17 @@ static int devzero_write(vfs_node_t *node, uint32_t offset, const void *buf,
 /**
  * devconsole_write -  write to the file associated to the /dev/console device
  * object
+ * @node - reference to the vfs node backing the device
  * @offset - offset of the file to write the contents
  * @buf -  reference to the buffer containing the contents to write
  * @len - length of the characters to write
  *
  * @return length of the contents written
  */
-static int devconsole_write(uint32_t offset, void *buf, uint32_t len) {
+static int devconsole_write(vfs_node_t *node, uint32_t offset, const void *buf,
+                            uint32_t len) {
 
+    (void)node;
     (void)offset;
 
     if (len == 0) {
@@ -242,14 +245,17 @@ static int devconsole_write(uint32_t offset, void *buf, uint32_t len) {
 /**
  * devconsole_read - read from a file associated to the /dev/console device
  * object
+ * @node - reference to the vfs node backing the device
  * @offset - offset of the file from read from
  * @buf - refernce to the buffer containing the contents to write
  * @len - length of the characters to write
  *
  * @return length of the contents read
  */
-static int devstdin_read(uint32_t offset, void *buf, uint32_t len) {
+static int devstdin_read(vfs_node_t *node, uint32_t offset, void *buf,
+                         uint32_t len) {
     /* no-op for now */
+    (void)node;
     (void)offset;
     (void)buf;
     (void)len;

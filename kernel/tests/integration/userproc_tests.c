@@ -31,6 +31,9 @@ extern uint8_t _binary_userprog_read_end[];
 extern uint8_t _binary_userprog_rws_start[];
 extern uint8_t _binary_userprog_rws_end[];
 
+extern uint8_t _binary_userprog_write_start[];
+extern uint8_t _binary_userprog_write_end[];
+
 /* Fixture file the SYS_OPEN test program expects to open successfully. */
 #define OPEN_TEST_FIXTURE_PATH "/hello.txt"
 
@@ -112,12 +115,17 @@ void test_usermode_process(void) {
             .expected_exit_code = 0,
         },
         {
+            .name = "syscall_write_proc",
+            .blob_start = _binary_userprog_write_start,
+            .blob_end = _binary_userprog_write_end,
+            .expected_exit_code = 0,
+        },
+        {
             .name = "syscall_rws",
             .blob_start = _binary_userprog_rws_start,
             .blob_end = _binary_userprog_rws_end,
             .expected_exit_code = 0,
-        }
-
+        },
     };
 
     uint32_t failed =
