@@ -238,7 +238,7 @@ static int devconsole_write(vfs_node_t *node, uint32_t offset, const void *buf,
     vga_write(data, len, DEVFS_CONSOLE_COLOR);
     serial_write(data, len);
 
-    KLOG_ERROR("DEVFS", "Successfully write to console.\n");
+    KLOG_VERBOSE("DEVFS", "Successfully write to console.\n");
     return (int)len;
 }
 
@@ -260,7 +260,7 @@ static int devstdin_read(vfs_node_t *node, uint32_t offset, void *buf,
     (void)buf;
     (void)len;
 
-    KLOG_ERROR("DEVFS", "Successfully read to console.\n");
+    KLOG_VERBOSE("DEVFS", "Successfully read to console.\n");
     return VFS_ERR_NOOP;
 }
 

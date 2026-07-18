@@ -51,11 +51,11 @@ ifeq ($(CONFIG_TESTS_INTEGRATION), y)
     USERPROG_READ_BIN := $(BUILD_KERN)/userprog_read.bin
     USERPROG_READ_OBJ := $(BUILD_KERN)/userprog_read.o
 
-	USERPROG_WRITE_SRC := $(KERN_ARCH_DIR)/user/userprog_write.c
-	USERPROG_WRITE_CMPL := $(BUILD_TEST)/userprog_write.user.o
-	USERPROG_WRITE_ELF := $(BUILD_TEST)/userprog_write.elf
-	USERPROG_WRITE_BIN := $(BUILD_TEST)/userprog_write.bin
-	USERPROG_WRITE_OBJ := $(BUILD_TEST)/userprog_write.o
+	USERPROG_STDIO_SRC := $(KERN_ARCH_DIR)/user/userprog_stdio.c
+	USERPROG_STDIO_CMPL := $(BUILD_TEST)/userprog_stdio.user.o
+	USERPROG_STDIO_ELF := $(BUILD_TEST)/userprog_stdio.elf
+	USERPROG_STDIO_BIN := $(BUILD_TEST)/userprog_stdio.bin
+	USERPROG_STDIO_OBJ := $(BUILD_TEST)/userprog_stdio.o
 
     USERPROG_RWS_SRC := $(KERN_ARCH_DIR)/user/userprog_rws.c
     USERPROG_RWS_CMPL := $(BUILD_KERN)/userprog_rws.user.o
@@ -70,7 +70,7 @@ ifeq ($(CONFIG_BUILD_TEST), y)
     TEST_C_SOURCES := $(shell find $(TESTDIR) -name "*.c")
     TEST_C_OBJECTS := $(patsubst $(KERNDIR)/%.c,$(BUILD_KERN)/%.o,$(TEST_C_SOURCES))
     ifeq ($(CONFIG_TESTS_INTEGRATION), y)
-        KERNEL_OBJECTS := $(KERNEL_ENTRY_OBJ) $(KERNEL_C_OBJECTS) $(KERNEL_ASM_OBJECTS) $(TEST_C_OBJECTS) $(USERPROG_OBJ_MAIN) $(USERPROG_A_OBJ) $(USERPROG_B_OBJ) $(USERPROG_SYSCALL_OBJ) $(USERPROG_OPEN_OBJ) $(USERPROG_READ_OBJ) $(USERPROG_WRITE_OBJ) $(USERPROG_RWS_OBJ)
+        KERNEL_OBJECTS := $(KERNEL_ENTRY_OBJ) $(KERNEL_C_OBJECTS) $(KERNEL_ASM_OBJECTS) $(TEST_C_OBJECTS) $(USERPROG_OBJ_MAIN) $(USERPROG_A_OBJ) $(USERPROG_B_OBJ) $(USERPROG_SYSCALL_OBJ) $(USERPROG_OPEN_OBJ) $(USERPROG_READ_OBJ) $(USERPROG_STDIO_OBJ) $(USERPROG_RWS_OBJ)
     else
         KERNEL_OBJECTS := $(KERNEL_ENTRY_OBJ) $(KERNEL_C_OBJECTS) $(KERNEL_ASM_OBJECTS) $(TEST_C_OBJECTS)
     endif
@@ -209,26 +209,26 @@ $(USERPROG_READ_OBJ): $(USERPROG_READ_BIN) | $(BUILD_KERN)
 		--redefine-sym _binary_userprog_read_bin_end=_binary_userprog_read_end \
 		userprog_read.bin userprog_read.o)
 
-$(USERPROG_WRITE_CMPL): $(USERPROG_WRITE_SRC) | $(BUILD_TEST)
+$(USERPROG_STDIO_CMPL): $(USERPROG_STDIO_SRC) | $(BUILD_TEST)
 	$(ECHO) "  CC-USER $@"
 	$(Q)$(CC) $(USER_CFLAGS) -c $< -o $@
 
-$(USERPROG_WRITE_ELF): $(USERPROG_WRITE_CMPL) $(USER_LD) | $(BUILD_TEST)
+$(USERPROG_STDIO_ELF): $(USERPROG_STDIO_CMPL) $(USER_LD) | $(BUILD_TEST)
 	$(ECHO) "  LD-USER $@"
-	$(Q)$(LD) $(LDFLAGS) -T $(USER_LD) -o $@ $(USERPROG_WRITE_CMPL)
+	$(Q)$(LD) $(LDFLAGS) -T $(USER_LD) -o $@ $(USERPROG_STDIO_CMPL)
 
-$(USERPROG_WRITE_BIN): $(USERPROG_WRITE_ELF) | $(BUILD_TEST)
+$(USERPROG_STDIO_BIN): $(USERPROG_STDIO_ELF) | $(BUILD_TEST)
 	$(ECHO) "  BIN-USER $@"
 	$(Q)$(OBJCOPY) -O binary $< $@
 
-$(USERPROG_WRITE_OBJ): $(USERPROG_WRITE_BIN) | $(BUILD_TEST)
+$(USERPROG_STDIO_OBJ): $(USERPROG_STDIO_BIN) | $(BUILD_TEST)
 	$(ECHO) "  OBJCOPY $@"
 	$(Q)(cd $(BUILD_TEST) && \
 	$(OBJCOPY) -I binary -O elf32-i386 -B i386 \
 		--rename-section .data=.rodata,contents,alloc,load,readonly,data \
-		--redefine-sym _binary_userprog_write_bin_start=_binary_userprog_write_start \
-		--redefine-sym _binary_userprog_write_bin_end=_binary_userprog_write_end \
-		userprog_write.bin userprog_write.o)
+		--redefine-sym _binary_userprog_stdio_bin_start=_binary_userprog_stdio_start \
+		--redefine-sym _binary_userprog_stdio_bin_end=_binary_userprog_stdio_end \
+		userprog_stdio.bin userprog_stdio.o)
 
 $(USERPROG_RWS_CMPL): $(USERPROG_RWS_SRC) | $(BUILD_KERN)
 	$(ECHO) "  CC-USER $@"
