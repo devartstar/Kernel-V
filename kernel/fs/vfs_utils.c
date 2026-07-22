@@ -143,6 +143,8 @@ const char *vfs_get_status_string(int status) {
         return "ERR_NOOP";
     case VFS_ERR_NOMEM:
         return "ERR_NOMEM";
+    case VFS_ERR_AGAIN:
+        return "ERR_AGAIN";
     default:
         if (status > 0) {
             return "SUCCESS";

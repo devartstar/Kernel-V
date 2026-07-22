@@ -87,6 +87,7 @@ int console_input_pop(char *out_c) {
     if (g_console_input_count == 0) {
         KLOG_ERROR("CONSOLE",
                    "console_input_pop failed. console buffer is empty.\n");
+        spin_unlock_irqrestore(&g_console_input_lock, flags);
         return VFS_ERR_NOTFOUND;
     }
 

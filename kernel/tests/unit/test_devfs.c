@@ -2,6 +2,7 @@
 #include "fs/devfs.h"
 #include "fs/vfs.h"
 #include "fs/vfs_utils.h"
+#include "proc/proc.h"
 
 static int test_read(vfs_node_t *node, uint32_t offset, void *data,
                      uint32_t len) {
@@ -339,7 +340,7 @@ uint8_t devfs_stdio_test() {
                    "stdio test failed. /dev/stderr does not exist.\n");
         return 0;
     }
-    
+
     /* stdout and stderr should have registered the WRITE opertion */
     if (!stdout_node->ops || !stdout_node->ops->write) {
         KLOG_ERROR("DEVFS_TEST",
@@ -355,4 +356,25 @@ uint8_t devfs_stdio_test() {
 
     KLOG_INFO("DEVFS_TEST", "stdio test passed.\n");
     return 1;
+}
+
+uint8_t devfs_stdin_read_test() {
+    int ret;
+
+    /* initialize structure of a process */
+    pcb_t proc;
+    memset(&proc, 0, sizeof(proc));
+    proc.pid = 301;
+    strncpy(proc.name, "stdin-test", PROC_NAME_MAX);
+    proc.name[PROC_NAME_MAX - 1] = '\0';
+
+    /* initialize console input */
+    console_input_init();
+
+    /* setup stdio fds for the dummy process structure */
+    if (fd_setup_stdio(&proc) != VFS_OK) {
+        KLOG_ERROR("DEVFS_TEST", "stdin_read test failed. railed to setup "
+                                 "stdio fds for a process.\n");
+        return 0;
+    }
 }

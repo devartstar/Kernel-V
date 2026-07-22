@@ -1,4 +1,5 @@
 #include "fs/devfs.h"
+#include "drivers/console_input.h"
 #include "drivers/serial.h"
 #include "drivers/vga.h"
 #include "fs/vfs_utils.h"
@@ -254,14 +255,45 @@ static int devconsole_write(vfs_node_t *node, uint32_t offset, const void *buf,
  */
 static int devstdin_read(vfs_node_t *node, uint32_t offset, void *buf,
                          uint32_t len) {
-    /* no-op for now */
-    (void)node;
     (void)offset;
-    (void)buf;
-    (void)len;
 
-    KLOG_VERBOSE("DEVFS", "Successfully read to console.\n");
-    return VFS_ERR_NOOP;
+    uint32_t read_len = 0;
+
+    /* check if the backed vfs node is valid */
+    if (!node) {
+        KLOG_ERROR("DEVFS", "devstdin_read failed. invalid vfs node object.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    /* check if the device readind should be a character device */
+    if (node->type != VFS_NODE_CHARDEV) {
+        KLOG_ERROR("DEVFS", "devstdin failed. not a character device.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    if (len == 0) {
+        return 0;
+    }
+
+    /* check if the buffer to read into is valid */
+    if (!buf) {
+        KLOG_ERROR("DEVFS",
+                   "devstdin_read failed. invalid buffer to copy to.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    /* read the buffer from the console */
+    read_len = console_input_read((char *)buf, len);
+
+    if (read_len == 0) {
+        KLOG_ERROR("DEVFS", "devstdin_read failed. console buffer exists but "
+                            "no characters to read.\n");
+        return VFS_ERR_AGAIN;
+    }
+
+    KLOG_VERBOSE("DEVFS", "Successfully read %u characters from console.\n",
+                 read_len);
+    return read_len;
 }
 
 /** *** REGISTER OPERATIONS FOR DEVICES *** */

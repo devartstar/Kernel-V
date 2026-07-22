@@ -15,6 +15,7 @@ uint8_t fd_read_test(void);
 uint8_t fd_write_test(void);
 uint8_t fd_seek_test(void);
 uint8_t fd_setup_stdio_test(void);
+uint8_t devstdin_read_test(void);
 
 uint8_t test_setup() {
     /* Initialize file-object allocator pool before exercising fd APIs. */
@@ -30,8 +31,7 @@ uint8_t test_setup() {
 
     /* seed /dev so /dev/stdin, /dev/stdout, /dev/stderr exist for stdio */
     if (devfs_seed_root() != VFS_OK) {
-        KLOG_ERROR("FD_TEST",
-                   "setup failed. failed to seed devfs tree.\n");
+        KLOG_ERROR("FD_TEST", "setup failed. failed to seed devfs tree.\n");
         return 0;
     }
 
@@ -105,6 +105,12 @@ static inline void run_fd_tests(void) {
     /* test the standard input/output file */
     if (fd_setup_stdio_test() == 0) {
         KLOG_ERROR("TEST", "Failed: FD stdio test.\n");
+        failed_count++;
+    }
+
+    /* test the read on standard input file */
+    if (devstdin_read_test() == 0) {
+        KLOG_ERROR("TEST", "Failed: STDIN read test.\n");
         failed_count++;
     }
 

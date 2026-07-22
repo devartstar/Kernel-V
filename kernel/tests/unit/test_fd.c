@@ -1,3 +1,4 @@
+#include "drivers/console_input.h"
 #include "fs/fd.h"
 #include "fs/vfs_utils.h"
 #include "lib/printk.h"
@@ -716,5 +717,71 @@ uint8_t fd_setup_stdio_test() {
     fd_close_all(&proc);
 
     KLOG_INFO("FD_TEST", "fd_setup_stdio test passed.\n");
+    return 1;
+}
+
+uint8_t devstdin_read_test() {
+    int ret;
+    char buf[8];
+
+    /* initialize a dummy process */
+    pcb_t proc;
+    memset(&proc, 0, sizeof(pcb_t));
+    proc.pid = 301;
+    strncpy(proc.name, "stdin_test", PROC_NAME_MAX);
+    proc.name[PROC_NAME_MAX - 1] = '\0';
+
+    /* initialize console layer */
+    console_input_init();
+
+    /* setup the stdio fds in the dummy process */
+    if (fd_setup_stdio(&proc) != VFS_OK) {
+        KLOG_ERROR("FD_TEST", "devstdin_read_test failed. failed to setup "
+                              "stdio fds in process.\n");
+        return 0;
+    }
+
+    /* nothing writen to console yet */
+    ret = fd_read(&proc, 0, buf, sizeof(buf));
+    if (ret != VFS_ERR_AGAIN) {
+        KLOG_ERROR(
+            "FD_TEST",
+            "devstdin_read test failed. expected ERR_AGAIN, returned %s.\n",
+            vfs_get_status_string(ret));
+
+        fd_close_all(&proc);
+        return 0;
+    }
+
+    /* write some characters to the console buffer */
+    console_input_push('A');
+    console_input_push('B');
+    console_input_push('C');
+
+    memset(buf, 0, sizeof(buf));
+
+    /* read the console buffer content using read on fd 0 */
+    ret = fd_read(&proc, 0, buf, sizeof(buf));
+    if (ret != 3) {
+        KLOG_ERROR(
+            "FD_TEST",
+            "devstdin_read test failed. characters read %u, expected 3.\n",
+            ret);
+        fd_close_all(&proc);
+        return 0;
+    }
+
+    /* check for the validity of the read content */
+    if (buf[0] != 'A' || buf[1] != 'B' || buf[2] != 'C') {
+        KLOG_ERROR(
+            "FD_TEST",
+            "devstdin_read test failed. read content %s, expected ABC.\n", buf);
+        fd_close_all(&proc);
+        return 0;
+    }
+
+    fd_close_all(&proc);
+
+    KLOG_INFO("FD_TEST", "devstdin_read test passed.\n");
     return 1;
 }
