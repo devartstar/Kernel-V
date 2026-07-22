@@ -61,6 +61,8 @@ int console_input_push(char in_c) {
 
     /* update the count of characters in the buffer */
     g_console_input_count++;
+    KLOG_VERBOSE("CONSOLE_PUSH", "Added char %c, buffer %s, size = %u.\n", in_c,
+                 g_console_input_buf, g_console_input_count);
 
     /* release the lock */
     spin_unlock_irqrestore(&g_console_input_lock, flags);
@@ -89,13 +91,17 @@ int console_input_pop(char *out_c) {
     }
 
     /* pop the character from buffer to the output reference */
-    out_c = g_console_input_buf[g_console_input_tail++];
+    *out_c = g_console_input_buf[g_console_input_tail++];
 
     /* check for overflow of the tail */
     g_console_input_tail %= CONSOLE_INPUT_BUF_SIZE;
 
     /* update the count of characters in the buffer */
     g_console_input_count--;
+
+    KLOG_VERBOSE("CONSOLE_POP",
+                 "out character = %c, buffer %s, left size = %u.\n", out_c,
+                 g_console_input_buf, g_console_input_count);
 
     /* release the lock */
     spin_unlock_irqrestore(&g_console_input_lock, flags);
@@ -107,13 +113,22 @@ uint32_t console_input_read(char *buf, uint32_t len) {
     uint32_t read_len = 0;
     int ret = VFS_OK;
 
+    if (!buf && len > 0) {
+        KLOG_ERROR("CONSOLE",
+                   "console read failed. invalid buffer reference.\n");
+        return 0;
+    }
+
     /* invoke the console pop characters until read upto len */
     while (read_len < len) {
         ret = console_input_pop(&buf[read_len]);
-        if (ret < 0) {
+        if (ret != VFS_OK) {
             break;
         }
         read_len++;
+        KLOG_VERBOSE("CONSOLE_READ",
+                     "read length = %u, char = %c, read buffer = %s.\n",
+                     read_len, buf[read_len - 1], buf);
     }
 
     return read_len;

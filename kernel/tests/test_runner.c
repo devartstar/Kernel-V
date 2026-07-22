@@ -2,6 +2,7 @@
 #include "core/kernel.h"
 #include "lib/printk.h"
 #include "tests/nested_irq.h"
+#include "tests/test_console.h"
 #include "tests/test_devfs.h"
 #include "tests/test_devices.h"
 #include "tests/test_fd.h"
@@ -59,6 +60,7 @@ void run_kernel_tests(void) {
     run_devfs_tests();
     run_fd_tests();
     run_syscall_tests();
+    run_console_tests();
 
     KLOG_VERBOSE("TEST", "Unit Tests Complete.\n");
     tests_run = true;
