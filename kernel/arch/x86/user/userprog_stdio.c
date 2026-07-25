@@ -46,6 +46,7 @@
 #define SEEK_SET 0
 
 #define ERROR_NOOP -4
+#define ERROR_AGAIN -6 /* buffer exists but empty */
 
 static uint32_t ustrlen(const char *s) {
     uint32_t n = 0;
@@ -82,7 +83,8 @@ static int32_t uclose(const uint32_t fd) {
     return do_syscall(SYS_CLOSE, fd, 0, 0);
 }
 
-static int32_t ulseek(const int fd, const int32_t offset, const int32_t whence) {
+static int32_t ulseek(const int fd, const int32_t offset,
+                      const int32_t whence) {
     return do_syscall(SYS_LSEEK, (uint32_t)fd, (uint32_t)offset,
                       (uint32_t)whence);
 }
@@ -118,9 +120,11 @@ __attribute__((section(".text.start"), used, noreturn)) void _start(void) {
         uexit(2);
     }
 
-    /* Case 3: Try reading from a stdin file */
+    /* Case 3: Try reading from a stdin file
+     * stdin file backing console buffer is empty will return VFS_ERR_AGAIN
+     */
     ret = uread(STDIN_FD, buf, sizeof(buf));
-    if (ret != ERROR_NOOP) {
+    if (ret != ERROR_AGAIN) {
         msg = "read failed: expected noop.\n";
         ret = uwrite(STDERR_FD, msg, ustrlen(msg));
         if (ret < 0) {
@@ -134,7 +138,8 @@ __attribute__((section(".text.start"), used, noreturn)) void _start(void) {
     }
 
     /* Case 4: write a known pattern to a file, read it back, echo to stdout.
-     * (/dev/stdin cannot be written to, so the readback is echoed to stdout.) */
+     * (/dev/stdin cannot be written to, so the readback is echoed to stdout.)
+     */
     int32_t fd = uopen("/hello.txt", 0);
     if (fd < FIRST_NORMAL_FD) {
         msg = "failed open existing file.\n";

@@ -2,6 +2,10 @@
 #include "arch/x86/interrupt.h"
 #include "core/io.h"
 
+/**
+ * SERIAL_PORT + 0 -> data register
+ * SERIAL_PORT + 5 -> line status register
+ */
 #define SERIAL_PORT 0x3F8
 
 void serial_init(void) {

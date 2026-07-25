@@ -156,8 +156,12 @@ static int devzero_read(vfs_node_t *node, uint32_t offset, void *buf,
         return VFS_ERR_INVALID;
     }
 
+    if (len == 0) {
+        return 0;
+    }
+
     /* validate for length and valid buffer */
-    if (len < 0 || !buf) {
+    if (!buf & len > 0) {
         KLOG_ERROR(
             "DEVFS",
             "/dev/zero read failed. invalid buffer or length to read.\n");

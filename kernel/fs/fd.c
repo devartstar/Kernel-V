@@ -308,7 +308,7 @@ int fd_open_path_at(pcb_t *proc, char *path, uint32_t flags, uint32_t fd) {
     node->refcount++;
 
     /* open the file */
-    if (!node->ops && !node->ops->open) {
+    if (node->ops && node->ops->open) {
         ret = node->ops->open(file);
         if (ret != VFS_OK) {
             KLOG_ERROR("FD",
