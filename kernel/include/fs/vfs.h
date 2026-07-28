@@ -22,6 +22,7 @@
 #define VFS_ERR_NOOP -4     /* request operation not supported */
 #define VFS_ERR_NOMEM -5    /* kernel allocation failed */
 #define VFS_ERR_AGAIN -6    /* stream exists but no data available */
+#define VFS_ERR_EXISTS -7   /* object already exists and avoid duplicates */
 
 /* define maximum number of node objects */
 #define VFS_MAX_NODES 64

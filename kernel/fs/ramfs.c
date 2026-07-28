@@ -207,7 +207,9 @@ vfs_node_t *ramfs_create_file(const char *name, uint8_t *data, uint32_t size,
     file->size = size;
     file->capacity = capacity;
 
-    /* create the vfs node object for the file */
+    /* create the vfs node object for the file
+     * Multiple vfs_node_t with same name can exixts but not under the same
+     * parent. Can 2 different vfs_node_t of same name but different types? */
     node = vfs_create_node(name, VFS_NODE_FILE, &ramfs_file_ops, file);
     if (!node) {
         g_ramfs_file_count--;
@@ -225,11 +227,90 @@ vfs_node_t *ramfs_create_file(const char *name, uint8_t *data, uint32_t size,
 
 static uint8_t g_hello_storage[64] = "Hello from Kernel-V FS.\n";
 static uint8_t g_banner_storage[64] = "Kernel-V RAMFS online.\n";
+
+static int ramfs_seed_file_once(vfs_node_t *parent, const char *name,
+                                const char *file_data, uint32_t file_size,
+                                uint32_t file_cap) {
+    vfs_node_t *node;
+    int ret;
+
+    /* check for valid input arguments */
+    if (!parent) {
+        KLOG_ERROR("RAMFS", "failed seed file. invalid parent reference.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    if (!name) {
+        KLOG_ERROR("RAMFS", "failed seed file. invalid file name reference.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    if (!file_data) {
+        KLOG_ERROR("RAMFS", "failed seed file. invalid reference to data.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    /* check if the file is already present under the parent then avoid
+     * creation, this help us prevent create -> check -> cleanup */
+    node = vfs_find_child(parent, name);
+    if (!node) {
+        /* already exists, seeing already done, just exit */
+        return VFS_OK;
+    }
+
+    /* create a ramfs file with the given name and data */
+    node = ramfs_create_file(name, (uint8_t *)file_data, file_size, file_cap);
+
+    /* add the file under parent */
+    ret = vfs_add_child(parent, node);
+    if (ret != VFS_OK) {
+        // Todo: support cleanup of dile and node
+        KLOG_ERROR("RAMFS",
+                   "failed seed file. failed to add child %s under parent %s. "
+                   "Todo cleanup\n",
+                   node->name, parent->name);
+        return ret;
+    }
+
+    return VFS_OK;
+}
+
+static int ramfs_seed_dir_once(vfs_node_t *parent, const char *name) {
+    vfs_node_t *node;
+    int ret;
+
+    /* check for valid input arguments */
+    if (!parent) {
+        KLOG_ERROR("RAMFS", "failed seed file. invalid parent reference.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    node = vfs_find_child(parent, name);
+    if (node->type == VFS_NODE_DIR) {
+        /* dir already exists, just exit */
+        return VFS_OK;
+    }
+
+    node = vfs_create_node(name, VFS_NODE_DIR, NULL, NULL);
+
+    /* add the file under parent */
+    ret = vfs_add_child(parent, node);
+    if (ret != VFS_OK) {
+        // Todo: support cleanup of node
+        KLOG_ERROR("RAMFS",
+                   "failed seed file. failed to add child %s under parent %s. "
+                   "Todo cleanup\n",
+                   node->name, parent->name);
+        return ret;
+    }
+
+    return VFS_OK;
+}
+
 int ramfs_seed_root() {
     vfs_node_t *root;
-    vfs_node_t *hello;
     vfs_node_t *etc;
-    vfs_node_t *banner;
+    int ret;
 
     /* get the VFS root */
     root = vfs_get_root();
@@ -240,63 +321,43 @@ int ramfs_seed_root() {
         return VFS_ERR_INVALID;
     }
 
+    /* NOTE: What if multiple files with the same name is created ?
+     * ramfs_create_file -> create a 2 objects:
+     * 1. ramfs_file_t instance for the file
+     * 2. vfs_node_t instance for the file.
+     *       Q. Can a parent vfs node have multiple vfs child node?
+     *       A.  of differnt node type - depends.
+     *           of same node type - NO.
+     *       Fix: use the helper *_seed_once routines.
+     */
+
     /* create a RAMFS file hello.txt */
-    hello = ramfs_create_file("hello.txt", g_hello_storage, 23,
-                              sizeof(g_hello_storage));
-    if (!hello) {
+    ret = ramfs_seed_file_once(root, "hello.txt", g_hello_storage, 23,
+                               sizeof(g_hello_storage));
+    if (ret != VFS_OK) {
         KLOG_ERROR(
             "RAMFS",
             "populate initial tree failed. failed to create hello.txt file.\n");
-        return VFS_ERR_NOMEM;
-    }
-
-    /* add hello.txt file under the VFS root */
-    if (vfs_add_child(root, hello) != VFS_OK) {
-        KLOG_ERROR(
-            "RAMFS",
-            "populate initial tree failed. failed to add child %s (type %s) to "
-            "parent %s (type %s). \n",
-            hello->name, vfs_get_node_type(hello->type), root->name,
-            vfs_get_node_type(root->type));
-        return VFS_ERR_INVALID;
+        return ret;
     }
 
     /* create a VFS etc Node Directory */
-    etc = vfs_create_node("etc", VFS_NODE_DIR, NULL, NULL);
-    if (!etc) {
-        KLOG_ERROR(
-            "RAMFS",
-            "populate intial tree failed. failed to create etc (directory).\n");
-        return VFS_ERR_NOMEM;
-    }
-
-    /* add etc directory under root directory */
-    if (vfs_add_child(root, etc) != VFS_OK) {
+    ret = ramfs_seed_dir_once(root, "etc");
+    if (ret != VFS_OK) {
         KLOG_ERROR("RAMFS",
-                   "populate initial tree failed. failed to add child %s (type "
-                   "%s) to parent %s (type %s).\n",
-                   etc->name, vfs_get_node_type(etc->type), root->name,
-                   vfs_get_node_type(root->type));
+                   "populate initial tree failed. failed to create etc dir.\n");
+        return ret;
     }
 
     /* create a banner file */
-    banner = ramfs_create_file("banner", g_banner_storage, 23,
+    etc = vfs_find_child(root, "etc");
+    ret = ramfs_seed_file_once(etc, "banner", g_banner_storage, 23,
                                sizeof(g_banner_storage));
-    if (!banner) {
+    if (ret != VFS_OK) {
         KLOG_ERROR(
             "RAMFS",
             "populate initial tree failed. failed to create banner file.\n");
-        return VFS_ERR_NOMEM;
-    }
-
-    /* add the banner file under etc directory */
-    if (vfs_add_child(etc, banner) != VFS_OK) {
-        KLOG_ERROR("RAMFS",
-                   "populate initial tree failed. failed to add child %s (type "
-                   "%s) to parent %s (type %s)\n",
-                   banner->name, vfs_get_node_type(banner->type), etc->name,
-                   vfs_get_node_type(etc->type));
-        return VFS_ERR_INVALID;
+        return ret;
     }
 
     KLOG_INFO("RAMFS", "initial tree populated.\n");

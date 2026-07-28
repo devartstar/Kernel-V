@@ -75,6 +75,28 @@ int vfs_add_child(vfs_node_t *parent, vfs_node_t *child) {
         return VFS_ERR_NOTDIR;
     }
 
+    /* child has an existing parent. dont allow attach twice */
+    if (child->parent) {
+        KLOG_ERROR("VFS", "add child failed. existing parent = %s.\n",
+                   child->parent->name);
+        return VFS_ERR_INVALID;
+    }
+
+    /* check if the child with same name already exist under parent.
+     * this ensures unique entries in a directory */
+    vfs_node_t *curr = parent->first_child;
+    while (curr) {
+        if (strcmp(child->name, curr->name) == 0) {
+            KLOG_ERROR(
+                "VFS",
+                "child with same name %s (%s) exists under paretn %s (%s).\n",
+                curr->name, vfs_get_node_type(curr->type), parent->name,
+                vfs_get_node_type(parent->type));
+            return VFS_ERR_EXISTS;
+        }
+        curr = curr->next_sibling;
+    }
+
     /* link the child under the parent */
     child->parent = parent;
     child->next_sibling = parent->first_child;
@@ -145,6 +167,8 @@ const char *vfs_get_status_string(int status) {
         return "ERR_NOMEM";
     case VFS_ERR_AGAIN:
         return "ERR_AGAIN";
+    case VFS_ERR_EXISTS:
+        return "ERR_EXISTS";
     default:
         if (status > 0) {
             return "SUCCESS";
