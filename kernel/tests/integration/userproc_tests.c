@@ -1,5 +1,6 @@
 #include "arch/x86/usermode_stub.h"
 #include "core/panik.h"
+#include "fs/devfs.h"
 #include "fs/ramfs.h"
 #include "fs/vfs.h"
 #include "lib/printk.h"
@@ -50,7 +51,8 @@ static int ensure_open_test_fixture(void);
  * default ramfs layout. Returns non-zero on success.
  */
 static int ensure_open_test_fixture(void) {
-    if (vfs_lookup_absolute(OPEN_TEST_FIXTURE_PATH) != NULL) {
+    if (vfs_lookup_absolute(OPEN_TEST_FIXTURE_PATH) != NULL &&
+        vfs_lookup_absolute("/dev/stdin") != NULL) {
         return 1;
     }
 
@@ -63,8 +65,13 @@ static int ensure_open_test_fixture(void) {
         KLOG_ERROR("TEST", "open fixture: ramfs_seed_root failed\n");
         return 0;
     }
+    if (devfs_seed_root() != VFS_OK) {
+        KLOG_ERROR("TEST", "open fixture: devfs_seed_root failed\n");
+        return 0;
+    }
 
-    return vfs_lookup_absolute(OPEN_TEST_FIXTURE_PATH) != NULL;
+    return vfs_lookup_absolute(OPEN_TEST_FIXTURE_PATH) != NULL &&
+           vfs_lookup_absolute("/dev/stdin") != NULL;
 }
 
 /*

@@ -253,8 +253,8 @@ static int ramfs_seed_file_once(vfs_node_t *parent, const char *name,
     /* check if the file is already present under the parent then avoid
      * creation, this help us prevent create -> check -> cleanup */
     node = vfs_find_child(parent, name);
-    if (!node) {
-        /* already exists, seeing already done, just exit */
+    if (node) {
+        /* already exists, seeding already done, just exit */
         return VFS_OK;
     }
 
@@ -286,7 +286,7 @@ static int ramfs_seed_dir_once(vfs_node_t *parent, const char *name) {
     }
 
     node = vfs_find_child(parent, name);
-    if (node->type == VFS_NODE_DIR) {
+    if (node && node->type == VFS_NODE_DIR) {
         /* dir already exists, just exit */
         return VFS_OK;
     }
