@@ -29,5 +29,5 @@ void ringbuf_backend(const char *msg, size_t len, char color) {
 
 void serial_backend(const char *msg, size_t len, char color) {
     (void)color;
-    serial_write(msg, len);
+    serial_log_write(msg, len);
 }

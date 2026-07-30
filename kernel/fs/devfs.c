@@ -286,6 +286,10 @@ static int devstdin_read(vfs_node_t *node, uint32_t offset, void *buf,
         return VFS_ERR_INVALID;
     }
 
+    /* drain any pending bytes from UART through serial driver to console buffer
+     */
+    serial_dump_input_to_console();
+
     /* read the buffer from the console */
     read_len = console_input_read((char *)buf, len);
 
@@ -297,7 +301,7 @@ static int devstdin_read(vfs_node_t *node, uint32_t offset, void *buf,
 
     KLOG_VERBOSE("DEVFS", "Successfully read %u characters from console.\n",
                  read_len);
-    return read_len;
+    return (int)read_len;
 }
 
 /** *** REGISTER OPERATIONS FOR DEVICES *** */

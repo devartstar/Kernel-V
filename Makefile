@@ -9,9 +9,14 @@ VERSION := 0.7.1
 BUILD_DATE := $(shell date +%Y-%m-%d)
 
 # Default QEMU settings
+# Two UARTs are wired: COM1 (first -serial) is the interactive user console,
+# COM2 (second -serial) carries kernel log output. Override QEMU_CONSOLE_BACKEND
+# to interact with the console, e.g. QEMU_CONSOLE_BACKEND=mon:stdio.
 QEMU_DRIVE_FLAGS ?= -drive format=raw,file=
 QEMU_DISPLAY ?= -display curses
-QEMU_SERIAL ?= -serial file:serial.log
+QEMU_CONSOLE_BACKEND ?= null
+QEMU_LOG_BACKEND ?= file:serial.log
+QEMU_SERIAL ?= -serial $(QEMU_CONSOLE_BACKEND) -serial $(QEMU_LOG_BACKEND)
 QEMU_EXTRA ?=
 
 # Machine specific overrrides

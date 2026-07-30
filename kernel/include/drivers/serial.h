@@ -26,6 +26,16 @@ void serial_write(const char *data, size_t len);
 void serial_putc(char c);
 
 /**
+ * serial_log_write - write kernel log bytes to the dedicated log UART (COM2).
+ * Kept separate from serial_write (COM1 console) so KLOG output never
+ * interleaves with interactive stdin/stdout traffic.
+ *
+ * @param data - buffer of bytes to emit on the log UART.
+ * @param len  - number of bytes to write.
+ */
+void serial_log_write(const char *data, size_t len);
+
+/**
  * serial_getc_nonblocking - reads a single byte from the serial port if available.
  * if the data is not available, it returns with an expected error code.
  * 
