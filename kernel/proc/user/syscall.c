@@ -575,8 +575,8 @@ static int copy_from_user(void *kdst, const void *usrc, uint32_t len) {
 
     KLOG_INFO(
         "SYSCALL",
-        "copy to kernel buffer completed. copied content = %s, length = %u.\n",
-        dst, len);
+        "copy to kernel buffer completed. copied content = %.*s, length = %u.\n",
+        (int)len, dst, len);
     return VFS_OK;
 }
 
@@ -633,8 +633,8 @@ static int copy_to_user(void *udst, const void *ksrc, uint32_t len) {
 
     KLOG_INFO(
         "SYSCALL",
-        "copy to user buffer completed. copied content = %s, length = %u.\n",
-        dst, len);
+        "copy to user buffer completed. copied content = %.*s, length = %u.\n",
+        (int)len, dst, len);
     return VFS_OK;
 }
 

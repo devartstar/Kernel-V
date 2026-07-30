@@ -73,6 +73,24 @@ int my_vsnprintf(char *buf, size_t size, const char *fmt, va_list args) {
                 fmt++;
             }
 
+            //  Handle precision (.N or .*), -1 means unset
+            int precision = -1;
+            if (*fmt == '.') {
+                fmt++;
+                precision = 0;
+                if (*fmt == '*') {
+                    precision = va_arg(args, int);
+                    fmt++;
+                } else {
+                    while (*fmt >= '0' && *fmt <= '9') {
+                        precision = precision * 10 + (*fmt - '0');
+                        fmt++;
+                    }
+                }
+                if (precision < 0)
+                    precision = 0;
+            }
+
             // Handle length modifier (only 'l' supported for now)
             int long_flag = 0;
             int longlong_flag = 0;
@@ -100,6 +118,10 @@ int my_vsnprintf(char *buf, size_t size, const char *fmt, va_list args) {
                 while (*s++)
                     str_len++;
 
+                //  Apply precision: cap the number of chars printed
+                if (precision >= 0 && precision < str_len)
+                    str_len = precision;
+
                 //  claculate the padding needed
                 int to_pad_width;
                 if (str_len > pad_width) {
@@ -113,9 +135,11 @@ int my_vsnprintf(char *buf, size_t size, const char *fmt, va_list args) {
                     *p++ = pad_char;
                 }
 
-                //  Write the string
-                while (*str && p < end) {
+                //  Write the string (bounded by precision via str_len)
+                int written = 0;
+                while (*str && written < str_len && p < end) {
                     *p++ = *str++;
+                    written++;
                 }
                 break;
             }
