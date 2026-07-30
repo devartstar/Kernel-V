@@ -21,6 +21,7 @@
  * exit 7 -> failed to close a standard file
  * exit 8 -> failed to seek within the file
  * exit 9 -> failed to write to the file
+ * exit 10 -> failed to read from serial stdin to stdout
  *
  */
 
@@ -89,6 +90,8 @@ static int32_t ulseek(const int fd, const int32_t offset,
                       (uint32_t)whence);
 }
 
+static int32_t uyield() { return do_syscall(SYS_SCHED_YIELD, 0, 0, 0); }
+
 static __attribute__((noreturn)) void uexit(int32_t code) {
     do_syscall(SYS_EXIT, (uint32_t)code, 0, 0);
     for (;;) {
@@ -121,7 +124,7 @@ __attribute__((section(".text.start"), used, noreturn)) void _start(void) {
     }
 
     /* Case 3: Try reading from a stdin file
-     * stdin file backing console buffer is empty will return VFS_ERR_AGAIN
+     * stdin file backing console buffer is empty will return ERROR_AGAIN
      */
     ret = uread(STDIN_FD, buf, sizeof(buf));
     if (ret != ERROR_AGAIN) {
@@ -188,11 +191,41 @@ __attribute__((section(".text.start"), used, noreturn)) void _start(void) {
         uwrite(STDERR_FD, msg, ustrlen(msg));
     }
 
+    msg = "\ntype input: ";
+    ret = uwrite(STDOUT_FD, msg, ustrlen(msg));
+    if (ret < 0) {
+        msg = "failed writing msg: \n";
+        uwrite(STDERR_FD, msg, ustrlen(msg));
+        uexit(1);
+    }
+
+    int len;
+    while (1) {
+        len = uread(STDIN_FD, buf, sizeof(buf));
+
+        if (len > 0) {
+            msg = "\nread bytes: ";
+            uwrite(STDOUT_FD, msg, ustrlen(msg));
+            uwrite(STDOUT_FD, buf, len);
+            uwrite(STDOUT_FD, "\n", 1);
+            uexit(0);
+        }
+
+        /* no data available yet: yield and keep waiting for user input */
+        if (len != ERROR_AGAIN) {
+            msg = "\nstdin error\n";
+            uwrite(STDOUT_FD, msg, ustrlen(msg));
+            uexit(10);
+        }
+
+        uyield();
+    }
+
     ret = uclose(fd);
     if (ret < 0) {
         msg = "failed to close /hello.txt.\n";
         uwrite(STDERR_FD, msg, ustrlen(msg));
-        uexit(7);
+        uexit(8);
     }
 
     msg = "syscall_stdio test completed.\n";

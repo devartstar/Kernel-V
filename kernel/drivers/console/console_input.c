@@ -61,8 +61,8 @@ int console_input_push(char in_c) {
 
     /* update the count of characters in the buffer */
     g_console_input_count++;
-    KLOG_VERBOSE("CONSOLE_PUSH", "Added char %c, buffer %s, size = %u.\n", in_c,
-                 g_console_input_buf, g_console_input_count);
+    KLOG_VERBOSE("CONSOLE_PUSH", "Added char %c, size = %u.\n", in_c,
+                 g_console_input_count);
 
     /* release the lock */
     spin_unlock_irqrestore(&g_console_input_lock, flags);
@@ -100,9 +100,8 @@ int console_input_pop(char *out_c) {
     /* update the count of characters in the buffer */
     g_console_input_count--;
 
-    KLOG_VERBOSE("CONSOLE_POP",
-                 "out character = %c, buffer %s, left size = %u.\n", out_c,
-                 g_console_input_buf, g_console_input_count);
+    KLOG_VERBOSE("CONSOLE_POP", "out character = %c, left size = %u.\n", *out_c,
+                 g_console_input_count);
 
     /* release the lock */
     spin_unlock_irqrestore(&g_console_input_lock, flags);
@@ -128,8 +127,8 @@ uint32_t console_input_read(char *buf, uint32_t len) {
         }
         read_len++;
         KLOG_VERBOSE("CONSOLE_READ",
-                     "read length = %u, char = %c, read buffer = %s.\n",
-                     read_len, buf[read_len - 1], buf);
+                     "read length = %u, char = %c, read buffer = %.*s.\n",
+                     read_len, buf[read_len - 1], (int)read_len, buf);
     }
 
     return read_len;
