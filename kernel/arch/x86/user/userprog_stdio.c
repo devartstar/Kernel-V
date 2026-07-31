@@ -28,76 +28,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "user_string.h"
-
-#define SYS_EXIT 1
-#define SYS_WRITE 2
-#define SYS_GETPID 3
-#define SYS_SCHED_YIELD 4
-#define SYS_OPEN 5
-#define SYS_READ 6
-#define SYS_CLOSE 7
-#define SYS_LSEEK 8
-
-#define STDIN_FD 0
-#define STDOUT_FD 1
-#define STDERR_FD 2
-#define FIRST_NORMAL_FD 3
-
-#define SEEK_SET 0
-
-#define ERROR_NOOP -4
-#define ERROR_AGAIN -6 /* buffer exists but empty */
-
-static uint32_t ustrlen(const char *s) {
-    uint32_t n = 0;
-    while (s[n] != '\0') {
-        n++;
-    }
-    return n;
-}
-
-/* here to make syscall interrupt */
-static inline int32_t do_syscall(int32_t num, uint32_t a1, uint32_t a2,
-                                 uint32_t a3) {
-    int32_t ret;
-    __asm__ __volatile__("int $0x80"
-                         : "=a"(ret)
-                         : "a"(num), "b"(a1), "c"(a2), "d"(a3)
-                         : "memory");
-    return ret;
-}
-
-static int32_t uwrite(const int fd, const char *buf, const uint32_t len) {
-    return do_syscall(SYS_WRITE, fd, (uint32_t)buf, len);
-}
-
-static int32_t uread(const int fd, const char *buf, const uint32_t len) {
-    return do_syscall(SYS_READ, fd, (uint32_t)buf, len);
-}
-
-static int32_t uopen(const char *path, uint32_t flags) {
-    return do_syscall(SYS_OPEN, (uint32_t)path, flags, 0);
-}
-
-static int32_t uclose(const uint32_t fd) {
-    return do_syscall(SYS_CLOSE, fd, 0, 0);
-}
-
-static int32_t ulseek(const int fd, const int32_t offset,
-                      const int32_t whence) {
-    return do_syscall(SYS_LSEEK, (uint32_t)fd, (uint32_t)offset,
-                      (uint32_t)whence);
-}
-
-static int32_t uyield() { return do_syscall(SYS_SCHED_YIELD, 0, 0, 0); }
-
-static __attribute__((noreturn)) void uexit(int32_t code) {
-    do_syscall(SYS_EXIT, (uint32_t)code, 0, 0);
-    for (;;) {
-        /* SYS_EXIT does not return; spin defensively just in case. */
-    }
-}
+#include "utils/user_utils.h"
 
 __attribute__((section(".text.start"), used, noreturn)) void _start(void) {
     int ret;
@@ -204,7 +135,7 @@ __attribute__((section(".text.start"), used, noreturn)) void _start(void) {
         len = uread(STDIN_FD, buf, sizeof(buf));
 
         if (len > 0) {
-            msg = "\nread bytes: ";
+            msg = "\nread bytes: \n";
             uwrite(STDOUT_FD, msg, ustrlen(msg));
             uwrite(STDOUT_FD, buf, len);
             uwrite(STDOUT_FD, "\n", 1);

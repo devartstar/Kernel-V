@@ -63,6 +63,22 @@ ifeq ($(CONFIG_TESTS_INTEGRATION), y)
     USERPROG_RWS_BIN := $(BUILD_KERN)/userprog_rws.bin
     USERPROG_RWS_OBJ := $(BUILD_KERN)/userprog_rws.o
 
+    USERPROG_STDIN_SRC := $(KERN_ARCH_DIR)/user/userprog_stdin.c
+    USERPROG_STDIN_CMPL := $(BUILD_KERN)/userprog_stdin.user.o
+    USERPROG_STDIN_ELF := $(BUILD_KERN)/userprog_stdin.elf
+    USERPROG_STDIN_BIN := $(BUILD_KERN)/userprog_stdin.bin
+    USERPROG_STDIN_OBJ := $(BUILD_KERN)/userprog_stdin.o
+
+    # Shared user-space runtime (syscall wrappers + string helpers), linked
+    # into every C user program's flat binary.
+    USER_UTILS_DIR := $(KERN_ARCH_DIR)/user/utils
+    USER_UTILS_HDR := $(USER_UTILS_DIR)/user_utils.h
+    USER_UTILS_SYSCALL_SRC := $(USER_UTILS_DIR)/syscalls.c
+    USER_UTILS_STRING_SRC := $(USER_UTILS_DIR)/string.c
+    USER_UTILS_SYSCALL_OBJ := $(BUILD_KERN)/user_utils_syscalls.user.o
+    USER_UTILS_STRING_OBJ := $(BUILD_KERN)/user_utils_string.user.o
+    USER_UTILS_OBJS := $(USER_UTILS_SYSCALL_OBJ) $(USER_UTILS_STRING_OBJ)
+
 endif
 
 # --- Test Sources (conditional) ---
@@ -70,7 +86,7 @@ ifeq ($(CONFIG_BUILD_TEST), y)
     TEST_C_SOURCES := $(shell find $(TESTDIR) -name "*.c")
     TEST_C_OBJECTS := $(patsubst $(KERNDIR)/%.c,$(BUILD_KERN)/%.o,$(TEST_C_SOURCES))
     ifeq ($(CONFIG_TESTS_INTEGRATION), y)
-        KERNEL_OBJECTS := $(KERNEL_ENTRY_OBJ) $(KERNEL_C_OBJECTS) $(KERNEL_ASM_OBJECTS) $(TEST_C_OBJECTS) $(USERPROG_OBJ_MAIN) $(USERPROG_A_OBJ) $(USERPROG_B_OBJ) $(USERPROG_SYSCALL_OBJ) $(USERPROG_OPEN_OBJ) $(USERPROG_READ_OBJ) $(USERPROG_STDIO_OBJ) $(USERPROG_RWS_OBJ)
+        KERNEL_OBJECTS := $(KERNEL_ENTRY_OBJ) $(KERNEL_C_OBJECTS) $(KERNEL_ASM_OBJECTS) $(TEST_C_OBJECTS) $(USERPROG_OBJ_MAIN) $(USERPROG_A_OBJ) $(USERPROG_B_OBJ) $(USERPROG_SYSCALL_OBJ) $(USERPROG_OPEN_OBJ) $(USERPROG_READ_OBJ) $(USERPROG_STDIO_OBJ) $(USERPROG_RWS_OBJ) $(USERPROG_STDIN_OBJ)
     else
         KERNEL_OBJECTS := $(KERNEL_ENTRY_OBJ) $(KERNEL_C_OBJECTS) $(KERNEL_ASM_OBJECTS) $(TEST_C_OBJECTS)
     endif
@@ -167,13 +183,21 @@ $(USERPROG_SYSCALL_OBJ): $(USERPROG_SYSCALL_BIN) | $(BUILD_KERN)
 		--redefine-sym _binary_userprog_syscall_bin_end=_binary_userprog_syscall_end \
 		userprog_syscall.bin userprog_syscall.o)
 
-$(USERPROG_OPEN_CMPL): $(USERPROG_OPEN_SRC) | $(BUILD_KERN)
+$(USER_UTILS_SYSCALL_OBJ): $(USER_UTILS_SYSCALL_SRC) $(USER_UTILS_HDR) | $(BUILD_KERN)
 	$(ECHO) "  CC-USER $@"
 	$(Q)$(CC) $(USER_CFLAGS) -c $< -o $@
 
-$(USERPROG_OPEN_ELF): $(USERPROG_OPEN_CMPL) $(USER_LD) | $(BUILD_KERN)
+$(USER_UTILS_STRING_OBJ): $(USER_UTILS_STRING_SRC) $(USER_UTILS_HDR) | $(BUILD_KERN)
+	$(ECHO) "  CC-USER $@"
+	$(Q)$(CC) $(USER_CFLAGS) -c $< -o $@
+
+$(USERPROG_OPEN_CMPL): $(USERPROG_OPEN_SRC) $(USER_UTILS_HDR) | $(BUILD_KERN)
+	$(ECHO) "  CC-USER $@"
+	$(Q)$(CC) $(USER_CFLAGS) -c $< -o $@
+
+$(USERPROG_OPEN_ELF): $(USERPROG_OPEN_CMPL) $(USER_UTILS_OBJS) $(USER_LD) | $(BUILD_KERN)
 	$(ECHO) "  LD-USER $@"
-	$(Q)$(LD) $(LDFLAGS) -T $(USER_LD) -o $@ $(USERPROG_OPEN_CMPL)
+	$(Q)$(LD) $(LDFLAGS) -T $(USER_LD) -o $@ $(USERPROG_OPEN_CMPL) $(USER_UTILS_OBJS)
 
 $(USERPROG_OPEN_BIN): $(USERPROG_OPEN_ELF) | $(BUILD_KERN)
 	$(ECHO) "  BIN-USER $@"
@@ -188,13 +212,13 @@ $(USERPROG_OPEN_OBJ): $(USERPROG_OPEN_BIN) | $(BUILD_KERN)
 		--redefine-sym _binary_userprog_open_bin_end=_binary_userprog_open_end \
 		userprog_open.bin userprog_open.o)
 
-$(USERPROG_READ_CMPL): $(USERPROG_READ_SRC) | $(BUILD_KERN)
+$(USERPROG_READ_CMPL): $(USERPROG_READ_SRC) $(USER_UTILS_HDR) | $(BUILD_KERN)
 	$(ECHO) "  CC-USER $@"
 	$(Q)$(CC) $(USER_CFLAGS) -c $< -o $@
 
-$(USERPROG_READ_ELF): $(USERPROG_READ_CMPL) $(USER_LD) | $(BUILD_KERN)
+$(USERPROG_READ_ELF): $(USERPROG_READ_CMPL) $(USER_UTILS_OBJS) $(USER_LD) | $(BUILD_KERN)
 	$(ECHO) "  LD-USER $@"
-	$(Q)$(LD) $(LDFLAGS) -T $(USER_LD) -o $@ $(USERPROG_READ_CMPL)
+	$(Q)$(LD) $(LDFLAGS) -T $(USER_LD) -o $@ $(USERPROG_READ_CMPL) $(USER_UTILS_OBJS)
 
 $(USERPROG_READ_BIN): $(USERPROG_READ_ELF) | $(BUILD_KERN)
 	$(ECHO) "  BIN-USER $@"
@@ -209,13 +233,13 @@ $(USERPROG_READ_OBJ): $(USERPROG_READ_BIN) | $(BUILD_KERN)
 		--redefine-sym _binary_userprog_read_bin_end=_binary_userprog_read_end \
 		userprog_read.bin userprog_read.o)
 
-$(USERPROG_STDIO_CMPL): $(USERPROG_STDIO_SRC) | $(BUILD_TEST)
+$(USERPROG_STDIO_CMPL): $(USERPROG_STDIO_SRC) $(USER_UTILS_HDR) | $(BUILD_TEST)
 	$(ECHO) "  CC-USER $@"
 	$(Q)$(CC) $(USER_CFLAGS) -c $< -o $@
 
-$(USERPROG_STDIO_ELF): $(USERPROG_STDIO_CMPL) $(USER_LD) | $(BUILD_TEST)
+$(USERPROG_STDIO_ELF): $(USERPROG_STDIO_CMPL) $(USER_UTILS_OBJS) $(USER_LD) | $(BUILD_TEST)
 	$(ECHO) "  LD-USER $@"
-	$(Q)$(LD) $(LDFLAGS) -T $(USER_LD) -o $@ $(USERPROG_STDIO_CMPL)
+	$(Q)$(LD) $(LDFLAGS) -T $(USER_LD) -o $@ $(USERPROG_STDIO_CMPL) $(USER_UTILS_OBJS)
 
 $(USERPROG_STDIO_BIN): $(USERPROG_STDIO_ELF) | $(BUILD_TEST)
 	$(ECHO) "  BIN-USER $@"
@@ -230,13 +254,13 @@ $(USERPROG_STDIO_OBJ): $(USERPROG_STDIO_BIN) | $(BUILD_TEST)
 		--redefine-sym _binary_userprog_stdio_bin_end=_binary_userprog_stdio_end \
 		userprog_stdio.bin userprog_stdio.o)
 
-$(USERPROG_RWS_CMPL): $(USERPROG_RWS_SRC) | $(BUILD_KERN)
+$(USERPROG_RWS_CMPL): $(USERPROG_RWS_SRC) $(USER_UTILS_HDR) | $(BUILD_KERN)
 	$(ECHO) "  CC-USER $@"
 	$(Q)$(CC) $(USER_CFLAGS) -c $< -o $@
 
-$(USERPROG_RWS_ELF): $(USERPROG_RWS_CMPL) $(USER_LD) | $(BUILD_KERN)
+$(USERPROG_RWS_ELF): $(USERPROG_RWS_CMPL) $(USER_UTILS_OBJS) $(USER_LD) | $(BUILD_KERN)
 	$(ECHO) "  LD-USER $@"
-	$(Q)$(LD) $(LDFLAGS) -T $(USER_LD) -o $@ $(USERPROG_RWS_CMPL)
+	$(Q)$(LD) $(LDFLAGS) -T $(USER_LD) -o $@ $(USERPROG_RWS_CMPL) $(USER_UTILS_OBJS)
 
 $(USERPROG_RWS_BIN): $(USERPROG_RWS_ELF) | $(BUILD_KERN)
 	$(ECHO) "  BIN-USER $@"
@@ -250,6 +274,27 @@ $(USERPROG_RWS_OBJ): $(USERPROG_RWS_BIN) | $(BUILD_KERN)
 		--redefine-sym _binary_userprog_rws_bin_start=_binary_userprog_rws_start \
 		--redefine-sym _binary_userprog_rws_bin_end=_binary_userprog_rws_end \
 		userprog_rws.bin userprog_rws.o)
+
+$(USERPROG_STDIN_CMPL): $(USERPROG_STDIN_SRC) $(USER_UTILS_HDR) | $(BUILD_KERN)
+	$(ECHO) "  CC-USER $@"
+	$(Q)$(CC) $(USER_CFLAGS) -c $< -o $@
+
+$(USERPROG_STDIN_ELF): $(USERPROG_STDIN_CMPL) $(USER_UTILS_OBJS) $(USER_LD) | $(BUILD_KERN)
+	$(ECHO) "  LD-USER $@"
+	$(Q)$(LD) $(LDFLAGS) -T $(USER_LD) -o $@ $(USERPROG_STDIN_CMPL) $(USER_UTILS_OBJS)
+
+$(USERPROG_STDIN_BIN): $(USERPROG_STDIN_ELF) | $(BUILD_KERN)
+	$(ECHO) "  BIN-USER $@"
+	$(Q)$(OBJCOPY) -O binary $< $@
+
+$(USERPROG_STDIN_OBJ): $(USERPROG_STDIN_BIN) | $(BUILD_KERN)
+	$(ECHO) "  OBJCOPY $@"
+	$(Q)(cd $(BUILD_KERN) && \
+	$(OBJCOPY) -I binary -O elf32-i386 -B i386 \
+		--rename-section .data=.rodata,contents,alloc,load,readonly,data \
+		--redefine-sym _binary_userprog_stdin_bin_start=_binary_userprog_stdin_start \
+		--redefine-sym _binary_userprog_stdin_bin_end=_binary_userprog_stdin_end \
+		userprog_stdin.bin userprog_stdin.o)
 endif
 
 # --- Kernel Linking ---

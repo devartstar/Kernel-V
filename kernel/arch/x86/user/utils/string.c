@@ -1,43 +1,36 @@
 /*
- * user_string.h - Freestanding string utilities for user-mode programs.
+ * string.c - Freestanding string / formatting utilities for user-mode programs.
  *
  * User programs are built as standalone flat binaries (see user.ld) and are
  * NOT linked against the kernel's lib/string.c. They also compile with
- * USER_CFLAGS, which has no kernel include path. This header therefore
- * provides a self-contained copy of the formatter so user code can format
- * strings without any kernel dependency.
- *
- * Include with:  #include "user_string.h"
- * (GCC resolves quoted includes relative to the including file's directory,
- *  so no -I flag is required.)
+ * USER_CFLAGS, which has no kernel include path. This translation unit
+ * therefore provides self-contained copies of the helpers so user code can
+ * work with strings without any kernel dependency. It is linked into every C
+ * user program alongside utils/syscalls.c; declarations live in
+ * utils/user_utils.h.
  */
-#ifndef USER_STRING_H
-#define USER_STRING_H
+#include "user_utils.h"
 
-#include <stdarg.h>
-#include <stddef.h>
-#include <stdint.h>
+uint32_t ustrlen(const char *s) {
+    uint32_t n = 0;
+    while (s[n] != '\0') {
+        n++;
+    }
+    return n;
+}
 
-/**
- * uvsnprintf - format into @buf using @fmt and a va_list.
- * @buf  - destination buffer (always NUL-terminated when size > 0)
- * @size - capacity of @buf in bytes
- * @fmt  - printf-style format string (%s %c %d %u %x %p %%, optional 'l'/width)
- * @args - variadic arguments
- *
- * @return number of characters written (excluding the NUL terminator).
- */
-static int uvsnprintf(char *buf, size_t size, const char *fmt, va_list args)
-    __attribute__((unused));
+int umemeq(const void *a, const void *b, uint32_t n) {
+    const unsigned char *pa = (const unsigned char *)a;
+    const unsigned char *pb = (const unsigned char *)b;
+    for (uint32_t i = 0; i < n; i++) {
+        if (pa[i] != pb[i]) {
+            return 0;
+        }
+    }
+    return 1;
+}
 
-/**
- * usnprintf - printf-style formatter into a fixed buffer.
- * See uvsnprintf for parameter semantics.
- */
-static int usnprintf(char *buf, size_t size, const char *fmt, ...)
-    __attribute__((unused, format(printf, 3, 4)));
-
-static int uvsnprintf(char *buf, size_t size, const char *fmt, va_list args) {
+int uvsnprintf(char *buf, size_t size, const char *fmt, va_list args) {
     if (size == 0)
         return 0;
 
@@ -270,7 +263,7 @@ static int uvsnprintf(char *buf, size_t size, const char *fmt, va_list args) {
     return (int)(p - buf);
 }
 
-static int usnprintf(char *buf, size_t size, const char *fmt, ...) {
+int usnprintf(char *buf, size_t size, const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
     int ret = uvsnprintf(buf, size, fmt, args);
@@ -278,4 +271,3 @@ static int usnprintf(char *buf, size_t size, const char *fmt, ...) {
     return ret;
 }
 
-#endif /* USER_STRING_H */
