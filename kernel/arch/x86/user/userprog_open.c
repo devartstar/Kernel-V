@@ -21,22 +21,22 @@
 /* Placed first in the binary (see user.ld) so the kernel entry at 0x00400000
  * lands on _start. */
 __attribute__((section(".text.start"), used, noreturn)) void _start(void) {
-    uputs("open-test: starting");
+    uputs("open-test: starting\n");
 
     /* Check 1: opening an existing file yields a valid descriptor (>= 3). */
     int32_t fd = uopen("/hello.txt", 0);
     if (fd < FIRST_NORMAL_FD) {
-        uputs("open-test: FAIL open existing file");
+        uputs("open-test: FAIL open existing file\n");
         uexit(1);
     }
 
     /* Check 2: opening a missing file is rejected with a negative error. */
     int32_t missing = uopen("/no_such_file.txt", 0);
     if (missing >= 0) {
-        uputs("open-test: FAIL open missing file");
+        uputs("open-test: FAIL open missing file\n");
         uexit(2);
     }
 
-    uputs("open-test: all checks passed");
+    uputs("open-test: all checks passed\n");
     uexit(0);
 }

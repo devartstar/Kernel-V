@@ -24,12 +24,12 @@
 /* Placed first in the binary (see user.ld) so the kernel entry at 0x00400000
  * lands on _start. */
 __attribute__((section(".text.start"), used, noreturn)) void _start(void) {
-    uputs("read-test: starting");
+    uputs("read-test: starting\n");
 
     /* Step 1: opening an existing file yields a valid descriptor (>= 3). */
     int32_t fd = uopen("/hello.txt", 0);
     if (fd < FIRST_NORMAL_FD) {
-        uputs("read-test: FAIL open existing file");
+        uputs("read-test: FAIL open existing file\n");
         uexit(1);
     }
 
@@ -37,13 +37,13 @@ __attribute__((section(".text.start"), used, noreturn)) void _start(void) {
     char buf[16];
     int32_t read_len = uread(fd, buf, 5);
     if (read_len < 0) {
-        uputs("read-test: FAIL reading file contents.");
+        uputs("read-test: FAIL reading file contents.\n");
         uexit(2);
     }
 
     /* Step 3: verify the length of the read contents */
     if (read_len != 5) {
-        uputs("read-test: FAIL, read length mismatch.");
+        uputs("read-test: FAIL, read length mismatch.\n");
         uexit(3);
     }
 
@@ -53,10 +53,10 @@ __attribute__((section(".text.start"), used, noreturn)) void _start(void) {
     /* Step 4: check negative case when buffer is invalid */
     read_len = uread(fd, NULL, 5);
     if (read_len >= 0) {
-        uputs("read-test: FAIL, returnd success, expected error.");
+        uputs("read-test: FAIL, returnd success, expected error.\n");
         uexit(4);
     }
 
-    uputs("read-test: all checks passed");
+    uputs("read-test: all checks passed\n");
     uexit(0);
 }

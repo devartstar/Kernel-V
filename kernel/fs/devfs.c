@@ -286,11 +286,22 @@ static int devstdin_read(vfs_node_t *node, uint32_t offset, void *buf,
         return VFS_ERR_INVALID;
     }
 
-    /* drain any pending bytes from UART through serial driver to console buffer
+    /**
+     * NOTE: Communication between UART(COM port) and Serial Driver can be done
+     * in two ways:
+     * 1. Continous polling - stdin read keeps polling continously until UART
+     * has data avaiable
+     * 2. Interrupt Based signal - UART asserts IRQ4 when it has data available
      */
-    serial_dump_input_to_console();
 
-    /* read the buffer from the console */
+    /* THIS is needed for continous polling ONLY,
+     * drain any pending bytes from UART through serial driver to console buffer
+     * NOTE: currently IRQ 4 -> mapped -> serial int handler -> stored the data
+     * when UART asserts IRQ.
+     * serial_dump_input_to_console();
+     * /
+
+        /* read the buffer from the console */
     read_len = console_input_read((char *)buf, len);
 
     if (read_len == 0) {

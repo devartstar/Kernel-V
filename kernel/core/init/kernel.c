@@ -5,6 +5,7 @@
 #include "arch/x86/tss.h"
 #include "core/debug.h"
 #include "core/debug_funcs.h"
+#include "drivers/console_input.h"
 #include "mm/paging.h"
 #include "mm/pmm.h"
 #include "mm/stack_map.h"
@@ -151,6 +152,9 @@ void kernel_main() {
     /***********************************
      * Initialize core systems modules *
      ***********************************/
+
+    /* Initialize system console buffer */
+    console_input_init();
 
     /* Interrupt Descriptor Table Initialization */
     idt_init();

@@ -54,97 +54,97 @@ static const char PATTERN[] = "ABCDEFGHIJ";
 __attribute__((section(".text.start"), used, noreturn)) void _start(void) {
     char buf[32];
 
-    uputs("rws-test: starting");
+    uputs("rws-test: starting\n");
 
     /* Step 0: open the fixture file. */
     int32_t fd = uopen(FIXTURE_PATH, 0);
     if (fd < FIRST_NORMAL_FD) {
-        uputs("rws-test: FAIL open fixture");
+        uputs("rws-test: FAIL open fixture\n");
         uexit(1);
     }
 
     /* Step 1: rewind and lay down a known pattern so the rest of the test is
      * independent of the fixture's prior contents. */
     if (ulseek(fd, 0, SEEK_SET) != 0) {
-        uputs("rws-test: FAIL lseek SET before write");
+        uputs("rws-test: FAIL lseek SET before write\n");
         uexit(2);
     }
 
     int32_t wrote = uwrite(fd, PATTERN, PATTERN_LEN);
     if (wrote != PATTERN_LEN) {
-        uputs("rws-test: FAIL write pattern");
+        uputs("rws-test: FAIL write pattern\n");
         uexit(3);
     }
 
     /* Step 2: rewind with SEEK_SET and read the whole pattern back. */
     if (ulseek(fd, 0, SEEK_SET) != 0) {
-        uputs("rws-test: FAIL lseek SET before read");
+        uputs("rws-test: FAIL lseek SET before read\n");
         uexit(4);
     }
 
     int32_t got = uread(fd, buf, PATTERN_LEN);
     if (got < 0) {
-        uputs("rws-test: FAIL readback error");
+        uputs("rws-test: FAIL readback error\n");
         uexit(5);
     }
     if (got != PATTERN_LEN) {
-        uputs("rws-test: FAIL readback length");
+        uputs("rws-test: FAIL readback length\n");
         uexit(6);
     }
     if (!umemeq(buf, PATTERN, PATTERN_LEN)) {
-        uputs("rws-test: FAIL readback content");
+        uputs("rws-test: FAIL readback content\n");
         uexit(7);
     }
 
     /* Step 3: SEEK_CUR - after reading PATTERN_LEN bytes the offset is at
      * PATTERN_LEN; rewind 5 bytes and confirm we land on 'F'. */
     if (ulseek(fd, -5, SEEK_CUR) != (PATTERN_LEN - 5)) {
-        uputs("rws-test: FAIL lseek CUR");
+        uputs("rws-test: FAIL lseek CUR\n");
         uexit(8);
     }
     got = uread(fd, buf, 1);
     if (got != 1 || buf[0] != 'F') {
-        uputs("rws-test: FAIL read after SEEK_CUR");
+        uputs("rws-test: FAIL read after SEEK_CUR\n");
         uexit(9);
     }
 
     /* Step 4: SEEK_SET to a middle offset and read a few bytes ("CDE"). */
     if (ulseek(fd, 2, SEEK_SET) != 2) {
-        uputs("rws-test: FAIL lseek SET mid");
+        uputs("rws-test: FAIL lseek SET mid\n");
         uexit(10);
     }
     got = uread(fd, buf, 3);
     if (got != 3 || !umemeq(buf, "CDE", 3)) {
-        uputs("rws-test: FAIL read after SEEK_SET mid");
+        uputs("rws-test: FAIL read after SEEK_SET mid\n");
         uexit(11);
     }
 
     /* Step 5: SEEK_END(0) returns the file size; reading there yields EOF. */
     int32_t end = ulseek(fd, 0, SEEK_END);
     if (end < PATTERN_LEN) {
-        uputs("rws-test: FAIL lseek END");
+        uputs("rws-test: FAIL lseek END\n");
         uexit(12);
     }
     got = uread(fd, buf, 4);
     if (got != 0) {
-        uputs("rws-test: FAIL read at EOF");
+        uputs("rws-test: FAIL read at EOF\n");
         uexit(13);
     }
 
     /* Step 6: SEEK_END(-1) points at the final byte; a 1-byte read succeeds. */
     if (ulseek(fd, -1, SEEK_END) != (end - 1)) {
-        uputs("rws-test: FAIL lseek END-1");
+        uputs("rws-test: FAIL lseek END-1\n");
         uexit(14);
     }
     got = uread(fd, buf, 1);
     if (got != 1) {
-        uputs("rws-test: FAIL read last byte");
+        uputs("rws-test: FAIL read last byte\n");
         uexit(14);
     }
 
     /* Step 7: seeking before the start of the file is rejected. */
     if (ulseek(fd, -1000, SEEK_SET) >= 0) {
-        uputs("rws-test: FAIL lseek SET negative accepted");
+        uputs("rws-test: FAIL lseek SET negative accepted\n");
         uexit(15);
     }
 
@@ -153,25 +153,25 @@ __attribute__((section(".text.start"), used, noreturn)) void _start(void) {
         uexit(16);
     }
     if (ulseek(fd, -1, SEEK_CUR) >= 0) {
-        uputs("rws-test: FAIL lseek CUR underflow accepted");
+        uputs("rws-test: FAIL lseek CUR underflow accepted\n");
         uexit(16);
     }
 
     /* Step 9: an unknown whence value is rejected. */
     if (ulseek(fd, 0, 99) >= 0) {
-        uputs("rws-test: FAIL lseek invalid whence accepted");
+        uputs("rws-test: FAIL lseek invalid whence accepted\n");
         uexit(17);
     }
 
     /* Step 10: writing from a NULL buffer is rejected. */
     if (uwrite(fd, NULL, 4) >= 0) {
-        uputs("rws-test: FAIL write NULL buffer accepted");
+        uputs("rws-test: FAIL write NULL buffer accepted\n");
         uexit(18);
     }
 
     /* Step 11: reading into a NULL buffer is rejected. */
     if (uread(fd, NULL, 4) >= 0) {
-        uputs("rws-test: FAIL read NULL buffer accepted");
+        uputs("rws-test: FAIL read NULL buffer accepted\n");
         uexit(19);
     }
 
@@ -185,26 +185,26 @@ __attribute__((section(".text.start"), used, noreturn)) void _start(void) {
         uexit(20);
     }
     if (uwrite(fd, big, sizeof(big)) == (int32_t)sizeof(big)) {
-        uputs("rws-test: FAIL write beyond capacity accepted");
+        uputs("rws-test: FAIL write beyond capacity accepted\n");
         uexit(20);
     }
 
     /* Step 13: closing a valid descriptor succeeds. */
     if (uclose(fd) < 0) {
-        uputs("rws-test: FAIL close");
+        uputs("rws-test: FAIL close\n");
         uexit(21);
     }
 
     /* Step 14: operations on a closed descriptor are rejected. */
     if (uread(fd, buf, 1) >= 0) {
-        uputs("rws-test: FAIL read after close accepted");
+        uputs("rws-test: FAIL read after close accepted\n");
         uexit(22);
     }
     if (ulseek(fd, 0, SEEK_SET) >= 0) {
-        uputs("rws-test: FAIL lseek after close accepted");
+        uputs("rws-test: FAIL lseek after close accepted\n");
         uexit(23);
     }
 
-    uputs("rws-test: all checks passed");
+    uputs("rws-test: all checks passed\n");
     uexit(0);
 }

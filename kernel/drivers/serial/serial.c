@@ -3,25 +3,6 @@
 #include "core/io.h"
 #include "fs/vfs.h"
 
-/*
- * The kernel drives two 16550 UARTs so that interactive console traffic and
- * kernel log output never interleave on the same wire:
- *
- *   COM1 (0x3F8) - interactive user console. Backs the /dev/stdout, /dev/stderr
- *                  and /dev/stdin device writes/reads.
- *   COM2 (0x2F8) - kernel log output (KLOG serial backend) only.
- *
- * Register offsets from the port base:
- *   +0 data register (DLAB=0) / divisor low (DLAB=1)
- *   +1 interrupt enable       / divisor high (DLAB=1)
- *   +2 FIFO control
- *   +3 line control
- *   +4 modem control
- *   +5 line status register (bit0 = data ready, bit5 = transmit holding empty)
- */
-#define SERIAL_COM1 0x3F8
-#define SERIAL_COM2 0x2F8
-
 static void serial_port_init(uint16_t base) {
     /* Disable all interrupts */
     outb(base + 1, 0x00);
@@ -52,11 +33,13 @@ void serial_init(void) {
 
 /* Transmit FIFO ready to accept a byte */
 static int serial_is_transmit_ready(uint16_t base) {
-    return inb(base + 5) & 0x20;
+    return inb(base + SERIAL_REG_LSR) & 0x20;
 }
 
 /* Received data available to read */
-static int serial_is_data_ready(uint16_t base) { return inb(base + 5) & 0x01; }
+static int serial_is_data_ready(uint16_t base) {
+    return inb(base + SERIAL_REG_LSR) & 0x01;
+}
 
 static void serial_port_putc(uint16_t base, char c) {
     while (!serial_is_transmit_ready(base)) {
@@ -110,6 +93,16 @@ uint32_t serial_dump_input_to_console(void) {
         /* Note: Only fails in case of some issue, is serial hardware is not
          * ready it still returns success */
         if (serial_getc_nonblocking(&out_c) == VFS_OK) {
+            /* Echo the received byte back to COM1 so the user can see what
+             * they typed. Translate CR (Enter) into CRLF for a clean line
+             * break on the terminal. */
+            if (out_c == '\r') {
+                serial_putc('\r');
+                serial_putc('\n');
+            } else {
+                serial_putc(out_c);
+            }
+
             if (console_input_push(out_c) < 0) {
                 dump_count++;
                 // KLOG_ERROR("SERIAL", "serial_dump_input_to_console failed.
@@ -123,4 +116,42 @@ uint32_t serial_dump_input_to_console(void) {
         }
     }
     return dump_count;
+}
+
+/**
+ * Flow: Interrupt based Notification
+ * Driver enable UART to raise INT. when it gets data.
+ * byte arrives at COM1 UART -> UART plases byte in its RX FIFO -> #
+ * # -> UART sets LSR.DR = 1 -> UART marks "recieved data available" in IIR -> #
+ * # -> UART asserts IRQ4 -> PIC delivers IRQ4 vector to CPU -> #
+ * # -> serial interrupt handler runs and reads RBS/RX FIFO
+ */
+
+/* --- enable UART to notify CPU with interrupt when data available --- */
+void serial_enable_rx_interrupt(uint16_t base) {
+    /* enable UART recieved-data-available interrupt */
+    outb(base + SERIAL_REG_IER, SERIAL_IER_RX_AVAILABLE);
+
+    /* OUT2 mult be set for UART interrupt signal to reach the PIC */
+    outb(base + SERIAL_REG_MCR,
+         SERIAL_MCR_DTR | SERIAL_MCR_OUT2 | SERIAL_MCR_RTS);
+}
+
+/* --- Serial Interrupt Handler --- */
+
+/**
+ * serial_irq_handler - is routine when COM Port signals that data is avaialeble
+ * to be read.
+ *
+ * @idt_idx - interrupt descriptor index for com port interrupt.
+ * @reg - saved register context during interrupt
+ *
+ * @return void
+ */
+void serial_irq_handler(uint32_t idt_idx, regs_t *reg) {
+    (void)idt_idx;
+    (void)reg;
+
+    /* dump the buffer from serial driver to console */
+    serial_dump_input_to_console();
 }
