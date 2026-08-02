@@ -105,9 +105,11 @@ pcb_t *proc_alloc(const char *name) {
     new_proc->type = PROC_TYPE_UNASSIGNED;
     new_proc->exit_code = 0;
     new_proc->has_exited = 0;
+    new_proc->wait_info.wait_reason = PROC_WAIT_NONE;
+    new_proc->wait_info.wait_tick_count = 0;
 
-    /* Background trace id for this process's non-syscall execution. Minted
-     * without disturbing the caller's active sc. */
+    /* Background trace id for this process's non-syscall execution.
+     * Minted without disturbing the caller's active sc. */
     new_proc->trace_id = log_trace_next();
     new_proc->trace_id_saved = new_proc->trace_id;
 
@@ -416,22 +418,31 @@ const char *proc_type_to_string(proc_type_t type) {
     }
 }
 
-void proc_sleep(uint32_t ticks) {
+static void proc_wait(proc_wait_reason_t reason, uint32_t ticks) {
+    if (reason != PROC_WAIT_SLEEP) {
+        ticks = 0;
+    }
+
     current_proc->state = PROC_WAITING;
-    current_proc->sleep_ticks = ticks;
+
+    current_proc->wait_info.wait_reason = reason;
+    current_proc->wait_info.wait_tick_count = ticks;
 
     dequeue_ready(current_proc);
     enqueue_wait(current_proc);
 
-    /* Current process is put to sleep, schedule a new process to run */
     yield();
 }
+
+void proc_wait_sleep(uint32_t ticks) { proc_wait(PROC_WAIT_SLEEP, ticks); }
+void proc_wait_console_input(void) { proc_wait(PROC_WAIT_CONSOLE_INPUT, 0); }
 
 void proc_wakeup(pcb_t *proc) {
     dequeue_wait(proc);
 
     proc->state = PROC_READY;
-    proc->sleep_ticks = 0;
+    proc->wait_info.wait_tick_count = 0;
+    proc->wait_info.wait_reason = PROC_WAIT_NONE;
 
     enqueue_ready(proc);
 }
@@ -731,12 +742,19 @@ void timer_interrupt_proc_handler(uint32_t tickcount) {
     /* For each process update the timer */
     while (p) {
         pcb_t *next_p = p->next;
-        if (p->sleep_ticks > 0) {
-            p->sleep_ticks--;
+
+        /* check the reason for sleep and operate on timer based sleep only */
+        if (p->wait_info.wait_reason != PROC_WAIT_SLEEP) {
+            p = next_p;
+            continue;
+        }
+
+        if (p->wait_info.wait_tick_count > 0) {
+            p->wait_info.wait_tick_count--;
         }
 
         /* Sleep timer has expired then enqueue to ready lit */
-        if (p->sleep_ticks == 0) {
+        if (p->wait_info.wait_tick_count == 0) {
             proc_wakeup(p);
         }
 
@@ -861,7 +879,7 @@ void print_proc_info(const pcb_t *proc) {
             "[Identity] pid=%u name=%s type=%s state=%s\n\t"
             "[Lifecycle] exited=%u exit_code=0x%08x\n\t"
             "[Kernel Stack] base=0x%08x top=0x%08x size=0x%08x\n\t"
-            "[Scheduling] timeslice=%u sleep_ticks=%u\n\t"
+            "[Scheduling] timeslice=%u wait_ticks=%u (reason=%u)\n\t"
             "[Context] eip=0x%08x esp=0x%08x ebp=0x%08x "
             "eflags=0x%08x(IF=%s)\n\t"
             "[Linkage] parent=%s(pid=%u)\n\t"
@@ -871,7 +889,8 @@ void print_proc_info(const pcb_t *proc) {
             proc->pid, proc->name, proc_type_to_string(proc->type),
             proc_state_to_string(proc->state), proc->has_exited,
             proc->exit_code, proc->kernel_stack_base, proc->kernel_stack_top,
-            proc->kernel_stack_size, proc->timeslice_ticks, proc->sleep_ticks,
+            proc->kernel_stack_size, proc->timeslice_ticks,
+            proc->wait_info.wait_tick_count, proc->wait_info.wait_reason,
             proc->context.eip, proc->context.esp, proc->context.ebp,
             proc->context.eflags, (proc->context.eflags & 0x200) ? "on" : "off",
             proc->parent ? proc->parent->name : "none",
@@ -879,22 +898,23 @@ void print_proc_info(const pcb_t *proc) {
             proc->user_code_size, proc->user_stack_top, proc->user_stack_size,
             proc->page_directory_virt, proc->page_directory_phys);
     } else {
-        KLOG_VERBOSE(
-            "PROC",
-            "[Identity] pid=%u name=%s type=%s state=%s\n\t"
-            "[Lifecycle] exited=%u exit_code=0x%08x\n\t"
-            "[Kernel Stack] base=0x%08x top=0x%08x size=0x%08x\n\t"
-            "[Scheduling] timeslice=%u sleep_ticks=%u\n\t"
-            "[Context] eip=0x%08x esp=0x%08x ebp=0x%08x "
-            "eflags=0x%08x(IF=%s)\n\t"
-            "[Linkage] parent=%s(pid=%u)\n",
-            proc->pid, proc->name, proc_type_to_string(proc->type),
-            proc_state_to_string(proc->state), proc->has_exited,
-            proc->exit_code, proc->kernel_stack_base, proc->kernel_stack_top,
-            proc->kernel_stack_size, proc->timeslice_ticks, proc->sleep_ticks,
-            proc->context.eip, proc->context.esp, proc->context.ebp,
-            proc->context.eflags, (proc->context.eflags & 0x200) ? "on" : "off",
-            proc->parent ? proc->parent->name : "none",
-            proc->parent ? proc->parent->pid : 0);
+        KLOG_VERBOSE("PROC",
+                     "[Identity] pid=%u name=%s type=%s state=%s\n\t"
+                     "[Lifecycle] exited=%u exit_code=0x%08x\n\t"
+                     "[Kernel Stack] base=0x%08x top=0x%08x size=0x%08x\n\t"
+                     "[Scheduling] timeslice=%u wait_ticks=%u (reason %u)\n\t"
+                     "[Context] eip=0x%08x esp=0x%08x ebp=0x%08x "
+                     "eflags=0x%08x(IF=%s)\n\t"
+                     "[Linkage] parent=%s(pid=%u)\n",
+                     proc->pid, proc->name, proc_type_to_string(proc->type),
+                     proc_state_to_string(proc->state), proc->has_exited,
+                     proc->exit_code, proc->kernel_stack_base,
+                     proc->kernel_stack_top, proc->kernel_stack_size,
+                     proc->timeslice_ticks, proc->wait_info.wait_tick_count,
+                     proc->wait_info.wait_reason, proc->context.eip,
+                     proc->context.esp, proc->context.ebp, proc->context.eflags,
+                     (proc->context.eflags & 0x200) ? "on" : "off",
+                     proc->parent ? proc->parent->name : "none",
+                     proc->parent ? proc->parent->pid : 0);
     }
 }

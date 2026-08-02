@@ -25,10 +25,11 @@
  *
  */
 
+#include "utils/user_utils.h"
 #include <stddef.h>
 #include <stdint.h>
 
-#include "utils/user_utils.h"
+#define TEST_PROCESS_STDIN 1
 
 __attribute__((section(".text.start"), used, noreturn)) void _start(void) {
     int ret;
@@ -122,6 +123,9 @@ __attribute__((section(".text.start"), used, noreturn)) void _start(void) {
         uwrite(STDERR_FD, msg, ustrlen(msg));
     }
 
+/* disabling below section of test - as covered in userprog_stdin test */
+#if !TEST_PROCESS_STDIN
+
     msg = "\ntype input: ";
     ret = uwrite(STDOUT_FD, msg, ustrlen(msg));
     if (ret < 0) {
@@ -152,6 +156,9 @@ __attribute__((section(".text.start"), used, noreturn)) void _start(void) {
         uyield();
     }
 
+#endif
+
+    /* Clean up */
     ret = uclose(fd);
     if (ret < 0) {
         msg = "failed to close /hello.txt.\n";

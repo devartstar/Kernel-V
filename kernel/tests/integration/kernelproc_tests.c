@@ -33,7 +33,7 @@ void my_sleep_proc(void *arg) {
     while (i < max_sleep_cycles) {
         KLOG_VERBOSE("TEST", "Thread %s about to sleep cycle %d, state=%d\n",
                      current_proc->name, i, current_proc->state);
-        proc_sleep(20);
+        proc_wait_sleep(20);
         i++;
     }
 

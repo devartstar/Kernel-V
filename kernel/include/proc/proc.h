@@ -35,6 +35,23 @@ typedef enum {
 } proc_state_t;
 
 //
+// Process reason for waiting
+//
+typedef enum {
+    PROC_WAIT_NONE = 0,
+    PROC_WAIT_SLEEP,
+    PROC_WAIT_CONSOLE_INPUT
+} proc_wait_reason_t;
+
+//
+// Process wait information
+//
+typedef struct proc_wait_info {
+    proc_wait_reason_t wait_reason;
+    uint32_t wait_tick_count;
+} proc_wait_info_t;
+
+//
 //  Store the context of the registers here.
 //
 typedef struct regs_context {
@@ -53,7 +70,7 @@ typedef struct regs_context {
  * @kernel_stack_base Kernel stack bottom address for the process
  * @kernel_stack_top Kernel stack top address for the process
  * @kernel_stack_size Kernel stack size for the process
- * @sleep_ticks Cycles for the process to sleep
+ * @proc_wait_info Process reason for wait and ticks to wait for
  * @timeslice_ticks Cycles for the process to execute before switch
  * @user_stack_top User stack top address for the process
  * @user_stack_size User stack size for the process
@@ -85,8 +102,10 @@ typedef struct pcb {
     uint32_t kernel_stack_size;
 
     /* Scheduling */
-    uint32_t sleep_ticks;
     uint32_t timeslice_ticks;
+
+    /* reason for process to get to wait state */
+    proc_wait_info_t wait_info;
 
     /* Log correlation (sc=) tracing.
      * trace_id: id this process is currently running under (restored by
@@ -189,12 +208,18 @@ void proc_mark_ready(pcb_t *proc);
 const char *proc_type_to_string(proc_type_t type);
 
 /**
- * proc_sleep - Puts the current running process to sleep till next tick.
+ * proc_wait_sleep - Puts the current running process to sleep till next tick.
  * @ticks - count of cpu intervals for process to sleep.
  *
  * @return - void
  */
-void proc_sleep(uint32_t ticks);
+void proc_wait_sleep(uint32_t ticks);
+
+/**
+ * proc_wait_console_input - Puts the current running process to sleep till
+ * console input is available
+ */
+void proc_wait_console_input(void);
 
 /**
  * proc_wakeup - Wakes up a sleeping process and adds to ready queue.
