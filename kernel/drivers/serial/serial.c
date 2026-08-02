@@ -3,6 +3,11 @@
 #include "core/io.h"
 #include "fs/vfs.h"
 
+/* serial counters */
+static volatile uint32_t g_serial_irq_count;
+static volatile uint32_t g_serial_rx_byte_count;
+static volatile uint32_t g_serial_rx_drop_count;
+
 static void serial_port_init(uint16_t base) {
     /* Disable all interrupts */
     outb(base + 1, 0x00);
@@ -30,6 +35,13 @@ void serial_init(void) {
     serial_port_init(SERIAL_COM1);
     serial_port_init(SERIAL_COM2);
 }
+
+/* serial counters */
+uint32_t serial_irq_count(void) { return g_serial_irq_count; }
+
+uint32_t serial_rx_byte_count(void) { return g_serial_rx_byte_count; }
+
+uint32_t serial_rx_drop_count(void) { return g_serial_rx_drop_count; }
 
 /* Transmit FIFO ready to accept a byte */
 static int serial_is_transmit_ready(uint16_t base) {
@@ -82,7 +94,7 @@ int serial_getc_nonblocking(char *out_c) {
 
     /* read the data */
     *out_c = (char)inb(SERIAL_COM1);
-    return 0;
+    return VFS_OK;
 }
 
 uint32_t serial_dump_input_to_console(void) {
@@ -103,12 +115,18 @@ uint32_t serial_dump_input_to_console(void) {
                 serial_putc(out_c);
             }
 
-            if (console_input_push(out_c) < 0) {
-                dump_count++;
+            if (console_input_push(out_c) != VFS_OK) {
+                /* unable to write to console buffer */
+                g_serial_rx_drop_count++;
+
                 // KLOG_ERROR("SERIAL", "serial_dump_input_to_console failed.
                 // unable to push data to console buffer.\n");
                 return dump_count;
             }
+
+            /* successfully wrote to console */
+            g_serial_rx_byte_count++;
+            dump_count++;
         } else {
             // KLOG_ERROR("SERIAL", "serial_dump_input_to_console failed. unable
             // to read data from serial port.\n");
@@ -151,6 +169,8 @@ void serial_enable_rx_interrupt(uint16_t base) {
 void serial_irq_handler(uint32_t idt_idx, regs_t *reg) {
     (void)idt_idx;
     (void)reg;
+
+    g_serial_irq_count++;
 
     /* dump the buffer from serial driver to console */
     serial_dump_input_to_console();

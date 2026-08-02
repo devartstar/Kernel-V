@@ -301,9 +301,10 @@ static int devstdin_read(vfs_node_t *node, uint32_t offset, void *buf,
      * serial_dump_input_to_console();
      * /
 
-        /* read the buffer from the console */
+    /* read the buffer from the console */
     read_len = console_input_read((char *)buf, len);
 
+    /* console buffer exists but nothing to read */
     if (read_len == 0) {
         KLOG_ERROR("DEVFS", "devstdin_read failed. console buffer exists but "
                             "no characters to read.\n");

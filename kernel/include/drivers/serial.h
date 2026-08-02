@@ -276,3 +276,8 @@ void serial_enable_rx_interrupt(uint16_t base);
  * @return void
  */
 void serial_irq_handler(uint32_t idt_idx, regs_t *reg);
+
+/* global counter accessors */
+uint32_t serial_irq_count(void);
+uint32_t serial_rx_byte_count(void);
+uint32_t serial_rx_drop_count(void);

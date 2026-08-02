@@ -39,7 +39,7 @@ uint8_t console_buffer_input_test(void) {
     }
 
     /* read 4 characters from the buffer */
-    uint32_t console_char_read_count = console_input_read(buf, 4);
+    int console_char_read_count = console_input_read(buf, 4);
     if (console_char_read_count != 2) {
         KLOG_ERROR("CONSOLE_TEST",
                    "buffer_input test failed. character read count = %u, "

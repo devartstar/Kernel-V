@@ -45,6 +45,6 @@ int console_input_pop(char *out_c);
  *
  * @return number of characters read
  */
-uint32_t console_input_read(char *buf, uint32_t len);
+int console_input_read(char *buf, uint32_t len);
 
 #endif /* CONSOLE_INPUT_H */

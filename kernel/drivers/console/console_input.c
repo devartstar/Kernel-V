@@ -3,6 +3,17 @@
 #include "lib/printk.h"
 #include "sync/spinlock.h"
 
+/**
+ * g_console_input_buf - a managed circular buffer - defined usinf an array of
+ * characters with a head(g_console_input_head) and tail(g_console_input_tail).
+ * when a byte is pushed into the buffer, head is incremented
+ * when a byte is popped out of the buffer, tail is incremented
+ *
+ * g_console_input_count - number of characters in between head and tail.
+ * if g_console_input_count >= CONSOLE_INPUT_BUF_SIZE - means the buffer is full
+ * addition of bytes to the buffer will be dropped with NOMEM error.
+ */
+
 static char g_console_input_buf[CONSOLE_INPUT_BUF_SIZE];
 static uint32_t g_console_input_head;
 static uint32_t g_console_input_tail;
@@ -109,14 +120,14 @@ int console_input_pop(char *out_c) {
     return VFS_OK;
 }
 
-uint32_t console_input_read(char *buf, uint32_t len) {
+int console_input_read(char *buf, uint32_t len) {
     uint32_t read_len = 0;
     int ret = VFS_OK;
 
     if (!buf && len > 0) {
         KLOG_ERROR("CONSOLE",
                    "console read failed. invalid buffer reference.\n");
-        return 0;
+        return VFS_ERR_INVALID;
     }
 
     /* invoke the console pop characters until read upto len */
@@ -131,5 +142,5 @@ uint32_t console_input_read(char *buf, uint32_t len) {
                      read_len, buf[read_len - 1], (int)read_len, buf);
     }
 
-    return read_len;
+    return (int)read_len;
 }
