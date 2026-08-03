@@ -20,6 +20,14 @@ void console_input_init(void);
 uint32_t console_input_available(void);
 
 /**
+ * console_input_wait_for_data - check if console buffer has data available and
+ * if not put the process to sleep until data is available
+ *
+ * @return < 0 for error else success.
+ */
+int console_input_wait_for_data();
+
+/**
  * console_input_push will add a character to the console buffer
  *
  * @in_c - character to add to the conosle buffer

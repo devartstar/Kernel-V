@@ -1,6 +1,7 @@
 #include "drivers/console_input.h"
 #include "fs/vfs.h"
 #include "lib/printk.h"
+#include "proc/proc.h"
 #include "sync/spinlock.h"
 
 /**
@@ -48,6 +49,32 @@ uint32_t console_input_available() {
     return count;
 }
 
+int console_input_wait_for_data() {
+    irq_flags_t flags;
+
+    for (;;) {
+        flags = spin_lock_irqsave(&g_console_input_lock);
+
+        /* if console buffer has data already - exit gracefully */
+        if (console_input_available() > 0) {
+            spin_unlock_irqrestore(&g_console_input_lock, flags);
+            return VFS_OK;
+        }
+
+        /* console buffer doesn't have data, make the process to wait until
+         * available */
+        proc_wait_prepare_console_input();
+        spin_unlock_irqrestore(&g_console_input_lock, flags);
+
+        /* switch to a different process */
+        yield();
+
+        /* waiting process resumed - check the condition again
+         * if data available nore return OK */
+    }
+    return VFS_OK;
+}
+
 int console_input_push(char in_c) {
     irq_flags_t flags;
 
@@ -77,6 +104,8 @@ int console_input_push(char in_c) {
 
     /* release the lock */
     spin_unlock_irqrestore(&g_console_input_lock, flags);
+
+    proc_wakeup_one_reason(PROC_WAIT_CONSOLE_INPUT);
 
     return VFS_OK;
 }

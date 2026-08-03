@@ -291,8 +291,23 @@ static int devstdin_read(vfs_node_t *node, uint32_t offset, void *buf,
      * in two ways:
      * 1. Continous polling - stdin read keeps polling continously until UART
      * has data avaiable
-     * 2. Interrupt Based signal - UART asserts IRQ4 when it has data available
+     * 2. Interrupt Based signal - UART asserts IRQ4 when it has data available.
+     * Sleep the process until the buffer is ready to be read.
      */
+
+    /* For Interrupt based signals - sleep the process until data is ready */
+    /* UART data avaialable to read -> IRQ4 -> Serial reads and put to console
+     * buffer -> wakes up process -> process read form console buffer*/
+    int ret = console_input_wait_for_data();
+    if (ret != VFS_OK) {
+        KLOG_ERROR("DEVFS", "devstdin_read failed. failed to wait for console "
+                            "buffer to be available.\n");
+        return ret;
+    }
+
+    KLOG_VERBOSE(
+        "DEVFS",
+        "devstdin_read process woke up, console buffer has data to read.\n");
 
     /* THIS is needed for continous polling ONLY,
      * drain any pending bytes from UART through serial driver to console buffer

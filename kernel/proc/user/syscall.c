@@ -317,6 +317,14 @@ static int32_t syscall_read(uint32_t _fd, uint32_t _user_buf, uint32_t _len,
 
         /* update the toal read length */
         total_read_len += (uint32_t)ret;
+
+        if (ret < chunk_to_read) {
+            KLOG_VERBOSE("SYSCALL",
+                         "syscall_read: bytes available to read %u is less "
+                         "than queried %u.\n",
+                         total_read_len, len_to_read);
+            break;
+        }
     }
 
     KLOG_VERBOSE("SYSCALL",
@@ -573,10 +581,10 @@ static int copy_from_user(void *kdst, const void *usrc, uint32_t len) {
         dst[i] = src[i];
     }
 
-    KLOG_INFO(
-        "SYSCALL",
-        "copy to kernel buffer completed. copied content = %.*s, length = %u.\n",
-        (int)len, dst, len);
+    KLOG_INFO("SYSCALL",
+              "copy to kernel buffer completed. copied content = %.*s, length "
+              "= %u.\n",
+              (int)len, dst, len);
     return VFS_OK;
 }
 

@@ -222,12 +222,27 @@ void proc_wait_sleep(uint32_t ticks);
 void proc_wait_console_input(void);
 
 /**
+ * @proc_wait_prepare_console_input - similar to proc_wait_console_input without
+ * yieling. sets up wait reason and ticks and removed from ready queue to add to
+ * wait queue.
+ */
+void proc_wait_prepare_console_input(void);
+
+/**
  * proc_wakeup - Wakes up a sleeping process and adds to ready queue.
  * @proc - process to wake up.
  *
  * @return - void
  */
 void proc_wakeup(pcb_t *proc);
+
+/**
+ * proc_wakeup_one_reason - wakes up one of the waiting process under a
+ * specific reason
+ *
+ * @reason - reason for wait
+ */
+void proc_wakeup_one_reason(uint32_t reason);
 
 /**
  * proc_exit - Exits and cleanup the process

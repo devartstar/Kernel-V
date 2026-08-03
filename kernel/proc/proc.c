@@ -418,7 +418,11 @@ const char *proc_type_to_string(proc_type_t type) {
     }
 }
 
-static void proc_wait(proc_wait_reason_t reason, uint32_t ticks) {
+static void proc_wait_prepare(proc_wait_reason_t reason, uint32_t ticks) {
+    if (!current_proc) {
+        return;
+    }
+
     if (reason != PROC_WAIT_SLEEP) {
         ticks = 0;
     }
@@ -430,14 +434,29 @@ static void proc_wait(proc_wait_reason_t reason, uint32_t ticks) {
 
     dequeue_ready(current_proc);
     enqueue_wait(current_proc);
+}
+
+static void proc_wait(proc_wait_reason_t reason, uint32_t ticks) {
+    uint32_t flags;
+
+    flags = irq_save();
+    proc_wait_prepare(reason, ticks);
+    irq_restore(flags);
 
     yield();
 }
 
 void proc_wait_sleep(uint32_t ticks) { proc_wait(PROC_WAIT_SLEEP, ticks); }
 void proc_wait_console_input(void) { proc_wait(PROC_WAIT_CONSOLE_INPUT, 0); }
+void proc_wait_prepare_console_input(void) {
+    proc_wait_prepare(PROC_WAIT_CONSOLE_INPUT, 0);
+}
 
 void proc_wakeup(pcb_t *proc) {
+    if (!proc) {
+        return;
+    }
+
     dequeue_wait(proc);
 
     proc->state = PROC_READY;
@@ -445,6 +464,29 @@ void proc_wakeup(pcb_t *proc) {
     proc->wait_info.wait_reason = PROC_WAIT_NONE;
 
     enqueue_ready(proc);
+}
+
+void proc_wakeup_one_reason(uint32_t reason) {
+    irq_flags_t flags;
+    pcb_t *p;
+    pcb_t *next;
+
+    flags = irq_save();
+
+    p = wait_list_head;
+    while (p) {
+        next = p->next;
+
+        if (p->state == PROC_WAITING && p->wait_info.wait_reason == reason) {
+            proc_wakeup(p);
+            irq_restore(flags);
+            return;
+        }
+
+        p = next;
+    }
+
+    irq_restore(flags);
 }
 
 void proc_exit(void) {
