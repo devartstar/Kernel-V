@@ -118,6 +118,13 @@ void pagefault_interrupt_handler(uint32_t idt_index, regs_t *regs) {
     }
 
     //  halt or implement fault recovery
+    //  Unhandled fault (e.g. a kernel access to an unmapped user VA). Fail
+    //  loudly with full diagnostics instead of silently spinning in hlt, which
+    //  makes such bugs look like a mysterious hang.
+    panik("Unhandled page fault at 0x%x (error=0x%x, eip=0x%x)",
+          PRINT_UINT32(fault_address), PRINT_UINT32(regs->error_code),
+          PRINT_UINT32(regs->eip));
+
     while (1) {
         __asm__ __volatile__("hlt");
     }

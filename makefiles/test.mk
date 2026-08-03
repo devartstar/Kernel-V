@@ -2,6 +2,11 @@
 # Test Build Configuration
 # ==============================================================================
 
+# Host tooling: splits serial.log into one file per test after a run.
+PYTHON ?= python3
+LOG_SPLITTER := $(TOOLS_DIR)/logs/split_tests.py
+SERIAL_LOG ?= serial.log
+
 # User program for integration tests
 USERPROG_ASM 				:= $(KERN_ARCH_DIR)/user/userprog.asm
 USERPROG_BIN 				:= $(BUILD_TEST)/userprog.bin
@@ -164,6 +169,11 @@ else
 	@false
 endif
 	@echo "======================================================================"
+	$(Q)$(PYTHON) $(LOG_SPLITTER) $(SERIAL_LOG) || true
+
+### PER-TEST LOG SPLITTING ###
+test-logs: ## Split the last serial.log into per-test files (logs/latest)
+	$(Q)$(PYTHON) $(LOG_SPLITTER) $(SERIAL_LOG)
 
 ### COMBINED COMMAND ###
 

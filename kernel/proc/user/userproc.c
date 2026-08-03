@@ -1,3 +1,4 @@
+#include "arch/x86/interrupt.h"
 #include "arch/x86/usermode_stub.h"
 #include "core/panik.h"
 #include "fs/fd.h"
@@ -114,6 +115,17 @@ int userproc_load_blob(pcb_t *proc, const uint8_t *blob_start,
     user_map_region_in_pd(proc->page_directory_virt, stack_bottom, stack_size,
                           PAGE_PRESENT | PAGE_WRITE | PAGE_USER);
 
+    /*
+     * Populating the child address space requires temporarily switching CR3 to
+     * the child's page directory. This switch is NOT tracked by the scheduler
+     * (the PCB still points at our own page directory), so it must be atomic
+     * with respect to preemption: if a timer IRQ reschedules us mid-copy, the
+     * scheduler would restore OUR page directory and, on resume, memcpy/memset
+     * would continue writing the child's user VAs against the wrong CR3 -> a
+     * not-present page fault. Disable interrupts across the whole window.
+     */
+    irq_flags_t flags = irq_save();
+
     uint32_t old_cr3 = paging_get_current_cr3();
     paging_switch_address_space(proc->page_directory_phys);
 
@@ -121,6 +133,8 @@ int userproc_load_blob(pcb_t *proc, const uint8_t *blob_start,
     memset((void *)stack_bottom, 0, stack_size);
 
     paging_switch_address_space(old_cr3);
+
+    irq_restore(flags);
 
     proc->user_entry = code_start;
     proc->user_code_size = blob_size;

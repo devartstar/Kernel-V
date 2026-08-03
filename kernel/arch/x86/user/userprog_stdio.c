@@ -14,8 +14,8 @@
  * exit 0 -> every check passed
  * exit 1 -> failed to write to stdout
  * exit 2 -> failed to write to stderr
- * exit 3 -> read returned unexpected code, and write to stderr failed.
- * exit 4 -> read returned unexpected code, and write to stderr success.
+ * exit 3 -> read returned unexpected code
+ * exit 4 -> no/op
  * exit 5 -> failed to open standard file
  * exit 6 -> failed to read from a standard file
  * exit 7 -> failed to close a standard file
@@ -57,18 +57,15 @@ __attribute__((section(".text.start"), used, noreturn)) void _start(void) {
 
     /* Case 3: Try reading from a stdin file
      * stdin file backing console buffer is empty will return ERROR_AGAIN
+     * Update: above is no longer valid as we are waiting on the data to be available in the console buffer
      */
     ret = uread(STDIN_FD, buf, sizeof(buf));
-    if (ret != ERROR_AGAIN) {
-        msg = "read failed: expected noop.\n";
+    if (ret < 0) {
+        msg = "read failed.\n";
         ret = uwrite(STDERR_FD, msg, ustrlen(msg));
-        if (ret < 0) {
-            uexit(3);
-        } else {
-            uexit(4);
-        }
+        uexit(3);
     } else {
-        msg = "read returned noop(expected).\n";
+        msg = "read from stdin successful.\n";
         uwrite(STDOUT_FD, msg, ustrlen(msg));
     }
 

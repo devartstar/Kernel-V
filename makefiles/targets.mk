@@ -60,6 +60,7 @@ run-console: $(DISK_IMG) ## Run kernel with interactive serial console (COM1 on 
 	$(ECHO) "Starting QEMU: console on this terminal (COM1), kernel logs -> serial.log (COM2)"
 	$(ECHO) "Quit QEMU: Ctrl-A X    QEMU monitor: Ctrl-A C"
 	$(Q)$(QEMU) $(QEMU_DRIVE_FLAGS)$< -serial mon:stdio -serial file:serial.log -display none $(QEMU_EXTRA)
+	$(Q)$(PYTHON) $(LOG_SPLITTER) $(SERIAL_LOG) || true
 
 debug: $(DISK_IMG) $(STAGE1_ELF) $(STAGE2_ELF) $(KERNEL_ELF) ## Run with GDB support
 	$(ECHO) "Starting QEMU with GDB support..."
