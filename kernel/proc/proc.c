@@ -803,6 +803,13 @@ void timer_interrupt_proc_handler(uint32_t tickcount) {
         p = next_p;
     }
 
+    /* Process wakeups above are safe on every timer tick, but switching away
+     * while another interrupt handler is active strands that handler's stack
+     * frame and keeps the kernel in nested-interrupt context. */
+    if (nested_interrupt_count != 0) {
+        return;
+    }
+
     /* Process premption scheduling */
     /* Premption - Kernel to context switch automatically on timer tick */
     if (current_proc != NULL && current_proc->state == PROC_RUNNING) {

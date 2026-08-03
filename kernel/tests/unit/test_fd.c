@@ -741,17 +741,8 @@ uint8_t devstdin_read_test() {
         return 0;
     }
 
-    /* nothing writen to console yet */
-    ret = fd_read(&proc, 0, buf, sizeof(buf));
-    if (ret != VFS_ERR_AGAIN) {
-        KLOG_ERROR(
-            "FD_TEST",
-            "devstdin_read test failed. expected ERR_AGAIN, returned %s.\n",
-            vfs_get_status_string(ret));
-
-        fd_close_all(&proc);
-        return 0;
-    }
+    /* /dev/stdin reads now block until data is available, so seed the console
+     * buffer before reading to avoid parking this test thread indefinitely. */
 
     /* write some characters to the console buffer */
     console_input_push('A');

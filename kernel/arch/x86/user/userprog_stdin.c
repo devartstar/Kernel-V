@@ -20,19 +20,25 @@
 
 #include "utils/user_utils.h"
 
+#define BLOCKED_READ_ENABLED 1
+
 /* Placed first in the binary (see user.ld) so the kernel entry at 0x00400000
  * lands on _start. */
 __attribute__((section(".text.start"), used, noreturn)) void _start(void) {
     char buf[64];
+    int32_t len;
 
     uputs("stdin-test: starting\n");
-    uputs("stdin-test: type input: ");
 
+    /* disabling below unblocked test as reads to /dev/stdin are now blocked.
+     * ie. process goes to sleep until data available in buffer. */
+#if !BLOCKED_READ_ENABLED
+    uputs("stdin-test: unblocked - type input:\n");
     for (;;) {
-        int32_t len = uread(STDIN_FD, buf, sizeof(buf));
+        len = uread(STDIN_FD, buf, sizeof(buf));
 
         if (len > 0) {
-            uputs("\nstdin-test: read bytes: ");
+            uputs("\nstdin-test: read bytes:\n");
             uwrite(STDOUT_FD, buf, (uint32_t)len);
             uwrite(STDOUT_FD, "\n", 1);
             uputs("stdin-test: all checks passed\n");
@@ -47,4 +53,19 @@ __attribute__((section(".text.start"), used, noreturn)) void _start(void) {
 
         uyield();
     }
+#endif
+
+#if BLOCKED_READ_ENABLED
+    uputs("stdin-test: blocked - type input:\n");
+    len = uread(STDIN_FD, buf, sizeof(buf));
+    if (len < 0) {
+        uputs("\nstdin-test: FAIL stdin error.\n");
+        uexit(2);
+    }
+    uputs("\nstdin-test: read bytes:\n");
+    uwrite(STDOUT_FD, buf, (int32_t)len);
+    uwrite(STDOUT_FD, "\n", 1);
+    uputs("stdin-test: blocked stdin read check passed.\n");
+    uexit(0);
+#endif
 }

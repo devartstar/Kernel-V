@@ -38,6 +38,22 @@ void console_input_init() {
     spin_unlock_irqrestore(&g_console_input_lock, flags);
 }
 
+/**
+ * console_input_available_locked - called when the caller has already taken the
+ * lock.
+ *
+ * @return count of characters in console buffer
+ */
+static uint32_t console_input_available_locked(void) {
+    return g_console_input_count;
+}
+
+/**
+ * console_input_available - called when the caller has not taked a lock. method
+ * takes a lock before accessing g_console_input_count
+ *
+ * @return count of characters in console buffer
+ */
 uint32_t console_input_available() {
     irq_flags_t flags;
     uint32_t count;
@@ -56,7 +72,7 @@ int console_input_wait_for_data() {
         flags = spin_lock_irqsave(&g_console_input_lock);
 
         /* if console buffer has data already - exit gracefully */
-        if (console_input_available() > 0) {
+        if (console_input_available_locked() > 0) {
             spin_unlock_irqrestore(&g_console_input_lock, flags);
             return VFS_OK;
         }
