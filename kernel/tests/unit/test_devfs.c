@@ -1,5 +1,7 @@
 #include "tests/test_devfs.h"
+#include "drivers/console_input.h"
 #include "fs/devfs.h"
+#include "fs/fd.h"
 #include "fs/vfs.h"
 #include "fs/vfs_utils.h"
 #include "proc/proc.h"

@@ -33,7 +33,7 @@ __attribute__((section(".text.start"), used, noreturn)) void _start(void) {
     /* disabling below unblocked test as reads to /dev/stdin are now blocked.
      * ie. process goes to sleep until data available in buffer. */
 #if !BLOCKED_READ_ENABLED
-    uputs("stdin-test: unblocked - type input:\n");
+    uputs("stdin-test(non-blocking): type input:\n");
     for (;;) {
         len = uread(STDIN_FD, buf, sizeof(buf));
 
@@ -41,16 +41,17 @@ __attribute__((section(".text.start"), used, noreturn)) void _start(void) {
             uputs("\nstdin-test: read bytes:\n");
             uwrite(STDOUT_FD, buf, (uint32_t)len);
             uwrite(STDOUT_FD, "\n", 1);
-            uputs("stdin-test: all checks passed\n");
+            uputs("\nstdin-test(non-blocking): all checks passed\n");
             uexit(0);
         }
 
         /* No data available yet: yield and keep waiting for user input. */
         if (len != ERROR_AGAIN) {
-            uputs("\nstdin-test: FAIL stdin error\n");
+            uputs("\nstdin-test(non-blocking): FAIL stdin error\n");
             uexit(1);
         }
 
+        uputs("\nstdin-test(non-blocking): no inputs - yeilding:\n");
         uyield();
     }
 #endif
@@ -65,6 +66,12 @@ __attribute__((section(".text.start"), used, noreturn)) void _start(void) {
     uputs("\nstdin-test: read bytes:\n");
     uwrite(STDOUT_FD, buf, (int32_t)len);
     uwrite(STDOUT_FD, "\n", 1);
+
+    if (len == 0) {
+        uputs("\nstdin-test: FAIL zero-byte read.\n");
+        uexit(3);
+    }
+
     uputs("stdin-test: blocked stdin read check passed.\n");
     uexit(0);
 #endif

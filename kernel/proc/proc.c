@@ -418,6 +418,10 @@ const char *proc_type_to_string(proc_type_t type) {
     }
 }
 
+// =========================================
+//  PROCESS SLEEP
+// =========================================
+
 static void proc_wait_prepare(proc_wait_reason_t reason, uint32_t ticks) {
     if (!current_proc) {
         return;
@@ -436,7 +440,7 @@ static void proc_wait_prepare(proc_wait_reason_t reason, uint32_t ticks) {
     enqueue_wait(current_proc);
 }
 
-static void proc_wait(proc_wait_reason_t reason, uint32_t ticks) {
+static void proc_wait_prepare_yeild(proc_wait_reason_t reason, uint32_t ticks) {
     uint32_t flags;
 
     flags = irq_save();
@@ -446,11 +450,19 @@ static void proc_wait(proc_wait_reason_t reason, uint32_t ticks) {
     yield();
 }
 
-void proc_wait_sleep(uint32_t ticks) { proc_wait(PROC_WAIT_SLEEP, ticks); }
-void proc_wait_console_input(void) { proc_wait(PROC_WAIT_CONSOLE_INPUT, 0); }
+void proc_wait_sleep(uint32_t ticks) {
+    proc_wait_prepare_yeild(PROC_WAIT_SLEEP, ticks);
+}
+void proc_wait_console_input(void) {
+    proc_wait_prepare_yeild(PROC_WAIT_CONSOLE_INPUT, 0);
+}
 void proc_wait_prepare_console_input(void) {
     proc_wait_prepare(PROC_WAIT_CONSOLE_INPUT, 0);
 }
+
+// =========================================
+// PROCESS WAKE UP
+// =========================================
 
 void proc_wakeup(pcb_t *proc) {
     if (!proc) {
@@ -507,6 +519,10 @@ void proc_exit(void) {
         __asm__ __volatile__("hlt");
     }
 }
+
+// =========================================
+// PROCESS TYPES
+// =========================================
 
 int proc_is_special(const pcb_t *proc) {
     if (!proc) {

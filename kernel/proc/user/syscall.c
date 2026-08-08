@@ -92,7 +92,7 @@ static int32_t syscall_write(uint32_t _fd, uint32_t _user_buf, uint32_t _len,
 
     int32_t fd = (int32_t)_fd;
     uint32_t len_to_write = _len;
-    const void *ubuf = (const void *)_user_buf;
+    void *ubuf = (void *)_user_buf;
 
     char kbuf[SYSCALL_IO_BUFSZ + 1];
     uint32_t total_write_len = 0;
@@ -306,8 +306,8 @@ static int32_t syscall_read(uint32_t _fd, uint32_t _user_buf, uint32_t _len,
         }
 
         /* copy the chunk of data read into the user buffer */
-        if (copy_to_user(ubuf + total_read_len, kbuf, (uint32_t)ret) !=
-            VFS_OK) {
+        if (copy_to_user((uint8_t *)ubuf + total_read_len, kbuf,
+                         (uint32_t)ret) != VFS_OK) {
             KLOG_WARN("SYSCALL",
                       "syscall_read: failed to copy data to user buffer. total "
                       "read length = %u, expected read length = %u.\n",

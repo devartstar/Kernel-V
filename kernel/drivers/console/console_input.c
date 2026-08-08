@@ -182,9 +182,7 @@ int console_input_read(char *buf, uint32_t len) {
             break;
         }
         read_len++;
-        KLOG_VERBOSE("CONSOLE_READ",
-                     "read length = %u, char = %c, read buffer = %.*s.\n",
-                     read_len, buf[read_len - 1], (int)read_len, buf);
+        KLOG_VERBOSE("CONSOLE_READ", "read length = %u\n", read_len);
     }
 
     return (int)read_len;

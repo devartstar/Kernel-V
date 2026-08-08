@@ -321,8 +321,8 @@ static int devstdin_read(vfs_node_t *node, uint32_t offset, void *buf,
 
     /* console buffer exists but nothing to read */
     if (read_len == 0) {
-        KLOG_ERROR("DEVFS", "devstdin_read failed. console buffer exists but "
-                            "no characters to read.\n");
+        KLOG_WARN("DEVFS", "devstdin_read failed. console buffer exists but "
+                           "no characters to read.\n");
         return VFS_ERR_AGAIN;
     }
 

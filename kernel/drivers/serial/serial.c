@@ -1,6 +1,7 @@
 #include "drivers/serial.h"
 #include "arch/x86/interrupt.h"
 #include "core/io.h"
+#include "drivers/console_input.h"
 #include "fs/vfs.h"
 
 /* serial counters */
