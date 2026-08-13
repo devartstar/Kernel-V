@@ -49,6 +49,15 @@ typedef enum {
 typedef struct proc_wait_info {
     proc_wait_reason_t wait_reason;
     uint32_t wait_tick_count;
+
+    /**
+     * wait_channel - opaque identity of the object process is blocked upon.
+     * NULL for reason only wait. (sleep, legacy console).
+     *
+     * Object waiters store the address of their wait objects. Producers can
+     * wake up exactly those who are blocked on the objects.
+     */
+    void *wait_channel;
 } proc_wait_info_t;
 
 //
@@ -229,6 +238,14 @@ void proc_wait_console_input(void);
 void proc_wait_prepare_console_input(void);
 
 /**
+ * @proc_wait_prepare_on - object based wait preperation. (no yield)
+ * marks the current process waiting on channel object. records the wait reason
+ * moves the process from ready to wait queue.
+ * process woken selectively by proc_wakeup_all_on based on @channel
+ */
+void proc_wait_prepare_on(proc_wait_reason_t reason, void *channel);
+
+/**
  * proc_wakeup - Wakes up a sleeping process and adds to ready queue.
  * @proc - process to wake up.
  *
@@ -243,6 +260,13 @@ void proc_wakeup(pcb_t *proc);
  * @reason - reason for wait
  */
 void proc_wakeup_one_reason(uint32_t reason);
+
+/**
+ * proc_wakeup_all_on - wakeup every process blocked on the wait object
+ * Object based counterpart of proc_wakeup_one_reason.
+ * @channel - object the process are waiting on
+ */
+void proc_wakeup_all_on(void *channel);
 
 /**
  * proc_exit - Exits and cleanup the process

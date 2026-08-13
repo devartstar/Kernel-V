@@ -435,6 +435,7 @@ static void proc_wait_prepare(proc_wait_reason_t reason, uint32_t ticks) {
 
     current_proc->wait_info.wait_reason = reason;
     current_proc->wait_info.wait_tick_count = ticks;
+    current_proc->wait_info.wait_channel = NULL;
 
     dequeue_ready(current_proc);
     enqueue_wait(current_proc);
@@ -460,6 +461,21 @@ void proc_wait_prepare_console_input(void) {
     proc_wait_prepare(PROC_WAIT_CONSOLE_INPUT, 0);
 }
 
+void proc_wait_prepare_on(proc_wait_reason_t reason, void *channel) {
+    if (!current_proc) {
+        return;
+    }
+
+    /* object based wait. they are never timer driver so wait tick = 0 */
+    current_proc->state = PROC_WAITING;
+    current_proc->wait_info.wait_reason = reason;
+    current_proc->wait_info.wait_tick_count = 0;
+    current_proc->wait_info.wait_channel = channel;
+
+    dequeue_ready(current_proc);
+    enqueue_wait(current_proc);
+}
+
 // =========================================
 // PROCESS WAKE UP
 // =========================================
@@ -474,6 +490,7 @@ void proc_wakeup(pcb_t *proc) {
     proc->state = PROC_READY;
     proc->wait_info.wait_tick_count = 0;
     proc->wait_info.wait_reason = PROC_WAIT_NONE;
+    proc->wait_info.wait_channel = NULL;
 
     enqueue_ready(proc);
 }
@@ -501,7 +518,28 @@ void proc_wakeup_one_reason(uint32_t reason) {
     irq_restore(flags);
 }
 
-void proc_exit(void) {
+void proc_wakeup_all_on(void *channel) {
+    irq_flags_t flags;
+    pcb_t *p;
+    pcb_t *next;
+
+    flags = irq_save();
+
+    p = wait_list_head;
+    while (p) {
+        next = p->next;
+
+        if (p->state == PROC_WAITING && p->wait_info.wait_channel == channel) {
+            proc_wakeup(current_proc);
+        }
+
+        p = next;
+    }
+
+    irq_restore(flags);
+}
+
+void eroc_exit(void) {
     pcb_t *proc_now = current_proc;
 
     KLOG_VERBOSE("PROCESS_MGMT", "Process exiting: Name=%s (pid=%u, type=%s)\n",
