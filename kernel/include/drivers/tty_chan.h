@@ -57,4 +57,42 @@ typedef struct tty_chan {
  */
 int tty_chan_init(tty_chan_t *chan, uint8_t *buf, uint32_t capacity);
 
+/* bytes available for the consumer to read now */
+static inline uint32_t tty_chan_readable(const tty_chan_t *chan) {
+    return chan->commit - chan->read;
+}
+
+/* staged but un-published bytes: [commit, write) editable, reader can read yet
+ */
+static inline uint32_t tty_chan_staged(const tty_chan_t *chan) {
+    return chan->write - chan->commit;
+}
+
+/* total occupied bytes: [commit, write) */
+static inline uint32_t tty_chan_used(const tty_chan_t *chan) {
+    return chan->write - chan->read;
+}
+
+/* free space available to stage new bytes */
+static inline uint32_t tty_chan_free(const tty_chan_t *chan) {
+    return chan->capacity - tty_chan_used(chan);
+}
+
+/**
+ * tty_chan_stage - stage a byte
+ * @chan - channel to stage the byte in.
+ * @bye - the value to stage
+ *
+ * @return the status of staging
+ */
+int tty_chan_stage(tty_chan_t *chan, uint8_t bytes);
+
+/**
+ * tty_chan_rollback - unstage the most recent byte
+ * @chan - channel to stage the byte in.
+ *
+ * @return the status of rollback
+ */
+int tty_chan_rollback(tty_chan_t *chan);
+
 #endif /* TTY_CHAN_H */
