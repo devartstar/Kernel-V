@@ -12,6 +12,7 @@
 #include "tests/test_ramfs.h"
 #include "tests/test_spinlock.h"
 #include "tests/test_syscall.h"
+#include "tests/test_tty_chan.h"
 #include "tests/test_vfs.h"
 #include <stdbool.h>
 #include <stddef.h>
@@ -90,6 +91,7 @@ static const ktest_t unit_tests[] = {
     {"fd", "unit", run_fd_tests},
     {"syscall", "unit", run_syscall_tests},
     {"console", "unit", run_console_tests},
+    {"tty", "unit", run_tty_chan_tests},
 };
 #endif
 
@@ -101,11 +103,9 @@ static const ktest_t integration_tests[] = {
 #endif
 
 void run_kernel_tests(void) {
-    KLOG_INFO("TEST",
-              "==================================================\n");
+    KLOG_INFO("TEST", "==================================================\n");
     KLOG_INFO("TEST", "Running Kernel Tests...\n");
-    KLOG_INFO("TEST",
-              "==================================================\n");
+    KLOG_INFO("TEST", "==================================================\n");
 
     bool tests_run = false;
 
@@ -130,11 +130,9 @@ void run_kernel_tests(void) {
                   "No test functions found - check linking configuration\n");
     }
 
-    KLOG_INFO("TEST",
-              "==================================================\n");
+    KLOG_INFO("TEST", "==================================================\n");
     KLOG_INFO("TEST", "All Available Tests Completed\n");
-    KLOG_INFO("TEST",
-              "==================================================\n");
+    KLOG_INFO("TEST", "==================================================\n");
 }
 
 #else

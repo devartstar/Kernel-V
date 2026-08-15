@@ -539,7 +539,7 @@ void proc_wakeup_all_on(void *channel) {
     irq_restore(flags);
 }
 
-void eroc_exit(void) {
+void proc_exit(void) {
     pcb_t *proc_now = current_proc;
 
     KLOG_VERBOSE("PROCESS_MGMT", "Process exiting: Name=%s (pid=%u, type=%s)\n",
