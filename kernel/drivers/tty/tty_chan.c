@@ -109,10 +109,31 @@ int tty_chan_commit(tty_chan_t *chan) {
     return len_to_commit;
 }
 
+int tty_chan_read_locked(tty_chan_t *chan, uint8_t *out, uint32_t len) {
+    uint32_t len_to_read = len;
+    uint32_t available_to_read;
+
+    available_to_read = tty_chan_readable(chan);
+    if (available_to_read > 0) {
+        if (available_to_read < len_to_read) {
+            len_to_read = available_to_read;
+        }
+    }
+
+    /* copy each byte into the out buffer */
+    for (uint32_t i = 0; i < len_to_read; i++) {
+        out[i] = chan->buf[(chan->read + i) % chan->capacity];
+    }
+
+    /* update the reference to read index */
+    chan->read += len_to_read;
+
+    return len_to_read;
+}
+
 int tty_chan_read(tty_chan_t *chan, uint8_t *out, uint32_t len) {
     irq_flags_t flags;
-    uint32_t available_to_read;
-    uint32_t len_to_read = len;
+    uint32_t read_len;
 
     /* check for valid channel */
     if (!chan) {
@@ -130,27 +151,61 @@ int tty_chan_read(tty_chan_t *chan, uint8_t *out, uint32_t len) {
 
     /* save the context and disable interrupt */
     flags = spin_lock_irqsave(&chan->lock);
+    read_len = tty_chan_read_locked(chan, out, len);
+    spin_unlock_irqrestore(&chan->lock, flags);
 
-    available_to_read = tty_chan_readable(chan);
-    if (available_to_read > 0) {
-        if (available_to_read < len_to_read) {
-            len_to_read = available_to_read;
-        }
-    } else {
-        spin_unlock_irqrestore(&chan->lock, flags);
+    return (int)read_len;
+}
+
+int tty_chan_read_blocking(tty_chan_t *chan, uint8_t *out, uint32_t len,
+                           proc_wait_reason_t reason) {
+    irq_flags_t flags;
+    uint32_t read_len;
+
+    /* check for valid channel */
+    if (!chan) {
+        return TTY_CHAN_ERR_INVALID;
+    }
+
+    /* check for valid buffer to read bytes into */
+    if (!out && len > 0) {
+        return TTY_CHAN_ERR_INVALID;
+    }
+
+    if (len == 0) {
         return 0;
     }
 
-    /* copy each byte into the out buffer */
-    for (uint32_t i = 0; i < len_to_read; i++) {
-        out[i] = chan->buf[(chan->read + i) % chan->capacity];
+    for (;;) {
+        /* Acquire lock and disable interrupts */
+        flags = spin_lock_irqsave(&chan->lock);
+
+        /* [1] try to read the bytes under a lock.
+         * for status of the read, check the length of bytes read */
+        read_len = tty_chan_read_locked(chan, out, len);
+        if (read_len > 0) {
+            /* exit the loop and read */
+            spin_unlock_irqrestore(&chan->lock, flags);
+            return read_len;
+        }
+
+        /* [2] bytes not avaialable for read. WAIT on this channel.
+         * put the process to wait under lock. this is important as a producers
+         * commit + wakeup should not slip in between check and marking it wait.
+         */
+        proc_wait_prepare_on(reason, chan);
+
+        /* [3] Release the lock before yielding.
+         * Note. lock should not span across yield or producer can never commit.
+         */
+        spin_unlock_irqrestore(&chan->lock, flags);
+        yield();
+
+        /* [4] Process is rescheduled. check back again if bytes are
+         * available to read. */
     }
 
-    /* update the reference to read index */
-    chan->read += len_to_read;
-
-    /* restore the saved context */
-    spin_unlock_irqrestore(&chan->lock, flags);
-
-    return len_to_read;
+    /* execution should never reach here unless some error */
+    // ERROR LOG
+    return TTY_CHAN_ERR_INVALID;
 }

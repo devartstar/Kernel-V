@@ -23,6 +23,7 @@
 #define KERN_WARN KERN_SOH "2"    //  Warning messages
 #define KERN_INFO KERN_SOH "3"    //  Informational messages
 #define KERN_VERBOSE KERN_SOH "4" //  Verbose messages
+#define KERN_DEBUG KERN_SOH "5"   //  Debug mesages
 
 #ifndef CONFIG_TRACE_LEVEL
 
@@ -53,6 +54,7 @@ int printk(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 #define pr_warn(fmt, ...) printk(KERN_WARN fmt, ##__VA_ARGS__)
 #define pr_info(fmt, ...) printk(KERN_INFO fmt, ##__VA_ARGS__)
 #define pr_verbose(fmt, ...) printk(KERN_VERBOSE fmt, ##__VA_ARGS__)
+#define pr_debug(fmt, ...) printk(KERN_DEBUG fmt, ##__VA_ARGS__)
 
 /* Updating the File to just print the filename and not entire path */
 #define __FILENAME__                                                           \
@@ -67,6 +69,7 @@ int printk(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 #define KLOG_WARN(tag, fmt, ...) KLOG(KERN_WARN, tag, fmt, ##__VA_ARGS__);
 #define KLOG_INFO(tag, fmt, ...) KLOG(KERN_INFO, tag, fmt, ##__VA_ARGS__);
 #define KLOG_VERBOSE(tag, fmt, ...) KLOG(KERN_VERBOSE, tag, fmt, ##__VA_ARGS__);
+#define KLOG_DEBUG(tag, fmt, ...) KLOG(KERN_DEBUG, tag, fmt, ##__VA_ARGS__);
 
 /**
  * log_trace_id - Correlation id of the current execution activation.

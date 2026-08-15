@@ -1,6 +1,7 @@
 #ifndef TTY_CHAN_H
 #define TTY_CHAN_H
 
+#include "proc/proc.h"
 #include "sync/spinlock.h"
 #include <stdint.h>
 
@@ -94,5 +95,37 @@ int tty_chan_stage(tty_chan_t *chan, uint8_t bytes);
  * @return the status of rollback
  */
 int tty_chan_rollback(tty_chan_t *chan);
+
+/**
+ * tty_chan_commit - commit the bytes for read
+ * @chan - channel to commit the byte in.
+ *
+ * @return number of bytes in the committed state.
+ */
+int tty_chan_commit(tty_chan_t *chan);
+
+/**
+ * tty_chan_read - read the committed bytes
+ * @chan - channel from which to read the bytes
+ * @out - buffer in which to read the bytes into.
+ * @len - length of bytes to read.
+ *
+ * @return the number of bytes that are read.zM
+ */
+int tty_chan_read(tty_chan_t *chan, uint8_t *out, uint32_t len);
+
+/**
+ * tty_chan_read_blocking - block the process execution until >=1 committed
+ * byte is available.
+ * When bytes are available to read, read upto @len characters.
+ * @chan - channel to read the bytes from
+ * @out - buffer to read the bytes into
+ * @len - length of the buffer to read
+ * @reason - reason if any to wait on
+ *
+ * @return number of bytes copied or negative for error
+ */
+int tty_chan_read_blocking(tty_chan_t *chan, uint8_t *out, uint32_t len,
+                           proc_wait_reason_t reason);
 
 #endif /* TTY_CHAN_H */
