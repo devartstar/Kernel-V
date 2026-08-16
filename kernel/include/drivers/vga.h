@@ -47,7 +47,7 @@ enum vga_color {
 };
 
 //  VGA Color Macros
-#define VGA_COLOR(bg, fg) (((bg) << 0x04) | ((fg)&0x0f))
+#define VGA_COLOR(bg, fg) (((bg) << 0x04) | ((fg) & 0x0f))
 #define WHITE_ON_BLACK VGA_COLOR(VGA_BLACK, VGA_WHITE)
 #define RED_ON_WHITE VGA_COLOR(VGA_WHITE, VGA_RED)
 #define BLUE_ON_YELLOW VGA_COLOR(VGA_YELLOW, VGA_BLUE)

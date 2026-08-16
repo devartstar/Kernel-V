@@ -2,6 +2,7 @@
 #include "arch/x86/interrupt.h"
 #include "core/io.h"
 #include "drivers/console_input.h"
+#include "drivers/tty_console.h"
 #include "fs/vfs.h"
 
 /* serial counters */
@@ -137,6 +138,22 @@ uint32_t serial_dump_input_to_console(void) {
     return dump_count;
 }
 
+uint32_t serial_dump_input_to_tty_console(void) {
+    char ch;
+    uint32_t dump_count = 0;
+
+    while (serial_is_data_ready(SERIAL_COM1)) {
+        if (serial_getc_nonblocking(&ch) != VFS_OK) {
+            break;
+        }
+        g_serial_rx_byte_count++;
+        dump_count++;
+        tty_console_rx((uint8_t)ch);
+    }
+
+    return dump_count;
+}
+
 /**
  * Flow: Interrupt based Notification
  * Driver enable UART to raise INT. when it gets data.
@@ -175,4 +192,6 @@ void serial_irq_handler(uint32_t idt_idx, regs_t *reg) {
 
     /* dump the buffer from serial driver to console */
     serial_dump_input_to_console();
+
+    serial_dump_input_to_tty_console();
 }

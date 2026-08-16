@@ -3,6 +3,8 @@
 
 #include "fs/vfs.h"
 
+#define DEVFS_CONSOLE_COLOR 0x07
+
 /**
  * devfs_create_chardev - create a character device
  * @name - character device name

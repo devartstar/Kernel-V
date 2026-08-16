@@ -6,6 +6,7 @@
 #include "core/debug.h"
 #include "core/debug_funcs.h"
 #include "drivers/console_input.h"
+#include "drivers/tty_console.h"
 #include "mm/paging.h"
 #include "mm/pmm.h"
 #include "mm/stack_map.h"
@@ -155,6 +156,15 @@ void kernel_main() {
 
     /* Initialize system console buffer */
     console_input_init();
+
+    /* Initialize console TTY (session + port) submodule.
+     * intialization should be done before serial RX interupts are enabled.
+     * So the port s bounded to a session before any byte arrives via
+     * serial_irq_handler -> tty_console_rx
+     */
+    if (tty_console_init() != 0) {
+        panik("Failed to initialize console TTY");
+    }
 
     /* Interrupt Descriptor Table Initialization */
     idt_init();

@@ -462,3 +462,140 @@ Phase 9 is complete when:
 ```
 
 ---
+
+# Decision Points...
+
+### Why do we need tty 
+TTY exists to help process facing terminal to provide a stateful scemantics.
+
+```
+                         PROCESS
+                            │
+                    read()/write()
+                            │
+                            ▼
+                           VFS
+                            │
+                            ▼
+                    ┌─────────────┐
+                    │     TTY     │
+                    │             │
+                    │ input state │
+                    │ mode/policy │
+                    │ wait state  │
+                    │ output path │
+                    └──────┬──────┘
+                           │
+             ┌─────────────┴─────────────┐
+             │                           │
+        input backend               output backend
+             │                           │
+          UART RX                  UART / VGA
+             │                           │
+         hardware                    hardware
+```
+
+### Internal States held by tty
+
+2.1 Buffers:
+bytes might be present in the buffer but they might not be ready to read.
+    1. Two buffer: editing buffer and readable buffer.
+    2. Single buffer: with different read, commit, write  boundaries.
+    3. Two queue: raw ingress queue + line discipline 
+
+1. we might need to copy all the bytes from edition to readabel buffer.
+2. we have a single buffer with multiple positions, needs proper handling.
+3. UART interrup instead of copying to a serial buffer. it will directly
+copy every character to raw ingress queue -> process the inputs -> on new line
+-> sends the buffer to tty line discipline queue.
+
+2.2 Policies:
+    1. input mode: canonical/noncanonical
+    2. echo policy: on/off
+    3. input transformation
+    4. output transformation
+
+┌────────────────────────────────────┐
+│                TTY                 │
+│               -----                │
+│                                    │
+│ INPUT                              │
+│   received/editing state           │
+│   committed/readable state         │
+│                                    │
+│ POLICY                             │
+│   canonical/noncanonical behavior  │
+│   echo behavior                    │
+│   input/output transformations     │
+│                                    │
+│ SYNCHRONIZATION                    │
+│   state protection                 │
+│   reader wait relationship         │
+│                                    │
+│ BACKEND                            │
+│   input association                │
+│   output operation                 │
+│                                    │
+│ DIAGNOSTICS                        │
+│   overflow/error state             │
+└────────────────────────────────────┘
+
+### TTY state transition...
+
+TTY INPUT RING
+
+```
+┌───────────────────────────────────────┐   
+│                                       │   
+│            commited   recieved        │   
+│            available  not yet     new │   
+│            to read    commited   byte │   
+│ ┌──────────┬─────────┬─────────┐    │ │   
+│ │          │         │         │◄───┘ │   
+│ │ CONSUMED │ COMMITED│ EDITING │      │   
+│ │          │         │         │      │   
+│ └──────────▲─────────▲────────▲┘      │   
+│            │         │        │       │   
+│            │         │                │   
+│          read     commit   write      │   
+│           pos        pos     pos      │   
+└───────────────────────────────────────┘   
+```
+State changing operations:
+    1. Character Insert
+    2. Backspace handling
+    3. Commit operation
+    4. Read unblocked
+
+Read:
+    CANONICAL MODE:
+    read(fd, buf, size) --> lock tty -> reads from the tty_buf
+    read from tty_buf   => compare read pos vs commit pos. 
+                        => read pos != commit pos -> consume data --> unlock tty
+                        => read pos == commit pos -> process wait, yeild --> unlock tty
+                            => UART -> sends byte - tty buffer contains commit char '\n'
+                            => lock tty -> upate commit pos -> unlock
+                            => process is rescheduled -> reads tty 
+    NON CANONICAL MODE: write and commit position changes simulatneously.
+
+Write:
+    write(fd, buf, size) --> tty semantics -> write output ->
+NOTE: UART RX reciever pin should be ready to accept bytes...
+        [1] -> sends bytes to UART -> all bytes sent -> complete write
+        [2] -> add the bytes in the TX queue -> return
+                -> later TX interrupt sends bytes to the UART
+
+# TTY Architecture:
+
+## TTY First-Principles Architecture
+
+1.  Why TTY exists; responsibility boundaries
+2.  Internal state model and buffering architecture
+3.  State transitions and end-to-end data flow
+4.  TTY objects, ownership, interfaces, locking and lifetime
+5.  Foundational contract fixes required before implementation
+      ├── VFS file-operation semantics
+      ├── object-specific wait queues
+      ├── nonseekable stream semantics
+      └── syscall read semantics
+

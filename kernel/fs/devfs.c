@@ -1,11 +1,11 @@
 #include "fs/devfs.h"
 #include "drivers/console_input.h"
 #include "drivers/serial.h"
+#include "drivers/tty_console.h"
+#include "drivers/tty_session.h"
 #include "drivers/vga.h"
 #include "fs/vfs_utils.h"
 #include "lib/printk.h"
-
-#define DEVFS_CONSOLE_COLOR 0x07
 
 typedef vfs_node_t *(*create_device_routine)(void);
 
@@ -234,14 +234,13 @@ static int devconsole_write(vfs_node_t *node, uint32_t offset, const void *buf,
         return VFS_ERR_INVALID;
     }
 
-    const char *data = (const char *)buf;
+    const uint8_t *data = (const uint8_t *)buf;
 
-    /*
-     * Write the buffer to the console output
-     * Do not write to log buffer
-     */
-    vga_write(data, len, DEVFS_CONSOLE_COLOR);
-    serial_write(data, len);
+    int ret = tty_write(tty_console_session(), data, len);
+    if (ret < 0) {
+        KLOG_VERBOSE("DEVFS", "console_write failed. tty write failed.\n");
+        return ret;
+    }
 
     KLOG_VERBOSE("DEVFS", "Successfully write to console.\n");
     return (int)len;
@@ -316,14 +315,18 @@ static int devstdin_read(vfs_node_t *node, uint32_t offset, void *buf,
      * serial_dump_input_to_console();
      * /
 
-    /* read the buffer from the console */
-    read_len = console_input_read((char *)buf, len);
+    /* read the buffer from the console.
+     * replaced with tty submodule.
+     * read_len = console_input_read((char *)buf, len);
+     */
+
+    /* pass the session which referneces the input buffer to read from */
+    read_len = tty_read(tty_console_session(), (uint8_t *)buf, len);
 
     /* console buffer exists but nothing to read */
-    if (read_len == 0) {
-        KLOG_WARN("DEVFS", "devstdin_read failed. console buffer exists but "
-                           "no characters to read.\n");
-        return VFS_ERR_AGAIN;
+    if (read_len < 0) {
+        KLOG_WARN("DEVFS", "devstdin_read failed. tty read error.\n");
+        return read_len;
     }
 
     KLOG_VERBOSE("DEVFS", "Successfully read %u characters from console.\n",
