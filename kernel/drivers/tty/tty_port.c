@@ -1,4 +1,5 @@
 #include "tty_port.h"
+#include "lib/printk.h"
 #include "tty_chan.h"
 #include "tty_session.h"
 
@@ -22,9 +23,14 @@ void tty_port_rx(tty_port_t *port, uint8_t byte) {
     ret = tty_chan_stage(&sess->input, byte);
     if (ret != TTY_CHAN_OK) {
         /* staging failed. drop the byte - should not block */
+        if (ret == TTY_CHAN_ERR_FULL) {
+            KLOG_VERBOSE("TTY", "input buffer full, dropping byte 0x%02x\n",
+                         byte);
+        }
         return;
     }
 
     /* commit the staged byte in the input buffer */
+    KLOG_VERBOSE("TTY", "staged byte 0x%02x\n", byte);
     tty_input_step(sess, byte);
 }

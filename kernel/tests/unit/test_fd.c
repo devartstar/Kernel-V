@@ -1,4 +1,5 @@
 #include "drivers/console_input.h"
+#include "drivers/tty_console.h"
 #include "fs/fd.h"
 #include "fs/vfs_utils.h"
 #include "lib/printk.h"
@@ -744,10 +745,12 @@ uint8_t devstdin_read_test() {
     /* /dev/stdin reads now block until data is available, so seed the console
      * buffer before reading to avoid parking this test thread indefinitely. */
 
-    /* write some characters to the console buffer */
-    console_input_push('A');
-    console_input_push('B');
-    console_input_push('C');
+    /* /dev/stdin now reads from the console TTY input channel, not the legacy
+     * console_input ring. Seed the TTY the same way a real keystroke would —
+     * tty_console_rx() stages + commits each byte into the input channel. */
+    tty_console_rx('A');
+    tty_console_rx('B');
+    tty_console_rx('C');
 
     memset(buf, 0, sizeof(buf));
 

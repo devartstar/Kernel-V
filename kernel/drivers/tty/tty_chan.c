@@ -1,4 +1,5 @@
 #include "drivers/tty_chan.h"
+#include "lib/printk.h"
 #include "proc/proc.h"
 
 int tty_chan_init(tty_chan_t *chan, uint8_t *buf, uint32_t capacity) {
@@ -103,6 +104,8 @@ int tty_chan_commit(tty_chan_t *chan) {
 
     if (len_to_commit > 0) {
         /* bytes available to read */
+        KLOG_VERBOSE("TTYCHAN", "commit wake: chan=%p token=%p committed=%u\n",
+                     (void *)chan, chan->wait_token, len_to_commit);
         proc_wakeup_all_on(chan->wait_token);
     }
 
@@ -110,15 +113,21 @@ int tty_chan_commit(tty_chan_t *chan) {
 }
 
 int tty_chan_read_locked(tty_chan_t *chan, uint8_t *out, uint32_t len) {
+    uint32_t available_to_read = tty_chan_readable(chan);
     uint32_t len_to_read = len;
-    uint32_t available_to_read;
 
-    available_to_read = tty_chan_readable(chan);
-    if (available_to_read > 0) {
-        if (available_to_read < len_to_read) {
-            len_to_read = available_to_read;
-        }
+    /* Clamp to what is actually readable. If the channel is empty
+     * (readable == 0) this yields 0 and we consume nothing — the
+     * blocking caller then parks instead of returning stale bytes. */
+    if (len_to_read > available_to_read) {
+        len_to_read = available_to_read;
     }
+
+    KLOG_VERBOSE(
+        "TTYCHAN",
+        "read: read=%u commit=%u write=%u readable=%u used=%u free=%u req=%u\n",
+        chan->read, chan->commit, chan->write, tty_chan_readable(chan),
+        tty_chan_used(chan), tty_chan_free(chan), len);
 
     /* copy each byte into the out buffer */
     for (uint32_t i = 0; i < len_to_read; i++) {
@@ -127,7 +136,6 @@ int tty_chan_read_locked(tty_chan_t *chan, uint8_t *out, uint32_t len) {
 
     /* update the reference to read index */
     chan->read += len_to_read;
-
     return len_to_read;
 }
 
@@ -188,6 +196,11 @@ int tty_chan_read_blocking(tty_chan_t *chan, uint8_t *out, uint32_t len,
             spin_unlock_irqrestore(&chan->lock, flags);
             return read_len;
         }
+
+        KLOG_VERBOSE(
+            "TTY",
+            "read_blocking park: chan=%p token=%p reason=%d readable=%u\n",
+            (void *)chan, chan->wait_token, reason, tty_chan_readable(chan));
 
         /* [2] bytes not avaialable for read. WAIT on this channel.
          * put the process to wait under lock. this is important as a producers

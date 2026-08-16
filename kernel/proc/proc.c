@@ -530,7 +530,7 @@ void proc_wakeup_all_on(void *channel) {
         next = p->next;
 
         if (p->state == PROC_WAITING && p->wait_info.wait_channel == channel) {
-            proc_wakeup(current_proc);
+            proc_wakeup(p);
         }
 
         p = next;

@@ -4,6 +4,7 @@
 #include "drivers/console_input.h"
 #include "drivers/tty_console.h"
 #include "fs/vfs.h"
+#include "lib/printk.h"
 
 /* serial counters */
 static volatile uint32_t g_serial_irq_count;
@@ -148,8 +149,11 @@ uint32_t serial_dump_input_to_tty_console(void) {
         }
         g_serial_rx_byte_count++;
         dump_count++;
+        KLOG_VERBOSE("SERIAL", "rx byte 0x%02x -> tty_console\n", (uint8_t)ch);
         tty_console_rx((uint8_t)ch);
     }
+
+    KLOG_VERBOSE("SERIAL", "drained %u bytes to the tty console\n", dump_count);
 
     return dump_count;
 }
@@ -190,8 +194,9 @@ void serial_irq_handler(uint32_t idt_idx, regs_t *reg) {
 
     g_serial_irq_count++;
 
-    /* dump the buffer from serial driver to console */
-    serial_dump_input_to_console();
+    /* dump the buffer from serial driver to console
+     * Update: Instead direct it to the tty console session
+     * serial_dump_input_to_console(); */
 
     serial_dump_input_to_tty_console();
 }

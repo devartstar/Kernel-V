@@ -1,4 +1,5 @@
 #include "tty_session.h"
+#include "lib/printk.h"
 
 int tty_session_init(tty_session_t *sess, tty_port_t *port) {
     int err;
@@ -41,6 +42,7 @@ void tty_input_step(tty_session_t *sess, uint8_t byte) {
 
     /* Raw policy: publish immediately so the byte is readable at once */
     tty_chan_commit(&sess->input);
+    KLOG_VERBOSE("TTY", "committed byte 0x%02x\n", byte);
 }
 
 int tty_read(tty_session_t *sess, uint8_t *buf, uint32_t len) {
@@ -63,6 +65,8 @@ int tty_read(tty_session_t *sess, uint8_t *buf, uint32_t len) {
     /* blocking read from channel */
     ret =
         tty_chan_read_blocking(&sess->input, buf, len, PROC_WAIT_CONSOLE_INPUT);
+
+    KLOG_VERBOSE("TTY", "read returned %d byte(s)\n", ret);
     return ret;
 }
 
@@ -94,5 +98,6 @@ int tty_write(tty_session_t *sess, const uint8_t *buf, uint32_t len) {
         write_len++;
     }
 
+    KLOG_VERBOSE("TTY", "wrote %u byte(s)\n", write_len);
     return write_len;
 }

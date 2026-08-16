@@ -294,15 +294,25 @@ static int devstdin_read(vfs_node_t *node, uint32_t offset, void *buf,
      * Sleep the process until the buffer is ready to be read.
      */
 
+    /**
+     * NOTE: Storing the read bytes post interrupt.
+     * 1. console buffer - global single buffer, process sleep/wake depending
+     * upon wait reason
+     * 2. tty seesion - mutiple tty session, process waits on the depending tty
+     * session object, each session owns its local buffer.
+     */
+
     /* For Interrupt based signals - sleep the process until data is ready */
     /* UART data avaialable to read -> IRQ4 -> Serial reads and put to console
      * buffer -> wakes up process -> process read form console buffer*/
+    /**
     int ret = console_input_wait_for_data();
     if (ret != VFS_OK) {
         KLOG_ERROR("DEVFS", "devstdin_read failed. failed to wait for console "
                             "buffer to be available.\n");
         return ret;
     }
+    */
 
     KLOG_VERBOSE(
         "DEVFS",
@@ -325,7 +335,8 @@ static int devstdin_read(vfs_node_t *node, uint32_t offset, void *buf,
 
     /* console buffer exists but nothing to read */
     if (read_len < 0) {
-        KLOG_WARN("DEVFS", "devstdin_read failed. tty read error.\n");
+        KLOG_WARN("DEVFS", "devstdin_read failed. tty read failed. error %d.\n",
+                  read_len);
         return read_len;
     }
 
