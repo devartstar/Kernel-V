@@ -28,7 +28,8 @@ struct tty_session {
 int tty_session_init(tty_session_t *sess, tty_port_t *port);
 
 /**
- * tty_input_step - commit policy hook. Phase 2 commit immediately.
+ * tty_input_step - commit policy hook.
+ * Phase 2 commit immediately. todo: update later.
  * Called by tty_port_rx after a byte is staged.
  */
 void tty_input_step(tty_session_t *sess, uint8_t byte);

@@ -33,6 +33,7 @@
  * channel => storage + ordering + sync (only thing that hold bytes)
  * session => owner of the two channels + policy. Owns the buffers
  * port => stateless bridge to hardware. doesnt hold any byte.
+ *
                        ┌──────────────────────────────────────────┐
                        │            tty_session_t                 │
                        │  (the "TTY" — owns semantics & storage)  │
