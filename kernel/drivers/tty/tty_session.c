@@ -1,5 +1,6 @@
 #include "tty_session.h"
 #include "lib/printk.h"
+#include "tty_port.h"
 
 int tty_session_init(tty_session_t *sess, tty_port_t *port) {
     int err;
@@ -92,9 +93,16 @@ int tty_write(tty_session_t *sess, const uint8_t *buf, uint32_t len) {
         return 0;
     }
 
+    /* write_len is the number of bytes written to port before processing
+     * number of actual bytes might differ based on line processing. */
     uint32_t write_len = 0;
     for (uint32_t i = 0; i < len; i++) {
-        sess->port->ops->putc(sess->port, buf[i]);
+        if (sess->out_pipeline) {
+            tty_pipeline_run(sess->out_pipeline, buf[i], tty_port_sink,
+                             sess->port);
+        } else {
+            tty_port_sink(sess->port, buf[i]);
+        }
         write_len++;
     }
 

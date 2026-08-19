@@ -3,6 +3,11 @@
 #include "tty_chan.h"
 #include "tty_session.h"
 
+void tty_port_sink(void *ctx, uint8_t byte) {
+    tty_port_t *port = (tty_port_t *)ctx;
+    port->ops->putc(port, byte);
+}
+
 void tty_port_rx(tty_port_t *port, uint8_t byte) {
     tty_session_t *sess;
     int ret;

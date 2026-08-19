@@ -26,4 +26,12 @@ struct tty_port {
  */
 void tty_port_rx(tty_port_t *port, uint8_t byte);
 
+/**
+ * tty_port_sink - exit point of the line disipline. processed bytes flushed to
+ * the consumer.
+ * @ctx - context for flusing the byte
+ * @byte - byte to flush
+ */
+void tty_port_sink(void *ctx, uint8_t byte);
+
 #endif /* TTY_PORT_H */

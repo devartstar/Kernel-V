@@ -2,6 +2,7 @@
 #define TTY_SESSION_H
 
 #include "tty_chan.h"
+#include "tty_pipeline.h"
 #include "tty_port.h"
 #include <stdint.h>
 
@@ -15,6 +16,9 @@ struct tty_session {
 
     uint8_t in_buf[TTY_INPUT_BUF_SIZE];
     uint8_t out_buf[TTY_OUTPUT_BUF_SIZE];
+
+    /* refernecing a pointer to pipeline object */
+    tty_pipeline_t *out_pipeline;
 };
 
 /**
