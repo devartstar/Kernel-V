@@ -19,6 +19,7 @@ struct tty_session {
 
     /* refernecing a pointer to pipeline object */
     tty_pipeline_t *out_pipeline;
+    tty_pipeline_t *in_pipeline;
 };
 
 /**
