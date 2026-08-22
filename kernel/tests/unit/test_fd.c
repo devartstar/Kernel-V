@@ -751,6 +751,7 @@ uint8_t devstdin_read_test() {
     tty_console_rx('A');
     tty_console_rx('B');
     tty_console_rx('C');
+    tty_console_rx('\n');
 
     memset(buf, 0, sizeof(buf));
 
