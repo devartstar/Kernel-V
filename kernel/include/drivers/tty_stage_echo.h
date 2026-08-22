@@ -2,7 +2,6 @@
 #define TTY_STAGE_ECHO
 
 #include "drivers/tty_pipeline.h"
-#include "drivers/tty_port.h"
 #include "drivers/tty_stage.h"
 
 /**
@@ -17,6 +16,6 @@ typedef struct echo_state {
 
 tty_stage_t tty_stage_echo_make(echo_state_t *echo_state,
                                 tty_pipeline_t *pipeline, tty_emit_fn emit,
-                                tty_port_t *port);
+                                void *emit_ctx);
 
 #endif /* TTY_STAGE_ECHO */

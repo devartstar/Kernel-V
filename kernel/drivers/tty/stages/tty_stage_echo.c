@@ -25,11 +25,11 @@ static void echo_process(tty_stage_t *self, uint8_t byte, tty_emit_fn emit,
 
 tty_stage_t tty_stage_echo_make(echo_state_t *echo_state,
                                 tty_pipeline_t *pipeline, tty_emit_fn emit,
-                                tty_port_t *port) {
+                                void *emit_ctx) {
     tty_stage_t stage;
     echo_state->out_pipeline = pipeline;
     echo_state->out_sink = emit;
-    echo_state->out_sink_ctx = (void *)port;
+    echo_state->out_sink_ctx = emit_ctx;
 
     stage.name = "echo";
     stage.process = echo_process;

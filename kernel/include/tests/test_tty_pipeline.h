@@ -3,27 +3,32 @@
 
 #include "lib/printk.h"
 
-uint8_t tty_pipeline_newline(void);
-uint8_t tty_pipeline_no_newline(void);
-uint8_t tty_pipeline_standalone_newline(void);
-uint8_t tty_pipeline_empty_passthrough(void);
+uint8_t tty_out_pipeline_newline(void);
+uint8_t tty_out_pipeline_no_newline(void);
+uint8_t tty_out_pipeline_standalone_newline(void);
+uint8_t tty_out_pipeline_empty_passthrough(void);
+uint8_t tty_in_pipeline_newline(void);
 
 static inline void run_tty_pipeline_tests(void) {
     uint8_t failed = 0;
 
-    if (tty_pipeline_newline() == 0) {
+    if (tty_out_pipeline_newline() == 0) {
         failed++;
     }
 
-    if (tty_pipeline_no_newline() == 0) {
+    if (tty_out_pipeline_no_newline() == 0) {
         failed++;
     }
 
-    if (tty_pipeline_standalone_newline() == 0) {
+    if (tty_out_pipeline_standalone_newline() == 0) {
         failed++;
     }
 
-    if (tty_pipeline_empty_passthrough() == 0) {
+    if (tty_out_pipeline_empty_passthrough() == 0) {
+        failed++;
+    }
+
+    if (tty_in_pipeline_newline() == 0) {
         failed++;
     }
 
