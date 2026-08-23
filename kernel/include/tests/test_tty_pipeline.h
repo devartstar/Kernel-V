@@ -1,42 +1,23 @@
-#ifndef TEST_TTY_PIPELINE
-#define TEST_TTY_PIPELINE
+#ifndef TEST_TTY_PIPELINE_H
+#define TEST_TTY_PIPELINE_H
 
 #include "lib/printk.h"
+#include <stdint.h>
 
-uint8_t tty_out_pipeline_newline(void);
-uint8_t tty_out_pipeline_no_newline(void);
-uint8_t tty_out_pipeline_standalone_newline(void);
-uint8_t tty_out_pipeline_empty_passthrough(void);
-uint8_t tty_in_pipeline_newline(void);
+/* returns the number of FAILED cases (0 == all passed) */
+uint32_t tty_run_output_pipeline_cases(void);
+uint32_t tty_run_input_pipeline_cases(void);
 
 static inline void run_tty_pipeline_tests(void) {
-    uint8_t failed = 0;
+    uint32_t failed = 0;
+    failed += tty_run_output_pipeline_cases();
+    failed += tty_run_input_pipeline_cases();
 
-    if (tty_out_pipeline_newline() == 0) {
-        failed++;
-    }
-
-    if (tty_out_pipeline_no_newline() == 0) {
-        failed++;
-    }
-
-    if (tty_out_pipeline_standalone_newline() == 0) {
-        failed++;
-    }
-
-    if (tty_out_pipeline_empty_passthrough() == 0) {
-        failed++;
-    }
-
-    if (tty_in_pipeline_newline() == 0) {
-        failed++;
-    }
-
-    if (failed > 0) {
+    if (failed) {
         KLOG_ERROR("TEST", "TTY_PIPELINE failed count %u.\n", failed);
     } else {
         KLOG_INFO("TEST", "All TTY_PIPELINE tests passed.\n");
     }
 }
 
-#endif /* TEST_TTY_PIPELINE */
+#endif /* TEST_TTY_PIPELINE_H */
