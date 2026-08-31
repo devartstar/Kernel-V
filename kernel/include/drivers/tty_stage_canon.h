@@ -20,8 +20,12 @@ typedef struct canon_state {
 
     tty_pipeline_t *out_pipeline;
     tty_emit_fn out_sink;
-
     void *out_sink_ctx;
+
+    /* Todo: downstream: to reader (pipeline's terminal sink)
+     * tty_emit_fn down_sink;
+     * void *down_sink_ctx;
+     */
 } canon_state_t;
 
 tty_stage_t tty_stage_canon_make(canon_state_t *state, tty_pipeline_t *out_pipe,

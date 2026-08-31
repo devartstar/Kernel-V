@@ -1,22 +1,30 @@
 #include "drivers/tty_stage_echo.h"
 #include "stddef.h"
 
-static void echo_process(tty_stage_t *self, uint8_t byte, tty_emit_fn emit,
+static void echo_process(tty_stage_t *self, uint8_t byte,
+                         const ktermios_t *term, tty_emit_fn emit,
                          void *emit_ctx) {
     echo_state_t *st = (echo_state_t *)self->state;
 
     /* state is null, then just forward the byte to next stage */
     if (!st) {
         emit(emit_ctx, byte);
+        return;
     }
 
-    /* [1] sideways: echo the byte to the OUTPUT path so user sees it */
-    if (st->out_pipeline) {
-        tty_pipeline_run(st->out_pipeline, byte, st->out_sink,
-                         st->out_sink_ctx);
-    } else {
-        /* raw echo fallback */
-        st->out_sink(st->out_sink_ctx, byte);
+    /*
+     * [1] sideways: action depends wether terminal is on raw or echo mode
+     * - echo mode: pass they byte through the output pipeline processing
+     * - raw mode: send the byte to the sink
+     */
+    if (term->c_lflag & ECHO) {
+        if (st->out_pipeline) {
+            tty_pipeline_run(st->out_pipeline, byte, st->out_sink,
+                             st->out_sink_ctx);
+        } else {
+            /* raw mode fallback - send to sink without processing */
+            st->out_sink(st->out_sink_ctx, byte);
+        }
     }
 
     /* [2] downstream: forward the byte to the program (input channel) */

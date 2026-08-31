@@ -4,13 +4,14 @@
 #define ASCII_LF 0x0A /* '\n' => cursor down one row */
 #define ASCII_CR 0x0D /* '\r' => cursor to column 0 */
 
-static void icrnl_process(tty_stage_t *self, uint8_t byte, tty_emit_fn emit,
+static void icrnl_process(tty_stage_t *self, uint8_t byte,
+                          const ktermios_t *term, tty_emit_fn emit,
                           void *emit_ctx) {
     (void)self;
 
-    /* check if byte is carriage return - map to line feed
-     * everything else passes through */
-    if (byte == ASCII_CR) {
+    /* Only process when input processing for CR to LF only when ICRNL flag is
+     * set */
+    if ((term->c_iflag & ICRNL) && byte == ASCII_CR) {
         emit(emit_ctx, ASCII_LF);
         return;
     }

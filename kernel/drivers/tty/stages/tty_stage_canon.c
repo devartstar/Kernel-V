@@ -7,7 +7,8 @@
 #define ASCII_LF 0x0A /* '\n' line terminator */
 
 static void canon_echo(canon_state_t *echo_state, uint8_t byte);
-static void canon_process(tty_stage_t *self, uint8_t byte, tty_emit_fn emit,
+static void canon_process(tty_stage_t *self, uint8_t byte,
+                          const ktermios_t *term, tty_emit_fn emit,
                           void *emit_ctx);
 
 tty_stage_t tty_stage_canon_make(canon_state_t *state, tty_pipeline_t *out_pipe,
@@ -35,10 +36,23 @@ static void canon_echo(canon_state_t *state, uint8_t byte) {
     }
 }
 
-static void canon_process(tty_stage_t *self, uint8_t byte, tty_emit_fn emit,
+static void canon_process(tty_stage_t *self, uint8_t byte,
+                          const ktermios_t *term, tty_emit_fn emit,
                           void *emit_ctx) {
     canon_state_t *state = (canon_state_t *)self->state;
 
+    /* ==== NON CANONICAL (raw) : ICANON OFF ==== */
+    if (!(term->c_lflag & ICANON)) {
+        /* check if echo is on */
+        if (term->c_lflag & ECHO) {
+            canon_echo(state, byte);
+        }
+        /* send downstream */
+        emit(emit_ctx, byte);
+        return;
+    }
+
+    /* ==== CANONICAL (cooked) : ICANON ON ==== */
     /* --- CASE A: Backspace or Delete --- */
     if (byte == ASCII_BS || byte == ASCII_DEL) {
         /* [0] Precheck - do Nothing if no characters in line buffer */
@@ -53,9 +67,11 @@ static void canon_process(tty_stage_t *self, uint8_t byte, tty_emit_fn emit,
 
         /* [2] visually erase the character from the screen */
         /* echo: BS('\b'), SPACE(' '), BS('\b') */
-        canon_echo(state, '\b');
-        canon_echo(state, ' ');
-        canon_echo(state, '\b');
+        if (term->c_lflag & ECHO) {
+            canon_echo(state, '\b');
+            canon_echo(state, ' ');
+            canon_echo(state, '\b');
+        }
 
         /* [3] No need to emit the byte to downstream stages */
         return;
@@ -66,7 +82,9 @@ static void canon_process(tty_stage_t *self, uint8_t byte, tty_emit_fn emit,
         /* [0] Precheck - nothing - steps are safe even for empty buffer */
 
         /* [1] Echo the newline to the screen */
-        canon_echo(state, byte);
+        if (term->c_lflag & ECHO) {
+            canon_echo(state, byte);
+        }
 
         /* [2] Flush (run next stages of pipeline) all the bytes in the line
          * buffer */
@@ -92,7 +110,9 @@ static void canon_process(tty_stage_t *self, uint8_t byte, tty_emit_fn emit,
         }
 
         /* [1] echo the byte to the screen */
-        canon_echo(state, byte);
+        if (term->c_lflag & ECHO) {
+            canon_echo(state, byte);
+        }
 
         /* [2] store the byte in the line buffer */
         state->line[state->len++] = byte;

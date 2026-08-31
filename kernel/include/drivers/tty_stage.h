@@ -6,6 +6,7 @@
 #ifndef TTY_STAGE_H
 #define TTY_STAGE_H
 
+#include "drivers/tty_termios.h"
 #include <stdint.h>
 
 /* Called by a stage to push one output byte to the next stage
@@ -28,8 +29,8 @@ typedef struct tty_stage {
      * Process an Input byte: Transform one input byte. For each output byte
      * stage wants to send downstream it calls emits(emit_ctx, out_byte). It may
      * call emit zero, one or many times. */
-    void (*process)(struct tty_stage *self, uint8_t byte, tty_emit_fn emit,
-                    void *emit_ctx);
+    void (*process)(struct tty_stage *self, uint8_t byte,
+                    const ktermios_t *term, tty_emit_fn emit, void *emit_ctx);
 
     /* optional per stage state. For stateless stages should be NULL */
     void *state;

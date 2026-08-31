@@ -5,7 +5,6 @@
 #include "drivers/tty_session.h"
 #include "drivers/tty_stage.h"
 #include "drivers/tty_stage_canon.h"
-#include "drivers/tty_stage_echo.h"
 #include "drivers/tty_stage_icrnl.h"
 #include "drivers/tty_stage_onlcr.h"
 #include "drivers/vga.h"
@@ -22,14 +21,9 @@ static const tty_port_ops_t g_console_port_ops = {.putc = console_port_putc};
 static tty_stage_t g_console_out_stages[1];
 static tty_pipeline_t g_console_out_pipeline;
 
-/* RAW MODE: Input Line Discipline [icrnl, echo] */
+/* Input Line Discipline [icrnl, canon] */
 static tty_stage_t g_console_in_stages[2];
 static tty_pipeline_t g_console_in_pipeline;
-static echo_state_t g_console_echo_state;
-
-/* CANONICAL MODE: Input Line Discipline [icrnl, canon]  */
-static tty_stage_t g_console_cooked_stages[2];
-static tty_pipeline_t g_console_cooked_pipeline;
 static canon_state_t g_console_canon_state;
 
 static void console_port_putc(tty_port_t *port, uint8_t byte) {
@@ -44,20 +38,44 @@ int tty_console_init() {
     g_console_port.session = NULL;
     g_console_port.private_data = NULL;
 
-    /* --- OUTPUT PIPELINE --- */
+    /* --- OUTPUT PIPELINE (START) --- */
+
     /* [1] Initialize the line discipline stages */
     g_console_out_stages[0] = tty_stage_onlcr_make();
 
     /* [2] Initialize the output pipeline obj */
+    /* initialize the correct ref. to the terminal settings */
     g_console_out_pipeline.stages = g_console_out_stages;
     g_console_out_pipeline.count = 1;
+    g_console_out_pipeline.term = &g_console_session.term;
 
-    /* --- INPUT PIPELINE --- */
-    /* [NOte] RAW and CANONICAL mode will have their seperate input pipeline */
+    /* --- OUTPUT PIPELINE (END) --- */
 
-    /**
-     * Line Discipline stages ordering: `[icrnl] → [echo]/[canon]` or
-     * `[echo]/[canon] → [icrnl]`?
+    /** NOTE:
+     * [v0] RAW and CANONICAL mode will have their seperate input pipeline
+     * [v1] with termios terminal setting we have a common input pipeline with a
+     * canon stage whose behavious is defined by the ICANON flag in termios
+     */
+
+    /* --- INPUT PIPELINE (START) --- */
+
+    /* [1] Initialize the line discipline stages */
+    g_console_in_stages[0] = tty_stage_icrnl_make();
+    g_console_in_stages[1] =
+        tty_stage_canon_make(&g_console_canon_state, &g_console_out_pipeline,
+                             tty_port_sink, &g_console_port);
+
+    /* [2] Initialize the input pipeline obj */
+    /* initialize the correct reference to the terminal settings */
+    g_console_in_pipeline.stages = g_console_in_stages;
+    g_console_in_pipeline.count = 2;
+    g_console_in_pipeline.term = &g_console_session.term;
+
+    /* --- INPUT PIPELINE (END) --- */
+
+    /** NOTE:
+     * Line Discipline stages ordering:
+     * `[icrnl] → [echo]/[canon]` or `[echo]/[canon] → [icrnl]`?
      *
      * What happens when user press Enter ?
      * Case 1: [icrnl, echo]: Enter's `\r` becomes `\n` *first*, so echo sees
@@ -70,40 +88,17 @@ int tty_console_init() {
      * to column 0 but doesn't advance a line.
      */
 
-    /* [1] RAW MODE */
-    /* [1.1] Initialize the line discipline stages */
-    g_console_in_stages[0] = tty_stage_icrnl_make();
-    g_console_in_stages[1] =
-        tty_stage_echo_make(&g_console_echo_state, &g_console_out_pipeline,
-                            tty_port_sink, &g_console_port);
-
-    /* [1.2] Initialize the input pipeline obj */
-    g_console_in_pipeline.stages = g_console_in_stages;
-    g_console_in_pipeline.count = 2;
-
-    /* [2] CANONICAL MODE */
-    /* [2.1] Initialize the line discipline stages */
-    g_console_cooked_stages[0] = tty_stage_icrnl_make();
-    g_console_cooked_stages[1] =
-        tty_stage_canon_make(&g_console_canon_state, &g_console_out_pipeline,
-                             tty_port_sink, &g_console_port);
-
-    /* [2.2] Initialize the input pipeline obj */
-    g_console_cooked_pipeline.stages = g_console_cooked_stages;
-    g_console_cooked_pipeline.count = 2;
-
+    /* [3] Initialize the tty console session. This is were terminal settions
+     * for the session will also be initialized */
     ret = tty_session_init(&g_console_session, &g_console_port);
     if (ret != TTY_CHAN_OK) {
         KLOG_ERROR("TTY", " tty console initialization failed. err=%d\n", ret);
         return ret;
     }
 
-    /* [3] Initialize the sessions with input & output pipeline */
+    /* [4] Initialize the sessions with input & output pipeline */
     g_console_session.out_pipeline = &g_console_out_pipeline;
-
-    /* For Input Pipeline - toggle pipeline between RAW & CANONICAL based on
-     * mode */
-    g_console_session.in_pipeline = &g_console_cooked_pipeline;
+    g_console_session.in_pipeline = &g_console_in_pipeline;
 
     KLOG_INFO("TTY",
               "tty console initialization completed. session=%p, port=%p.\n",

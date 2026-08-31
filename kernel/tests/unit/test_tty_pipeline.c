@@ -53,6 +53,17 @@ typedef struct in_case {
     expected_t canon_echo; /* CANON mode: screen echo       */
 } in_case_t;
 
+/* build the termios structure for the different modes */
+static void termios_for_mode(ktermios_t *term, mode_type_t mode) {
+    term->c_iflag = ICRNL;
+    term->c_oflag = OPOST | ONLCR;
+    if (mode == MODE_RAW) {
+        term->c_lflag = ECHO;
+    } else if (mode == MODE_CANON) {
+        term->c_lflag = ICANON | ECHO;
+    }
+}
+
 /* simulating tty_port_sink locally: instead of emitting the byte, capture it */
 static void capture_sink(void *ctx, uint8_t byte) {
     capture_t *cap = (capture_t *)ctx;
@@ -89,9 +100,13 @@ static uint8_t run_output_case(const out_case_t *c) {
     tty_stage_t stages[1];
     tty_pipeline_t pipe;
 
+    ktermios_t term;
+    termios_for_mode(&term, MODE_CANON);
+
     stages[0] = tty_stage_onlcr_make();
     pipe.stages = stages;
     pipe.count = c->stage_count; /* 0 -> empty passthrough, 1 -> onlcr */
+    pipe.term = &term;
 
     capture_t cap = {.len = 0};
     for (uint32_t i = 0; i < c->in_len; i++) {
@@ -112,33 +127,23 @@ static uint8_t run_output_case(const out_case_t *c) {
 static uint8_t run_input_case_mode(const in_case_t *c, mode_type_t mode) {
     const char *mode_name = (mode == MODE_RAW) ? "raw" : "canon";
 
+    ktermios_t term;
+    termios_for_mode(&term, mode);
+
     /* [1] output pipeline [onlcr] -> cap_echo (the "screen") */
     tty_stage_t out_stages[1];
     tty_pipeline_t out_pipe;
     out_stages[0] = tty_stage_onlcr_make();
     out_pipe.stages = out_stages;
     out_pipe.count = 1;
+    out_pipe.term = &term;
     capture_t cap_echo = {.len = 0};
 
     /* [2] build the mode-specific second stage, echoing through out_pipe.
      *     both state structs are function-scoped: alive for the whole run. */
-    echo_state_t echo_state;
     canon_state_t canon_state;
-    tty_stage_t mode_stage;
-    const expected_t *exp_down;
-    const expected_t *exp_echo;
-
-    if (mode == MODE_RAW) {
-        mode_stage = tty_stage_echo_make(&echo_state, &out_pipe, capture_sink,
-                                         &cap_echo);
-        exp_down = &c->raw_down;
-        exp_echo = &c->raw_echo;
-    } else {
-        mode_stage = tty_stage_canon_make(&canon_state, &out_pipe, capture_sink,
-                                          &cap_echo);
-        exp_down = &c->canon_down;
-        exp_echo = &c->canon_echo;
-    }
+    tty_stage_t mode_stage =
+        tty_stage_canon_make(&canon_state, &out_pipe, capture_sink, &cap_echo);
 
     /* [3] input pipeline [icrnl, mode_stage] -> cap_down (the "reader") */
     tty_stage_t in_stages[2];
@@ -147,14 +152,21 @@ static uint8_t run_input_case_mode(const in_case_t *c, mode_type_t mode) {
     in_stages[1] = mode_stage;
     in_pipe.stages = in_stages;
     in_pipe.count = 2;
+    in_pipe.term = &term;
     capture_t cap_down = {.len = 0};
 
-    /* [4] drive every input byte through the pipeline */
+    /* [4] Initialize the expected bytes for the different modes */
+    const expected_t *exp_down =
+        (mode == MODE_RAW) ? &c->raw_down : &c->canon_down;
+    const expected_t *exp_echo =
+        (mode == MODE_RAW) ? &c->raw_echo : &c->canon_echo;
+
+    /* [5] drive every input byte through the pipeline */
     for (uint32_t i = 0; i < c->in_len; i++) {
         tty_pipeline_run(&in_pipe, c->in[i], capture_sink, &cap_down);
     }
 
-    /* [5] verify BOTH destinations against the mode-specific expectations */
+    /* [6] verify BOTH destinations against the mode-specific expectations */
     if (!cap_verify(c->name, mode_name, "downstream", &cap_down,
                     exp_down->bytes, exp_down->len)) {
         return 0;

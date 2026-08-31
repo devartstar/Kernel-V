@@ -4,6 +4,7 @@
 #include "tty_chan.h"
 #include "tty_pipeline.h"
 #include "tty_port.h"
+#include "tty_termios.h"
 #include <stdint.h>
 
 #define TTY_INPUT_BUF_SIZE 256
@@ -16,6 +17,9 @@ struct tty_session {
 
     uint8_t in_buf[TTY_INPUT_BUF_SIZE];
     uint8_t out_buf[TTY_OUTPUT_BUF_SIZE];
+
+    /* single source of for current tty session */
+    ktermios_t term;
 
     /* refernecing a pointer to pipeline object */
     tty_pipeline_t *out_pipeline;
@@ -45,5 +49,11 @@ void tty_input_step(tty_session_t *sess, uint8_t byte);
  */
 int tty_read(tty_session_t *sess, uint8_t *buf, uint32_t len);
 int tty_write(tty_session_t *sess, const uint8_t *buf, uint32_t len);
+
+/**
+ * API to get and set the terminal session states
+ */
+void tty_session_get_termios(tty_session_t *s, ktermios_t *out);
+int tty_session_set_termios(tty_session_t *s, const ktermios_t *in);
 
 #endif /* TTY_SESSION_H */

@@ -1,4 +1,5 @@
-#include "tty_session.h"
+#include "drivers/tty_session.h"
+#include "arch/x86/interrupt.h"
 #include "lib/printk.h"
 #include "tty_port.h"
 
@@ -31,7 +32,32 @@ int tty_session_init(tty_session_t *sess, tty_port_t *port) {
     sess->port = port;
     port->session = sess;
 
+    /* initialize the terminal settings */
+    tty_termios_init_cooked(&sess->term);
+
     return TTY_CHAN_OK;
+}
+
+void tty_session_get_termios(tty_session_t *s, ktermios_t *out) {
+    *out = s->term;
+}
+
+int tty_session_set_termios(tty_session_t *s, const ktermios_t *in) {
+    int canon_now = (s->term.c_lflag & ICANON) != 0;
+    int canon_new = (in->c_lflag & ICANON) != 0;
+
+    if (canon_now && !canon_new) {
+        /* TODO: keep it unimplemented for now */
+        /* tty_canon_flush(); */
+    }
+
+    /* torn-write guard: a concurrent per-byte spanshot must never observe a
+     * half-updated struct */
+    uint32_t guard_flags = irq_save();
+    s->term = *(in);
+    irq_restore(guard_flags);
+
+    return 0;
 }
 
 void tty_input_step(tty_session_t *sess, uint8_t byte) {
