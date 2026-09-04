@@ -22,6 +22,9 @@ typedef struct canon_state {
     tty_emit_fn out_sink;
     void *out_sink_ctx;
 
+    tty_signal_fn on_signal;
+    void *signal_ctx;
+
     /* Todo: downstream: to reader (pipeline's terminal sink)
      * tty_emit_fn down_sink;
      * void *down_sink_ctx;

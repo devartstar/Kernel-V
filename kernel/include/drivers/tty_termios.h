@@ -19,10 +19,15 @@
 #define ICANON (1u << 1) /* canonical mode (line-buffering, cooked) mode */
 #define ECHO (1u << 3)   /* echo input characters to screen */
 
+#define VINTR 0 /* INTR char index (Ctrl-C) */
+#define VQUIT 1 /* QUIT char index (Ctrl-\) */
+#define NCCS 8  /* Control Characters: keeping room to grow */
+
 typedef struct ktermios {
     uint32_t c_iflag;
     uint32_t c_oflag;
     uint32_t c_lflag;
+    uint32_t c_cc[NCCS];
 } ktermios_t;
 
 void tty_termios_init_cooked(ktermios_t *t);

@@ -216,6 +216,19 @@ int tty_chan_read_blocking(tty_chan_t *chan, uint8_t *out, uint32_t len,
 
         /* [4] Process is rescheduled. check back again if bytes are
          * available to read. */
+
+        /* Before we need to check if a signal might have been delivered for the
+         * process (Ctrl+C) while it was under wait. Act on its own context */
+        if (proc_handle_pending_signals()) {
+            /* Process has been marked TERMINATED. Do not retry the read.
+             * yield() to scheduler, which will never reschedule us.
+             * the idle process claims the PCB.
+             * TODO(catchable-signals): when the handler exits, a non-fatal
+             * signal should instead return TTY_CHAN_EINTR up to caller */
+            yield();
+            panik("You have reached un-reachable part of code. Something is "
+                  "wrong!\n");
+        }
     }
 
     /* execution should never reach here unless some error */

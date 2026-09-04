@@ -72,6 +72,13 @@ void tty_input_step(tty_session_t *sess, uint8_t byte) {
     KLOG_VERBOSE("TTY", "committed byte 0x%02x\n", byte);
 }
 
+static void tty_announce_waiting(tty_session_t *sess) {
+    static const char msg[] = "\n[waiting for input] ";
+    for (const char *p = msg; *p; p++) {
+        tty_port_sink(sess->port, (uint8_t)*p);
+    }
+}
+
 int tty_read(tty_session_t *sess, uint8_t *buf, uint32_t len) {
     int ret;
 
@@ -88,6 +95,9 @@ int tty_read(tty_session_t *sess, uint8_t *buf, uint32_t len) {
     if (len == 0) {
         return 0;
     }
+
+    /* Annount - blocking read waiting for user input */
+    tty_announce_waiting(sess);
 
     /* blocking read from channel */
     ret =
@@ -134,4 +144,8 @@ int tty_write(tty_session_t *sess, const uint8_t *buf, uint32_t len) {
 
     KLOG_VERBOSE("TTY", "wrote %u byte(s)\n", write_len);
     return write_len;
+}
+
+void tty_signal_foreground(tty_session_t *sess, int sig) {
+    proc_signal_channel(&sess->input, sig);
 }

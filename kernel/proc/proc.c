@@ -108,6 +108,8 @@ pcb_t *proc_alloc(const char *name) {
     new_proc->wait_info.wait_reason = PROC_WAIT_NONE;
     new_proc->wait_info.wait_tick_count = 0;
 
+    new_proc->sigpending = SIG_MASK_EMPTY;
+
     /* Background trace id for this process's non-syscall execution.
      * Minted without disturbing the caller's active sc. */
     new_proc->trace_id = log_trace_next();
@@ -558,6 +560,67 @@ void proc_exit(void) {
     }
 }
 
+int proc_handle_pending_signals() {
+    pcb_t *p = current_proc;
+
+    /* No pending signals to handle */
+    if (!p || p->sigpending == SIG_MASK_EMPTY) {
+        return 0;
+    }
+
+    /* snapshot + clear under IRQ guard: a producer may |= a new bit
+     * concurrently from IRQ context, we must not loose it or double act */
+    irq_flags_t flags = irq_save();
+    uint32_t pending = p->sigpending;
+    p->sigpending = SIG_MASK_EMPTY;
+    irq_restore(flags);
+
+    /* multiple signals to be handled - we need to define PRIORITY ORDER.
+     * SIGKILL first, then lowest numbered. All three defaults = terminate, but
+     * we log specific ones */
+    uint32_t sig = SIG_NONE;
+    if (pending & SIG_BIT(SIGKILL)) {
+        sig = SIGKILL;
+    } else if (pending & SIG_BIT(SIGINT)) {
+        sig = SIGINT;
+    } else if (pending & SIG_BIT(SIGQUIT)) {
+        sig = SIGQUIT;
+    }
+
+    /* if none of the handled signals bits are set */
+    if (sig == SIG_NONE) {
+        return 0;
+    }
+
+    /* no handler exists yet -> default action = terminate process
+     * POSIX status: exit status = 128 + signo. */
+    KLOG_INFO("SIGNAL", "pid=%u terminated by signal %u\n", p->pid, sig);
+    proc_mark_terminated(p, 128 + (int)sig);
+
+    return 1;
+}
+
+void proc_signal_channel(void *channel, int signo) {
+    irq_flags_t flags = irq_save();
+
+    pcb_t *proc_now = wait_list_head;
+    while (proc_now) {
+        pcb_t *proc_next = proc_now->next;
+
+        if (proc_now->state == PROC_WAITING &&
+            proc_now->wait_info.wait_channel == channel) {
+            proc_now->sigpending |= SIG_BIT(signo);
+            /* wake up the proces - expectation isit wakes up and marks
+             * terminated and yeilds */
+            proc_wakeup(proc_now);
+        }
+
+        proc_now = proc_next;
+    }
+
+    irq_restore(flags);
+}
+
 // =========================================
 // PROCESS TYPES
 // =========================================
@@ -684,13 +747,8 @@ pcb_t *scheduler_pick_next(void) {
                 return p;
             }
         }
-    }
-
-    /* If no READY process found, return the idle process */
-    for (pcb_t *p = ready_list_head; p; p = p->next) {
-        if (strcmp(p->name, "idle") == 0) {
-            return p;
-        }
+        panik(
+            "idle process missing from ready list - no process to schedule!\n");
     }
 
     return proc_now;
@@ -737,6 +795,7 @@ void yield(void) {
         }
     }
 
+    /* Do a context switch if new scheduled process != current process */
     if (proc_next && proc_next != proc_now) {
 
         KLOG_VERBOSE("PROCESS_MGMT",

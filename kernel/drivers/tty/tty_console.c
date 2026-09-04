@@ -32,6 +32,10 @@ static void console_port_putc(tty_port_t *port, uint8_t byte) {
     serial_putc((char)byte);
 }
 
+static void tty_console_signal_sink(void *ctx, int sig) {
+    tty_signal_foreground((tty_session_t *)ctx, sig);
+}
+
 int tty_console_init() {
     int ret;
     g_console_port.ops = &g_console_port_ops;
@@ -64,6 +68,9 @@ int tty_console_init() {
     g_console_in_stages[1] =
         tty_stage_canon_make(&g_console_canon_state, &g_console_out_pipeline,
                              tty_port_sink, &g_console_port);
+
+    g_console_canon_state.on_signal = tty_console_signal_sink;
+    g_console_canon_state.signal_ctx = (void *)&g_console_session;
 
     /* [2] Initialize the input pipeline obj */
     /* initialize the correct reference to the terminal settings */

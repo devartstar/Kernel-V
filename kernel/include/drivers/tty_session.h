@@ -56,4 +56,10 @@ int tty_write(tty_session_t *sess, const uint8_t *buf, uint32_t len);
 void tty_session_get_termios(tty_session_t *s, ktermios_t *out);
 int tty_session_set_termios(tty_session_t *s, const ktermios_t *in);
 
+/**
+ * tty_signal_foreground - sends signal to all the foreground reader of this
+ * session (ie. process blockedon theinput channel)
+ */
+void tty_signal_foreground(tty_session_t *sess, int sig);
+
 #endif /* TTY_SESSION_H */

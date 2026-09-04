@@ -1,4 +1,5 @@
 #include "drivers/tty_stage_canon.h"
+#include "proc/signal.h"
 #include "stddef.h"
 
 #define ASCII_BS 0x08  /* Ctrl-H backspace */
@@ -17,6 +18,8 @@ tty_stage_t tty_stage_canon_make(canon_state_t *state, tty_pipeline_t *out_pipe,
     state->out_sink = out_sink;
     state->out_sink_ctx = out_sink_ctx;
     state->len = 0;
+    state->on_signal = NULL;
+    state->signal_ctx = NULL;
 
     tty_stage_t stage;
     stage.name = "canon";
@@ -40,6 +43,24 @@ static void canon_process(tty_stage_t *self, uint8_t byte,
                           const ktermios_t *term, tty_emit_fn emit,
                           void *emit_ctx) {
     canon_state_t *state = (canon_state_t *)self->state;
+
+    /* ====== SIGNAL GENERATION and HANDLING ====== */
+    if (term->c_lflag & ISIG) {
+        if (byte == term->c_cc[VINTR] || byte == term->c_cc[VQUIT]) {
+            int sig = byte == term->c_cc[VINTR] ? SIGINT : SIGQUIT;
+
+            /* discard the line being typed */
+            state->len = 0;
+
+            /* send the signal callback for context */
+            if (state->on_signal) {
+                state->on_signal(state->signal_ctx, sig);
+            }
+
+            /* the control character is consumed, not stored */
+            return;
+        }
+    }
 
     /* ==== NON CANONICAL (raw) : ICANON OFF ==== */
     if (!(term->c_lflag & ICANON)) {

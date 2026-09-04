@@ -2,6 +2,7 @@
 #define PROC_H
 
 #include "fs/ramfs.h"
+#include "proc/signal.h"
 #include <stdint.h>
 
 #define PROC_NAME_MAX 16
@@ -115,6 +116,9 @@ typedef struct pcb {
 
     /* reason for process to get to wait state */
     proc_wait_info_t wait_info;
+
+    /* 0 = none; else signal number to act on at wakeup */
+    uint32_t sigpending;
 
     /* Log correlation (sc=) tracing.
      * trace_id: id this process is currently running under (restored by
@@ -373,6 +377,24 @@ void proc_kernel_main_exit(void);
  * @proc - process to log the info for
  */
 void print_proc_info(const pcb_t *proc);
+
+/**
+ * Act for any signal pending for the current process.
+ * Runs in the process's OWN context at a safe point (never in IRQ)
+ * Returns 1 if the signal was acted upon (caller may need to bail out)
+ * 0 if nothing was pending
+ */
+int proc_handle_pending_signals(void);
+
+/**
+ * proc_signal_channel - deliver a signal to every process parked on the
+ * channel. they wake them so they act on it at their safe point.
+ *
+ * called from IRQ context (canon INTR/QUIT detection). We only mark the signal
+ * + wake here; the target consumes the bit in proc_handle_pending_signals()
+ * after it resumes.
+ */
+void proc_signal_channel(void *channel, int signo);
 
 extern pcb_t *current_proc;
 

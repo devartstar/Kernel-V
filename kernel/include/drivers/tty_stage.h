@@ -14,6 +14,9 @@ NOTE: emit has not information of current stage emitting. this information
 should go to the context */
 typedef void (*tty_emit_fn)(void *emit_ctx, uint8_t byte);
 
+/* Called by a stage to signal the session */
+typedef void (*tty_signal_fn)(void *signal_ctx, int sig);
+
 /**
  * tty_stage - structure defining a tty stage.
  * a tty stage transforms a bytestream.

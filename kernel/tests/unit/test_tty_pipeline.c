@@ -18,6 +18,7 @@
 #include "drivers/tty_stage_echo.h"
 #include "drivers/tty_stage_icrnl.h"
 #include "drivers/tty_stage_onlcr.h"
+#include "proc/signal.h"
 
 typedef enum mode_type { MODE_RAW, MODE_CANON } mode_type_t;
 
@@ -25,6 +26,11 @@ typedef struct capture {
     uint8_t buf[64];
     uint32_t len;
 } capture_t;
+
+typedef struct sig_capture {
+    int sigs[8];
+    uint32_t count;
+} sig_capture_t;
 
 /* an expected byte sequence (bytes may be NULL when len == 0) */
 typedef struct expected {
@@ -93,6 +99,15 @@ static uint8_t cap_verify(const char *name, const char *mode, const char *label,
     return 1;
 }
 
+/* probing a signal handler - instead of exiting process just maintain count and
+ * observed signals */
+static void sig_spy(void *ctx, int sig) {
+    sig_capture_t *sc = (sig_capture_t *)ctx;
+    if (sc->count < 8) {
+        sc->sigs[sc->count++] = sig;
+    }
+}
+
 /* ------------------------------------------------------------------ */
 /*  OUTPUT pipeline runner                                            */
 /* ------------------------------------------------------------------ */
@@ -142,8 +157,11 @@ static uint8_t run_input_case_mode(const in_case_t *c, mode_type_t mode) {
     /* [2] build the mode-specific second stage, echoing through out_pipe.
      *     both state structs are function-scoped: alive for the whole run. */
     canon_state_t canon_state;
+    sig_capture_t cap_sig = {.count = 0};
     tty_stage_t mode_stage =
         tty_stage_canon_make(&canon_state, &out_pipe, capture_sink, &cap_echo);
+    canon_state.on_signal = sig_spy;
+    canon_state.signal_ctx = (void *)&cap_sig;
 
     /* [3] input pipeline [icrnl, mode_stage] -> cap_down (the "reader") */
     tty_stage_t in_stages[2];
@@ -177,6 +195,89 @@ static uint8_t run_input_case_mode(const in_case_t *c, mode_type_t mode) {
     }
 
     KLOG_INFO("TTY_PIPELINE", "[%s/%s] passed.\n", c->name, mode_name);
+    return 1;
+}
+
+/* a SIGNAL test case: full c_lflag is per-case so we can toggle ISIG/ICANON */
+typedef struct sig_case {
+    const char *name;
+    uint32_t lflag; /* c_lflag to install (ICANON/ISIG/...) */
+    const uint8_t *in;
+    uint32_t in_len;
+    const int *exp_sigs; /* signals expected at the cord (NULL if none) */
+    uint32_t exp_sig_count;
+    const uint8_t *exp_down; /* bytes expected at the reader (NULL if none) */
+    uint32_t exp_down_len;
+} sig_case_t;
+
+/* ------------------------------------------------------------------ */
+/*  SIGNAL pipeline runner: [icrnl, canon] with a spy on the cord     */
+/* ------------------------------------------------------------------ */
+static uint8_t run_signal_case(const sig_case_t *c) {
+    /* [1] termios: per-case lflag; c_cc defaults MUST be set (else garbage) */
+    ktermios_t term;
+    term.c_iflag = ICRNL;
+    term.c_oflag = OPOST | ONLCR;
+    term.c_lflag = c->lflag;
+    term.c_cc[VINTR] = 0x03;
+    term.c_cc[VQUIT] = 0x1C;
+
+    /* [2] echo out-pipeline: valid but unused (ECHO is off in these cases) */
+    tty_stage_t out_stages[1];
+    tty_pipeline_t out_pipe;
+    out_stages[0] = tty_stage_onlcr_make();
+    out_pipe.stages = out_stages;
+    out_pipe.count = 1;
+    out_pipe.term = &term;
+    capture_t cap_echo = {.len = 0};
+
+    /* [3] canon stage, then OVERRIDE its cord with the spy (make defaults NULL)
+     */
+    canon_state_t canon;
+    tty_stage_t canon_stage =
+        tty_stage_canon_make(&canon, &out_pipe, capture_sink, &cap_echo);
+    sig_capture_t sc = {.count = 0};
+    canon.on_signal = sig_spy;
+    canon.signal_ctx = &sc;
+
+    /* [4] input pipeline [icrnl, canon] -> reader capture */
+    tty_stage_t in_stages[2];
+    tty_pipeline_t in_pipe;
+    in_stages[0] = tty_stage_icrnl_make();
+    in_stages[1] = canon_stage;
+    in_pipe.stages = in_stages;
+    in_pipe.count = 2;
+    in_pipe.term = &term;
+    capture_t cap_down = {.len = 0};
+
+    /* [5] drive the bytes */
+    for (uint32_t i = 0; i < c->in_len; i++) {
+        tty_pipeline_run(&in_pipe, c->in[i], capture_sink, &cap_down);
+    }
+
+    /* [6a] reader bytes */
+    if (!cap_verify(c->name, "sig", "downstream", &cap_down, c->exp_down,
+                    c->exp_down_len)) {
+        return 0;
+    }
+
+    /* [6b] delivered signals: count then order */
+    if (sc.count != c->exp_sig_count) {
+        KLOG_ERROR("TTY_PIPELINE",
+                   "[%s/sig] signal count mismatch: got=%u expected=%u.\n",
+                   c->name, sc.count, c->exp_sig_count);
+        return 0;
+    }
+    for (uint32_t i = 0; i < c->exp_sig_count; i++) {
+        if (sc.sigs[i] != c->exp_sigs[i]) {
+            KLOG_ERROR("TTY_PIPELINE",
+                       "[%s/sig] signal %u mismatch: got=%d expected=%d.\n",
+                       c->name, i, sc.sigs[i], c->exp_sigs[i]);
+            return 0;
+        }
+    }
+
+    KLOG_INFO("TTY_PIPELINE", "[%s/sig] passed.\n", c->name);
     return 1;
 }
 
@@ -304,6 +405,36 @@ static const in_case_t g_in_cases[] = {
 };
 
 /* ================================================================== */
+/*  SIGNAL CASES (data)                                               */
+/* ================================================================== */
+/* 1: ^C -> SIGINT, char consumed (nothing to reader) */
+static const uint8_t s1_in[] = {0x03};
+static const int s1_sigs[] = {SIGINT};
+
+/* 2: ^\ -> SIGQUIT */
+static const uint8_t s2_in[] = {0x1C};
+static const int s2_sigs[] = {SIGQUIT};
+
+/* 3: line discard -- "abc" typed, ^C, then "de\n". Reader sees ONLY "de\n". */
+static const uint8_t s3_in[] = {'a', 'b', 'c', 0x03, 'd', 'e', '\n'};
+static const int s3_sigs[] = {SIGINT};
+static const uint8_t s3_down[] = {'d', 'e', '\n'};
+
+/* 4: ISIG OFF -> 0x03 is a literal byte. Same ICANON as 1-3, only ISIG toggled.
+ *    '\n' terminates the line so the held bytes reach the reader. */
+static const uint8_t s4_in[] = {0x03, '\n'};
+static const uint8_t s4_down[] = {0x03, '\n'};
+
+static const sig_case_t g_sig_cases[] = {
+    {"sigint", ICANON | ISIG, s1_in, sizeof(s1_in), s1_sigs, 1, NULL, 0},
+    {"sigquit", ICANON | ISIG, s2_in, sizeof(s2_in), s2_sigs, 1, NULL, 0},
+    {"line_discard", ICANON | ISIG, s3_in, sizeof(s3_in), s3_sigs, 1, s3_down,
+     sizeof(s3_down)},
+    {"isig_off_literal", ICANON, s4_in, sizeof(s4_in), NULL, 0, s4_down,
+     sizeof(s4_down)},
+};
+
+/* ================================================================== */
 /*  Public invokers                                                   */
 /* ================================================================== */
 uint32_t tty_run_output_pipeline_cases(void) {
@@ -326,6 +457,17 @@ uint32_t tty_run_input_pipeline_cases(void) {
             failed++;
         }
         if (!run_input_case_mode(&g_in_cases[i], MODE_CANON)) {
+            failed++;
+        }
+    }
+    return failed;
+}
+
+uint32_t tty_run_signal_pipeline_cases(void) {
+    uint32_t failed = 0;
+    uint32_t n = sizeof(g_sig_cases) / sizeof(g_sig_cases[0]);
+    for (uint32_t i = 0; i < n; i++) {
+        if (!run_signal_case(&g_sig_cases[i])) {
             failed++;
         }
     }

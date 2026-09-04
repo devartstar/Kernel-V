@@ -108,6 +108,6 @@ void dequeue_wait(pcb_t *proc) {
 
     KLOG_VERBOSE(
         "SCHEDULER",
-        "Dequeue from weady list successful: name=%s (pid=%u, type=%s)\n",
+        "Dequeue from wait list successful: name=%s (pid=%u, type=%s)\n",
         proc->name, proc->pid, proc_type_to_string(proc->type));
 }
