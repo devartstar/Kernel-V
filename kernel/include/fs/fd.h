@@ -65,6 +65,11 @@ int fd_close_all(pcb_t *proc);
 int fd_open_path(pcb_t *proc, const char *path, uint32_t flags);
 
 /**
+ * fd_open_node_at - bind an apready resolved vfs node to a specific fd of
+ * process. used by caller when it already holds node like in case of tty */
+int fd_open_node_at(pcb_t *proc, vfs_node_t *node, uint32_t flags, uint32_t fd);
+
+/**
  * fd_read - read the file referenced by fd in a given process.
  * gets the file reference from the fd and the vfs node ref. from file
  * invoke the read routine registered to the vfs node

@@ -1,4 +1,5 @@
 #include "fs/fd.h"
+#include "drivers/tty_console.h"
 #include "fs/vfs_utils.h"
 #include "lib/printk.h"
 #include "lib/string.h"
@@ -339,6 +340,82 @@ int fd_open_path_at(pcb_t *proc, char *path, uint32_t flags, uint32_t fd) {
     return VFS_OK;
 }
 
+int fd_open_node_at(pcb_t *proc, vfs_node_t *node, uint32_t flags,
+                    uint32_t fd) {
+    vfs_file_t *file;
+    int ret;
+
+    /* check for valid reference to process is passed */
+    if (!proc) {
+        KLOG_ERROR("FD",
+                   "fd_open_node_at failed. invalid reference to process.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    /* check for valid node reference to vfs node is passed */
+    if (!node) {
+        KLOG_ERROR("FD",
+                   "fd_open_node_at failed. invalid reference to node.\n");
+        return VFS_ERR_INVALID;
+    }
+
+    if (fd >= PROCESS_MAX_FDS) {
+        KLOG_ERROR(
+            "FD",
+            "fd_open_path_at for process %s (pid=%u) failed. Invalid fd.\n",
+            proc->name, proc->pid);
+        return VFS_ERR_INVALID;
+    }
+
+    /* allocate a file object and reference to node */
+    file = vfs_file_alloc();
+    if (!file) {
+        KLOG_ERROR("FD",
+                   "fd_open_path_at for process %s (pid %u) failed. error "
+                   "opening file for vfs node %s.\n",
+                   proc->name, proc->pid, node->name);
+        return VFS_ERR_NOMEM;
+    }
+    file->node = node;
+    file->flags = flags;
+    file->offset = 0;
+    file->refcount = 1;
+    /* update the device node reference count */
+    node->refcount++;
+
+    /* open the file */
+    if (node->ops && node->ops->open) {
+        ret = node->ops->open(file);
+        if (ret != VFS_OK) {
+            KLOG_ERROR("FD",
+                       "fd_open_path_at for process %s (pid %u) failed. error "
+                       "opening file for node %s.\n",
+                       proc->name, proc->pid, node->name);
+        }
+    }
+
+    /* next we link the reference to this file to the process fd table */
+    ret = fd_install(proc, fd, file);
+    if (ret != VFS_OK) {
+        KLOG_ERROR("FD",
+                   "fd_open_path_at for process %s (pid %u) failed. failed to "
+                   "install file for node %s to fd %u of process.\n",
+                   proc->name, proc->pid, node->name, fd);
+
+        /* do clean up of the file and decrease references */
+        node->refcount--;
+        vfs_file_free(file);
+        return ret;
+    }
+
+    KLOG_INFO(
+        "FD",
+        "successfully opened and linked file for node %s to process %s (pid "
+        "%u) at fd %u.\n",
+        node->name, proc->name, proc->pid, fd);
+    return VFS_OK;
+}
+
 int fd_read(pcb_t *proc, int fd, void *buf, uint32_t len) {
     vfs_node_t *node;
     vfs_file_t *file;
@@ -526,6 +603,7 @@ int fd_lseek(pcb_t *proc, int fd, int32_t offset, int whence) {
 
 int fd_setup_stdio(pcb_t *proc) {
     int ret;
+    vfs_node_t *ctty;
 
     /* check for valid process reference */
     if (!proc) {
@@ -533,8 +611,21 @@ int fd_setup_stdio(pcb_t *proc) {
         return VFS_ERR_INVALID;
     }
 
+    /* Resolve the controlling terminal. If process did not inherit one, default
+     * to system console terminal. tty session rides on ctty->private_data */
+    ctty = proc->ctty;
+    if (!ctty) {
+        ctty = vfs_lookup_absolute("/dev/console");
+        if (!ctty) {
+            KLOG_ERROR("FD", "setup_stdio failed. no controlling tty and "
+                             "/dev/console is absent.\n");
+            return VFS_ERR_NOTFOUND;
+        }
+        proc->ctty = ctty;
+    }
+
     /* open file ref for device /dev/stdin at fd 0 */
-    ret = fd_open_path_at(proc, "/dev/stdin", 0, 0);
+    ret = fd_open_node_at(proc, ctty, 0, 0);
     if (ret != VFS_OK) {
         KLOG_ERROR("FD",
                    "Failed to setup stdio. linking of /dev/stdin file to fd 0 "
@@ -544,7 +635,7 @@ int fd_setup_stdio(pcb_t *proc) {
     }
 
     /* open file ref for device /dev/stdout at fd 1 */
-    ret = fd_open_path_at(proc, "/dev/stdout", 0, 1);
+    ret = fd_open_node_at(proc, ctty, 0, 1);
     if (ret != VFS_OK) {
         KLOG_ERROR("FD",
                    "Failed to setup stdio. linking of /dev/stdout file to fd 1 "
@@ -556,7 +647,7 @@ int fd_setup_stdio(pcb_t *proc) {
     }
 
     /* open file ref for device /dev/stderr at fd 2 */
-    ret = fd_open_path_at(proc, "/dev/stderr", 0, 2);
+    ret = fd_open_node_at(proc, ctty, 0, 2);
     if (ret != VFS_OK) {
         KLOG_ERROR("FD",
                    "Failed to setup stdio. linking of /dev/stderr file to fd 2 "

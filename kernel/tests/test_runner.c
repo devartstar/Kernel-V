@@ -13,6 +13,7 @@
 #include "tests/test_spinlock.h"
 #include "tests/test_syscall.h"
 #include "tests/test_tty_chan.h"
+#include "tests/test_tty_multi.h"
 #include "tests/test_tty_pipeline.h"
 #include "tests/test_vfs.h"
 #include <stdbool.h>
@@ -94,6 +95,7 @@ static const ktest_t unit_tests[] = {
     {"console", "unit", run_console_tests},
     {"tty_channel", "unit", run_tty_chan_tests},
     {"tty_pipeline", "unit", run_tty_pipeline_tests},
+    {"tty_multi", "unit", run_tty_multi_tests},
 };
 #endif
 

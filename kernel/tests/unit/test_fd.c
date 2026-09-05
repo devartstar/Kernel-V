@@ -690,6 +690,12 @@ uint8_t fd_setup_stdio_test() {
         return 0;
     }
 
+    if (!proc.ctty) {
+        KLOG_ERROR("FD_TEST", "setup_stdio test failed. process controlling "
+                              "terminal is not valid.\n");
+        return 0;
+    }
+
     /* check if the fd 0/1/2 is set properly */
     if (!proc.fds[0] || !proc.fds[1] || !proc.fds[2]) {
         KLOG_ERROR("FD_TEST",
@@ -697,21 +703,18 @@ uint8_t fd_setup_stdio_test() {
         return 0;
     }
 
-    /* check for fd 0 to represent stdin */
-    if (!proc.fds[0]->node || strcmp(proc.fds[0]->node->name, "stdin") != 0) {
-        KLOG_ERROR("FD_TEST", "fd0 is not stdin.\n");
+    /* fd 0/1/2 must reference to same tty terminal session. */
+    if (proc.fds[0]->node != proc.ctty || proc.fds[1]->node != proc.ctty ||
+        proc.fds[2]->node != proc.ctty) {
+        KLOG_ERROR("FD_TEST", "setup_stdio test failed. fd 0/1/2 do not point "
+                              "to process controlling terminal.\n");
         return 0;
     }
 
-    /* check for fd 0 to represent stdin */
-    if (!proc.fds[1]->node || strcmp(proc.fds[1]->node->name, "stdout") != 0) {
-        KLOG_ERROR("FD_TEST", "fd1 is not stdout.\n");
-        return 0;
-    }
-
-    /* check for fd 0 to represent stdin */
-    if (!proc.fds[2]->node || strcmp(proc.fds[2]->node->name, "stderr") != 0) {
-        KLOG_ERROR("FD_TEST", "fd2 is not stderr.\n");
+    /* default ctty is console termina */
+    if (strcmp(proc.ctty->name, "console") != 0) {
+        KLOG_ERROR("FD_TEST", "setup_stdio test failed. default process "
+                              "controlling terminal is not console.\n");
         return 0;
     }
 

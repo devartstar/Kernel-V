@@ -141,6 +141,14 @@ typedef struct pcb {
     /* File descriptor table */
     vfs_file_t *fds[PROCESS_MAX_FDS];
 
+    /** Controlling terminal: the tty node this process stdio is bound to.
+     * The session lives in node->private_data so process read/write from/to a
+     * file does not consult a global.
+     * Remote terminals - just a node whose port bridges elsewhere. Inherited on
+     * fork; default to foreground console at creation.
+     */
+    vfs_node_t *ctty;
+
     /* Process tree */
     struct pcb *parent;
 
