@@ -5,6 +5,8 @@
 
 #define TTY_CANON_LINE_MAX 256
 
+extern const tty_stage_def_t tty_stage_canon_def;
+
 /**
  * @canon_state - defines the state for the canonical stage
  * the state matches with the echo state with a line buffer
@@ -31,7 +33,7 @@ typedef struct canon_state {
      */
 } canon_state_t;
 
-tty_stage_t tty_stage_canon_make(canon_state_t *state, tty_pipeline_t *out_pipe,
-                                 tty_emit_fn out_sink, void *out_sink_ctx);
+void tty_stage_canon_state_init(canon_state_t *state, tty_pipeline_t *out_pipe,
+                                tty_emit_fn out_sink, void *out_sink_ctx);
 
 #endif /* TTY_STAGE_CANON */

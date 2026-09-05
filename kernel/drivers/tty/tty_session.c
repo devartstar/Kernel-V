@@ -1,5 +1,6 @@
 #include "drivers/tty_session.h"
 #include "arch/x86/interrupt.h"
+#include "drivers/tty_recipe.h"
 #include "lib/printk.h"
 #include "tty_port.h"
 
@@ -34,6 +35,27 @@ int tty_session_init(tty_session_t *sess, tty_port_t *port) {
 
     /* initialize the terminal settings */
     tty_termios_init_cooked(&sess->term);
+
+    /* --- OUTPUT pipeline: bind shared cooked-out recipe --- */
+    sess->out_pipeline.def = &tty_cooked_out_def;
+    sess->out_pipeline.state[0] = NULL; /* onlcr stateless */
+    sess->out_pipeline.term = &sess->term;
+
+    /* --- INPUT PIPELINE: bind shared cooked-in recipe --- */
+
+    /* [1] initialize the sessions canon state
+     * when echo enabled in canon stage will echo through this out pipeline to
+     * the sink */
+    tty_stage_canon_state_init(&sess->canon, &sess->out_pipeline, tty_port_sink,
+                               port);
+    sess->canon.on_signal = tty_session_signal_sink;
+    sess->canon.signal_ctx = sess;
+
+    /* [2] initialize the sessions input pipeline */
+    sess->in_pipeline.def = &tty_cooked_in_def;
+    sess->in_pipeline.state[0] = NULL;         /* icrnl stateless */
+    sess->in_pipeline.state[1] = &sess->canon; /* canon state */
+    sess->in_pipeline.term = &sess->term;
 
     return TTY_CHAN_OK;
 }
@@ -133,8 +155,8 @@ int tty_write(tty_session_t *sess, const uint8_t *buf, uint32_t len) {
      * number of actual bytes might differ based on line processing. */
     uint32_t write_len = 0;
     for (uint32_t i = 0; i < len; i++) {
-        if (sess->out_pipeline) {
-            tty_pipeline_run(sess->out_pipeline, buf[i], tty_port_sink,
+        if (sess->out_pipeline.def) {
+            tty_pipeline_run(&sess->out_pipeline, buf[i], tty_port_sink,
                              sess->port);
         } else {
             tty_port_sink(sess->port, buf[i]);
@@ -146,6 +168,10 @@ int tty_write(tty_session_t *sess, const uint8_t *buf, uint32_t len) {
     return write_len;
 }
 
-void tty_signal_foreground(tty_session_t *sess, int sig) {
+void tty_session_signal_foreground(tty_session_t *sess, int sig) {
     proc_signal_channel(&sess->input, sig);
+}
+
+void tty_session_signal_sink(void *ctx, int sig) {
+    tty_session_signal_foreground((tty_session_t *)ctx, sig);
 }

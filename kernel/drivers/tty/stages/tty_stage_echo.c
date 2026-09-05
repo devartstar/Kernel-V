@@ -1,10 +1,11 @@
 #include "drivers/tty_stage_echo.h"
 #include "stddef.h"
 
-static void echo_process(tty_stage_t *self, uint8_t byte,
-                         const ktermios_t *term, tty_emit_fn emit,
-                         void *emit_ctx) {
-    echo_state_t *st = (echo_state_t *)self->state;
+static void echo_process(const tty_stage_def_t *self, uint8_t byte,
+                         const ktermios_t *term, void *stage_state,
+                         tty_emit_fn emit, void *emit_ctx) {
+    (void)self;
+    echo_state_t *st = (echo_state_t *)stage_state;
 
     /* state is null, then just forward the byte to next stage */
     if (!st) {
@@ -31,17 +32,14 @@ static void echo_process(tty_stage_t *self, uint8_t byte,
     emit(emit_ctx, byte);
 }
 
-tty_stage_t tty_stage_echo_make(echo_state_t *echo_state,
-                                tty_pipeline_t *pipeline, tty_emit_fn emit,
-                                void *emit_ctx) {
-    tty_stage_t stage;
-    echo_state->out_pipeline = pipeline;
-    echo_state->out_sink = emit;
-    echo_state->out_sink_ctx = emit_ctx;
+const tty_stage_def_t tty_stage_echo_def = {
+    .name = "echo",
+    .process = echo_process,
+};
 
-    stage.name = "echo";
-    stage.process = echo_process;
-    stage.state = (void *)echo_state;
-
-    return stage;
+void tty_stage_echo_state_init(echo_state_t *state, tty_pipeline_t *out_pipe,
+                               tty_emit_fn out_sink, void *out_sink_ctx) {
+    state->out_pipeline = out_pipe;
+    state->out_sink = out_sink;
+    state->out_sink_ctx = out_sink_ctx;
 }

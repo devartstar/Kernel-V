@@ -12,7 +12,6 @@ void tty_port_sink(void *ctx, uint8_t byte) {
 
 void tty_port_rx(tty_port_t *port, uint8_t byte) {
     tty_session_t *sess;
-    int ret;
 
     /* check for valid port */
     if (!port) {
@@ -27,8 +26,8 @@ void tty_port_rx(tty_port_t *port, uint8_t byte) {
     }
 
     /* invoke the session's input pipeline */
-    if (sess->in_pipeline) {
-        tty_pipeline_run(sess->in_pipeline, byte, tty_input_chan_sink, sess);
+    if (sess->in_pipeline.def) {
+        tty_pipeline_run(&sess->in_pipeline, byte, tty_input_chan_sink, sess);
     } else {
         /* no imput pipeline scenario line discipline stores directly in buffer
          */

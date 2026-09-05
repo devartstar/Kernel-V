@@ -4,15 +4,29 @@
 #include "drivers/tty_stage.h"
 #include "drivers/tty_termios.h"
 
+/* maximum number of stages per pipeline */
+#define TTY_STAGE_MAX 4
+
 /**
- * @tty_pipeline - an ordered array of tty stages. It does not include sink.
- * @stages - array of tty stages.
- * @count - number of tty stages
+ * tty_pipeline_def - a SHARED recipe: an ordered list of reference to stage
+ * defs. Immunable, lives in .rodata, references by session. Carries no
+ * per-session state
+ */
+typedef struct tty_pipeline_def {
+    /* array of pointers to shared defs */
+    const tty_stage_def_t *const *stages;
+    uint32_t count;
+} tty_pipeline_def_t;
+
+/**
+ * tty_pipeline - a PER-SESSION binding of shared recipe to private STATE
+ * @def - an ordered array of ref. tty stages. It does not include sink.
+ * @state - array of state per tty stages. NULL for stateless stage.
  * @term - reference to the session owned tty settings.
  */
 typedef struct tty_pipeline {
-    tty_stage_t *stages;
-    uint32_t count;
+    const tty_pipeline_def_t *def;
+    void *state[TTY_STAGE_MAX];
     ktermios_t *term;
 } tty_pipeline_t;
 

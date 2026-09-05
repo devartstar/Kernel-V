@@ -8,26 +8,24 @@
 #define ASCII_LF 0x0A /* '\n' line terminator */
 
 static void canon_echo(canon_state_t *echo_state, uint8_t byte);
-static void canon_process(tty_stage_t *self, uint8_t byte,
-                          const ktermios_t *term, tty_emit_fn emit,
-                          void *emit_ctx);
+static void canon_process(const tty_stage_def_t *self, uint8_t byte,
+                          const ktermios_t *term, void *stage_state,
+                          tty_emit_fn emit, void *emit_ctx);
 
-tty_stage_t tty_stage_canon_make(canon_state_t *state, tty_pipeline_t *out_pipe,
-                                 tty_emit_fn out_sink, void *out_sink_ctx) {
+void tty_stage_canon_state_init(canon_state_t *state, tty_pipeline_t *out_pipe,
+                                tty_emit_fn out_sink, void *out_sink_ctx) {
     state->out_pipeline = out_pipe;
     state->out_sink = out_sink;
     state->out_sink_ctx = out_sink_ctx;
     state->len = 0;
     state->on_signal = NULL;
     state->signal_ctx = NULL;
-
-    tty_stage_t stage;
-    stage.name = "canon";
-    stage.process = canon_process;
-    stage.state = state;
-
-    return stage;
 }
+
+const tty_stage_def_t tty_stage_canon_def = {
+    .name = "canon",
+    .process = canon_process,
+};
 
 static void canon_echo(canon_state_t *state, uint8_t byte) {
     if (state->out_pipeline) {
@@ -39,10 +37,11 @@ static void canon_echo(canon_state_t *state, uint8_t byte) {
     }
 }
 
-static void canon_process(tty_stage_t *self, uint8_t byte,
-                          const ktermios_t *term, tty_emit_fn emit,
-                          void *emit_ctx) {
-    canon_state_t *state = (canon_state_t *)self->state;
+static void canon_process(const tty_stage_def_t *self, uint8_t byte,
+                          const ktermios_t *term, void *stage_state,
+                          tty_emit_fn emit, void *emit_ctx) {
+    (void)self;
+    canon_state_t *state = (canon_state_t *)stage_state;
 
     /* ====== SIGNAL GENERATION and HANDLING ====== */
     if (term->c_lflag & ISIG) {

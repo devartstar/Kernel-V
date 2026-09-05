@@ -4,6 +4,7 @@
 #include "tty_chan.h"
 #include "tty_pipeline.h"
 #include "tty_port.h"
+#include "tty_stage_canon.h"
 #include "tty_termios.h"
 #include <stdint.h>
 
@@ -21,9 +22,12 @@ struct tty_session {
     /* single source of for current tty session */
     ktermios_t term;
 
-    /* refernecing a pointer to pipeline object */
-    tty_pipeline_t *out_pipeline;
-    tty_pipeline_t *in_pipeline;
+    /* pipeline object */
+    tty_pipeline_t out_pipeline;
+    tty_pipeline_t in_pipeline;
+
+    /* per session line discipline STATE */
+    canon_state_t canon;
 };
 
 /**
@@ -57,9 +61,11 @@ void tty_session_get_termios(tty_session_t *s, ktermios_t *out);
 int tty_session_set_termios(tty_session_t *s, const ktermios_t *in);
 
 /**
- * tty_signal_foreground - sends signal to all the foreground reader of this
- * session (ie. process blockedon theinput channel)
+ * tty_session_signal_foreground - sends signal to all the foreground reader of
+ * this session (ie. process blockedon theinput channel)
  */
-void tty_signal_foreground(tty_session_t *sess, int sig);
+void tty_session_signal_foreground(tty_session_t *sess, int sig);
+
+void tty_session_signal_sink(void *ctx, int sig);
 
 #endif /* TTY_SESSION_H */

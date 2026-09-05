@@ -112,20 +112,18 @@ static void sig_spy(void *ctx, int sig) {
 /*  OUTPUT pipeline runner                                            */
 /* ------------------------------------------------------------------ */
 static uint8_t run_output_case(const out_case_t *c) {
-    tty_stage_t stages[1];
-    tty_pipeline_t pipe;
-
     ktermios_t term;
     termios_for_mode(&term, MODE_CANON);
 
-    stages[0] = tty_stage_onlcr_make();
-    pipe.stages = stages;
-    pipe.count = c->stage_count; /* 0 -> empty passthrough, 1 -> onlcr */
-    pipe.term = &term;
+    static const tty_stage_def_t *const out_stages[] = {&tty_stage_onlcr_def};
+    tty_pipeline_def_t out_pipe_def = {.stages = out_stages,
+                                       .count = c->stage_count};
+    tty_pipeline_t out_pipeline = {
+        .def = &out_pipe_def, .state = {NULL}, .term = &term};
 
     capture_t cap = {.len = 0};
     for (uint32_t i = 0; i < c->in_len; i++) {
-        tty_pipeline_run(&pipe, c->in[i], capture_sink, &cap);
+        tty_pipeline_run(&out_pipeline, c->in[i], capture_sink, &cap);
     }
 
     if (!cap_verify(c->name, "out", "downstream", &cap, c->exp, c->exp_len)) {
@@ -146,31 +144,27 @@ static uint8_t run_input_case_mode(const in_case_t *c, mode_type_t mode) {
     termios_for_mode(&term, mode);
 
     /* [1] output pipeline [onlcr] -> cap_echo (the "screen") */
-    tty_stage_t out_stages[1];
-    tty_pipeline_t out_pipe;
-    out_stages[0] = tty_stage_onlcr_make();
-    out_pipe.stages = out_stages;
-    out_pipe.count = 1;
-    out_pipe.term = &term;
+    static const tty_stage_def_t *const out_stages[] = {&tty_stage_onlcr_def};
+    tty_pipeline_def_t out_pipe_def = {.stages = out_stages, .count = 1};
     capture_t cap_echo = {.len = 0};
+    tty_pipeline_t out_pipeline = {
+        .def = &out_pipe_def, .state = {NULL}, .term = &term};
 
     /* [2] build the mode-specific second stage, echoing through out_pipe.
      *     both state structs are function-scoped: alive for the whole run. */
     canon_state_t canon_state;
     sig_capture_t cap_sig = {.count = 0};
-    tty_stage_t mode_stage =
-        tty_stage_canon_make(&canon_state, &out_pipe, capture_sink, &cap_echo);
+    tty_stage_canon_state_init(&canon_state, &out_pipeline, capture_sink,
+                               &cap_echo);
     canon_state.on_signal = sig_spy;
     canon_state.signal_ctx = (void *)&cap_sig;
 
     /* [3] input pipeline [icrnl, mode_stage] -> cap_down (the "reader") */
-    tty_stage_t in_stages[2];
-    tty_pipeline_t in_pipe;
-    in_stages[0] = tty_stage_icrnl_make();
-    in_stages[1] = mode_stage;
-    in_pipe.stages = in_stages;
-    in_pipe.count = 2;
-    in_pipe.term = &term;
+    static const tty_stage_def_t *const in_stages[] = {&tty_stage_icrnl_def,
+                                                       &tty_stage_canon_def};
+    tty_pipeline_def_t in_pipe_def = {.stages = in_stages, .count = 2};
+    tty_pipeline_t in_pipeline = {
+        .def = &in_pipe_def, .state = {NULL, &canon_state}, .term = &term};
     capture_t cap_down = {.len = 0};
 
     /* [4] Initialize the expected bytes for the different modes */
@@ -181,7 +175,7 @@ static uint8_t run_input_case_mode(const in_case_t *c, mode_type_t mode) {
 
     /* [5] drive every input byte through the pipeline */
     for (uint32_t i = 0; i < c->in_len; i++) {
-        tty_pipeline_run(&in_pipe, c->in[i], capture_sink, &cap_down);
+        tty_pipeline_run(&in_pipeline, c->in[i], capture_sink, &cap_down);
     }
 
     /* [6] verify BOTH destinations against the mode-specific expectations */
@@ -222,32 +216,30 @@ static uint8_t run_signal_case(const sig_case_t *c) {
     term.c_cc[VINTR] = 0x03;
     term.c_cc[VQUIT] = 0x1C;
 
-    /* [2] echo out-pipeline: valid but unused (ECHO is off in these cases) */
-    tty_stage_t out_stages[1];
-    tty_pipeline_t out_pipe;
-    out_stages[0] = tty_stage_onlcr_make();
-    out_pipe.stages = out_stages;
-    out_pipe.count = 1;
-    out_pipe.term = &term;
+    /* [2] echo out-pipeline (unused; ECHO off) */
+    static const tty_stage_def_t *const out_stages[] = {&tty_stage_onlcr_def};
+    tty_pipeline_def_t out_def = {.stages = out_stages, .count = 1};
+    tty_pipeline_t out_pipe = {.def = &out_def, .state = {NULL}, .term = &term};
     capture_t cap_echo = {.len = 0};
 
-    /* [3] canon stage, then OVERRIDE its cord with the spy (make defaults NULL)
-     */
+    /* [3] canon state + spy on the cord */
     canon_state_t canon;
-    tty_stage_t canon_stage =
-        tty_stage_canon_make(&canon, &out_pipe, capture_sink, &cap_echo);
+    tty_stage_canon_state_init(&canon, &out_pipe, capture_sink, &cap_echo);
     sig_capture_t sc = {.count = 0};
     canon.on_signal = sig_spy;
     canon.signal_ctx = &sc;
 
-    /* [4] input pipeline [icrnl, canon] -> reader capture */
-    tty_stage_t in_stages[2];
-    tty_pipeline_t in_pipe;
-    in_stages[0] = tty_stage_icrnl_make();
-    in_stages[1] = canon_stage;
-    in_pipe.stages = in_stages;
-    in_pipe.count = 2;
-    in_pipe.term = &term;
+    /* [4] input pipeline [icrnl, canon] */
+    static const tty_stage_def_t *const in_stages[] = {
+        &tty_stage_icrnl_def,
+        &tty_stage_canon_def,
+    };
+    tty_pipeline_def_t in_def = {.stages = in_stages, .count = 2};
+    tty_pipeline_t in_pipe = {
+        .def = &in_def,
+        .state = {NULL, &canon},
+        .term = &term,
+    };
     capture_t cap_down = {.len = 0};
 
     /* [5] drive the bytes */

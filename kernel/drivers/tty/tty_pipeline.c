@@ -32,26 +32,30 @@ void tty_pipeline_run(tty_pipeline_t *pipeline, uint8_t byte, tty_emit_fn sink,
 }
 
 void tty_hop(void *ctx, uint8_t byte) {
-    tty_hop_t *stage_ctx = (tty_hop_t *)ctx;
+    tty_hop_t *hop = (tty_hop_t *)ctx;
+    tty_pipeline_t *pipeline = hop->pipeline;
+    const tty_pipeline_def_t *def = pipeline->def;
 
-    /* if cuurent stage index is greater than max stage in pipeline */
-    if (stage_ctx->current_stage_index >= stage_ctx->pipeline->count) {
-        stage_ctx->sink(stage_ctx->sink_ctx, byte);
+    uint32_t current_stage_index = hop->current_stage_index;
+
+    /* past the last stage (or empty pipeline) -> sink */
+    if (!def || current_stage_index >= def->count) {
+        hop->sink(hop->sink_ctx, byte);
         return;
     }
 
-    /* here i am assuming first hop is first stage */
-    uint32_t current_stage_index = stage_ctx->current_stage_index;
-    tty_stage_t *current_stage =
-        &stage_ctx->pipeline->stages[current_stage_index];
+    /* CURRENT STAGE */
+    const tty_stage_def_t *current_stage = def->stages[current_stage_index];
+    void *current_stage_state = pipeline->state[current_stage_index];
 
+    /* NEXT STAGE */
     uint32_t next_stage_index = current_stage_index + 1;
     tty_hop_t next_stage_ctx = {.current_stage_index = next_stage_index,
-                                .pipeline = stage_ctx->pipeline,
-                                .sink = stage_ctx->sink,
-                                .sink_ctx = stage_ctx->sink_ctx,
-                                .term = stage_ctx->term};
+                                .pipeline = pipeline,
+                                .sink = hop->sink,
+                                .sink_ctx = hop->sink_ctx,
+                                .term = hop->term};
 
-    current_stage->process(current_stage, byte, stage_ctx->term, tty_hop,
-                           &next_stage_ctx);
+    current_stage->process(current_stage, byte, hop->term, current_stage_state,
+                           tty_hop, &next_stage_ctx);
 }

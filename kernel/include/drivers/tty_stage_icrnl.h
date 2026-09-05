@@ -3,6 +3,6 @@
 
 #include "drivers/tty_stage.h"
 
-tty_stage_t tty_stage_icrnl_make(void);
+extern const tty_stage_def_t tty_stage_icrnl_def;
 
 #endif /* TTY_STAGE_ONLCR_H */

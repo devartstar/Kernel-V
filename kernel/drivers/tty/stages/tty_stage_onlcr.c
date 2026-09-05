@@ -4,12 +4,22 @@
 #define ASCII_LF 0x0A /* '\n' => cursor down one row */
 #define ASCII_CR 0x0D /* '\r' => cursor to column 0 */
 
-static void onlcr_process(tty_stage_t *self, uint8_t byte,
-                          const ktermios_t *term, tty_emit_fn emit,
-                          void *emit_ctx) {
+static void onlcr_process(const tty_stage_def_t *self, uint8_t byte,
+                          const ktermios_t *term, void *stage_state,
+                          tty_emit_fn emit, void *emit_ctx);
+
+const tty_stage_def_t tty_stage_onlcr_def = {
+    .name = "onlcr",
+    .process = onlcr_process,
+};
+
+static void onlcr_process(const tty_stage_def_t *self, uint8_t byte,
+                          const ktermios_t *term, void *stage_state,
+                          tty_emit_fn emit, void *emit_ctx) {
     /* onclr stage is stateless, ie. it doesnt invoke itself with updated
      * states */
     (void)self;
+    (void)stage_state;
 
     /**
      * only process when output post-processing (OPOST) and ONLCR are on.
@@ -23,14 +33,4 @@ static void onlcr_process(tty_stage_t *self, uint8_t byte,
 
     /* no processing needed - pass thru */
     emit(emit_ctx, byte);
-}
-
-tty_stage_t tty_stage_onlcr_make(void) {
-    tty_stage_t stage;
-
-    stage.name = "onlcr";
-    stage.process = onlcr_process;
-    stage.state = NULL;
-
-    return stage;
 }
