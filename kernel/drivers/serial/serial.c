@@ -2,7 +2,7 @@
 #include "arch/x86/interrupt.h"
 #include "core/io.h"
 #include "drivers/console_input.h"
-#include "drivers/tty_console.h"
+#include "drivers/tty.h"
 #include "fs/vfs.h"
 #include "lib/printk.h"
 
@@ -139,7 +139,7 @@ uint32_t serial_dump_input_to_console(void) {
     return dump_count;
 }
 
-uint32_t serial_dump_input_to_tty_console(void) {
+uint32_t serial_dump_input_to_tty(void) {
     char ch;
     uint32_t dump_count = 0;
 
@@ -149,8 +149,9 @@ uint32_t serial_dump_input_to_tty_console(void) {
         }
         g_serial_rx_byte_count++;
         dump_count++;
-        KLOG_VERBOSE("SERIAL", "rx byte 0x%02x -> tty_console\n", (uint8_t)ch);
-        tty_console_rx((uint8_t)ch);
+        KLOG_VERBOSE("SERIAL", "rx byte 0x%02x -> tty_active\n", (uint8_t)ch);
+        /* dump input to the active tty session input port */
+        tty_input_byte((uint8_t)ch);
     }
 
     KLOG_VERBOSE("SERIAL", "drained %u bytes to the tty console\n", dump_count);
@@ -198,5 +199,5 @@ void serial_irq_handler(uint32_t idt_idx, regs_t *reg) {
      * Update: Instead direct it to the tty console session
      * serial_dump_input_to_console(); */
 
-    serial_dump_input_to_tty_console();
+    serial_dump_input_to_tty();
 }

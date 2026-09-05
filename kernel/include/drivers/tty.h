@@ -64,3 +64,18 @@
                                   │ UART IRQ │  hardware
                                   └──────────┘
 */
+
+#ifndef TTY_H
+#define TTY_H
+
+#include "drivers/tty_session.h"
+
+/* Input Multiplexer: selects which session is active and recieves physical
+ * input
+ */
+void tty_set_active(tty_session_t *sess);
+tty_session_t *tty_get_active(void);
+
+void tty_input_byte(uint8_t byte);
+
+#endif /* TTY_H */

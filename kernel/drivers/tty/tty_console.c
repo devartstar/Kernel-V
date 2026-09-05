@@ -1,5 +1,6 @@
 #include "drivers/tty_console.h"
 #include "drivers/serial.h"
+#include "drivers/tty.h"
 #include "drivers/tty_pipeline.h"
 #include "drivers/tty_port.h"
 #include "drivers/tty_session.h"
@@ -60,6 +61,11 @@ int tty_console_init() {
         KLOG_ERROR("TTY", " tty console initialization failed. err=%d\n", ret);
         return ret;
     }
+
+    /* set console as the initial active foreground terminal.
+     * physical input is routed here until something switches the active session
+     */
+    tty_set_active(&g_console_session);
 
     KLOG_INFO("TTY",
               "tty console initialization completed. session=%p, port=%p.\n",

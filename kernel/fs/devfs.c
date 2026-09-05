@@ -41,6 +41,18 @@ char_device_list_entry char_device_list[] = {
     },
 };
 
+/**
+ * devtty_session - every devfs node stores its local tty session information in
+ * the private_data field. if the private filed is null. then fallback to
+ * console session. todo: remove the fallback later
+ */
+static tty_session_t *devtty_session(vfs_node_t *node) {
+    if (node && node->private_data) {
+        return (tty_session_t *)node->private_data;
+    }
+    return NULL;
+}
+
 vfs_node_t *devfs_create_chardev(const char *name, const vfs_node_ops_t *ops,
                                  void *private_data) {
     vfs_node_t *char_dev;
@@ -220,7 +232,6 @@ static int devzero_write(vfs_node_t *node, uint32_t offset, const void *buf,
 static int devconsole_write(vfs_node_t *node, uint32_t offset, const void *buf,
                             uint32_t len) {
 
-    (void)node;
     (void)offset;
 
     if (len == 0) {
@@ -236,7 +247,17 @@ static int devconsole_write(vfs_node_t *node, uint32_t offset, const void *buf,
 
     const uint8_t *data = (const uint8_t *)buf;
 
-    int ret = tty_write(tty_console_session(), data, len);
+    /* get the tty session associated with the file */
+    tty_session_t *sess = devtty_session(node);
+    if (sess == NULL) {
+        KLOG_ERROR(
+            "DEVFS",
+            "devconsole_write failed. no tty session attached to file %s.\n",
+            node->name);
+        return VFS_ERR_INVALID;
+    }
+
+    int ret = tty_write(sess, data, len);
     if (ret < 0) {
         KLOG_VERBOSE("DEVFS", "console_write failed. tty write failed.\n");
         return ret;
@@ -330,8 +351,17 @@ static int devstdin_read(vfs_node_t *node, uint32_t offset, void *buf,
      * read_len = console_input_read((char *)buf, len);
      */
 
+    /* get the tty session associated with the file */
+    tty_session_t *sess = devtty_session(node);
+    if (sess == NULL) {
+        KLOG_ERROR("DEVFS",
+                   "devstdin_red failed. no tty session attached to file %s.\n",
+                   node->name);
+        return VFS_ERR_INVALID;
+    }
+
     /* pass the session which referneces the input buffer to read from */
-    read_len = tty_read(tty_console_session(), (uint8_t *)buf, len);
+    read_len = tty_read(sess, (uint8_t *)buf, len);
 
     /* console buffer exists but nothing to read */
     if (read_len < 0) {
@@ -386,27 +416,30 @@ const vfs_node_ops_t devstderr_ops = {
 /** *** CREATE DEVICES *** */
 
 vfs_node_t *devfs_create_zero() {
-    return devfs_create_chardev("zero", &devzero_ops, NULL);
+    return devfs_create_chardev("zero", &devzero_ops, tty_console_session());
 }
 
 vfs_node_t *devfs_create_null(void) {
-    return devfs_create_chardev("null", &devnull_ops, NULL);
+    return devfs_create_chardev("null", &devnull_ops, tty_console_session());
 }
 
 vfs_node_t *devfs_create_console(void) {
-    return devfs_create_chardev("console", &devconsole_ops, NULL);
+    return devfs_create_chardev("console", &devconsole_ops,
+                                tty_console_session());
 }
 
 vfs_node_t *devfs_create_stdin(void) {
-    return devfs_create_chardev("stdin", &devstdin_ops, NULL);
+    return devfs_create_chardev("stdin", &devstdin_ops, tty_console_session());
 }
 
 vfs_node_t *devfs_create_stdout(void) {
-    return devfs_create_chardev("stdout", &devstdout_ops, NULL);
+    return devfs_create_chardev("stdout", &devstdout_ops,
+                                tty_console_session());
 }
 
 vfs_node_t *devfs_create_stderr(void) {
-    return devfs_create_chardev("stderr", &devstderr_ops, NULL);
+    return devfs_create_chardev("stderr", &devstderr_ops,
+                                tty_console_session());
 }
 
 /** *** ATTACH THE DEVFS UNDER ROOT *** */

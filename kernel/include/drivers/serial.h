@@ -254,7 +254,13 @@ int serial_getc_nonblocking(char *out_c);
  *
  * @return - the number of bytes successfully dumped to the console buffer.
  */
-uint32_t serial_dum_input_to_console(void);
+uint32_t serial_dump_input_to_console(void);
+
+/**
+ * serial_dump_input_to_tty - reads all available data from the serial port
+ * and writes it to the current active tty session.
+ */
+uint32_t serial_dump_input_to_tty(void);
 
 /**
  * serial_enable_rx_interrupt - driver enabled the UART to allow assert
