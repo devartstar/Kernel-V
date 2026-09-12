@@ -1,4 +1,5 @@
 #include "mm/kmalloc.h"
+#include "lib/string.h"
 #include "mm/pmm.h"
 
 /** Quater spaces sizes
@@ -26,6 +27,18 @@ const uint32_t g_kmem_num_classes =
 _Static_assert(sizeof(g_size_classes) / sizeof(g_size_classes[0]) ==
                    KMEM_NUM_CLASSES,
                "KMEM_NUM_CLASSES out of sync with g_csize_classes");
+
+/* the header bytes reserved at the page base for the descriptor.
+ * bytes aligned to every object slot remains KMEM_ALIGN */
+#define KMEM_SLAB_HDR                                                          \
+    ((sizeof(kmem_page_desc_t) + KMEM_ALIGN - 1) & ~((size_t)KMEM_ALIGN - 1))
+
+/* Max usable bytes in one large frame (after in-page descriptor) = 4096KB */
+#define KMEM_LARGE_MAX ((uint32_t)(PAGE_SIZE - KMEM_SLAB_HDR))
+
+/* Extract the page descriptor from the ref to the base of Page */
+#define KMEM_PAGE_OF(ptr)                                                      \
+    ((kmem_page_desc_t *)((uintptr_t)(ptr) & ~(uintptr_t)0xFFF))
 
 /** for a particular class index this stores the size of the slab */
 static uint8_t g_size8_to_class[KMEM_LOOKUP_ENTRIES];
@@ -233,6 +246,38 @@ static void kmem_slab_free(void *ptr, kmem_page_desc_t *desc) {
     }
 }
 
+/**
+ * kmem_large_alloc - allocates one whole frame for a > 2048 memory allocation
+ * request. The frame carries a KMEM_TIER_LARGE in the page descriptor so
+ * kfree/kmalloc can resolve it in O(1) way (KMEM_PAGE_OF). obj_size stores the
+ * ACTUAL request so krealloc know how much to copy */
+static void *kmem_large_alloc(size_t size) {
+    /* memory allocation request cannot be greater than the max allocatable
+     * memory per frame */
+    if (size > KMEM_LARGE_MAX) {
+        return NULL;
+    }
+
+    /* allocate a page */
+    void *page = pmm_alloc_frame();
+    if (!page) {
+        return NULL;
+    }
+
+    /* update the first fre bytes with the page descriptor object */
+    kmem_page_desc_t *desc = (kmem_page_desc_t *)page;
+    desc->magic = KMEM_SLAB_MAGIC;
+    desc->tier = KMEM_TIER_LARGE;
+    /* Note. class_idx is not used for large memory allocation */
+    desc->class_idx = 0;
+    desc->obj_size = (uint32_t)size;
+    desc->in_use = 1;
+    desc->free_list = NULL;
+    desc->next = desc->prev = NULL;
+
+    return page;
+}
+
 /* ======= PUBLIC APIs + INIT ======= */
 
 /**
@@ -244,13 +289,83 @@ void *kmalloc(size_t size) {
      * allocated */
     int class_idx = kmem_size_to_class(size);
     if (class_idx < 0) {
+        /* size > 2KB - T3 slab */
+        return kmem_large_alloc(size);
+    }
+    /* T1 slab: allocate a slot using kmem_slab */
+    return kmem_slab_alloc(class_idx);
+}
+
+/**
+ * kcalloc - allocates n number of objects each of size and zero it out.
+ * @returns the reference to the zeroed memory block
+ */
+void *kcalloc(size_t n, size_t size) {
+    size_t total = n * size;
+    if (n != 0 && total / n != size) {
+        /* multiplication overflow */
         return NULL;
     }
 
-    /* todo: for very large memory fallback to other tier */
+    /* allocate memory of size total */
+    void *ptr = kmalloc(total);
+    if (ptr) {
+        memset(ptr, 0, total);
+    }
 
-    /* allocate a slot using kmem_slab */
-    return kmem_slab_alloc(class_idx);
+    return ptr;
+}
+
+void *krealloc(void *ptr, size_t new_size) {
+    if (!ptr) {
+        /* realloc(NULL, size) = kmalloc(size) */
+        return kmalloc(new_size);
+    }
+
+    if (new_size == 0) {
+        /* realloc(ptr, 0) = kfree(ptr) */
+        kfree(ptr);
+        return NULL;
+    }
+
+    /* given a poinyer locate the base of the page */
+    kmem_page_desc_t *desc = KMEM_PAGE_OF(ptr);
+
+    /* check if the page is valid */
+    if (desc->magic != KMEM_SLAB_MAGIC) {
+        return NULL;
+    }
+
+    /* usable capacity of the block */
+    uint32_t current_cap;
+    if (desc->tier == KMEM_TIER_LARGE) {
+        current_cap = KMEM_LARGE_MAX;
+    } else {
+        current_cap = desc->obj_size;
+    }
+
+    /* if the usable capacity in the current block can be extended */
+    if (new_size <= current_cap) {
+        desc->obj_size = new_size;
+        return ptr;
+    }
+
+    /* need to allocate a new memory block */
+    void *new_ptr = kmalloc(new_size);
+    if (!new_ptr) {
+        /* Allocation failed */
+        return NULL;
+    }
+
+    /* copy contents to the new block */
+    uint32_t copy_size =
+        (new_size < desc->obj_size) ? (uint32_t)new_size : desc->obj_size;
+    memcpy(new_ptr, ptr, copy_size);
+
+    /* free the previously allocated memory */
+    kfree(ptr);
+
+    return new_ptr;
 }
 
 /**
@@ -263,9 +378,13 @@ void kfree(void *ptr) {
 
     kmem_page_desc_t *desc = KMEM_PAGE_OF(ptr);
     if (desc->magic != KMEM_SLAB_MAGIC) {
-        /* todo: large memory block freed */
         /* todo: corruption or double free as memory ref. is not pointing to
          * correct page descritor reference */
+        return;
+    }
+
+    if (desc->tier == KMEM_TIER_LARGE) {
+        pmm_free_frame(ptr);
         return;
     }
 

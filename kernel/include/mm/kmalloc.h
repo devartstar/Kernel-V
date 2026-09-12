@@ -1,6 +1,7 @@
 #ifndef KMALLOC_H
 #define KMALLOC_H
 
+#include "lib/string.h"
 #include <stddef.h>
 #include <stdint.h>
 
@@ -18,15 +19,6 @@ typedef enum {
 
 /* Magic stamped into every slabs' page descriptor */
 #define KMEM_SLAB_MAGIC 0x4B534C42 /* 'K', 'S', 'L', 'B' */
-
-/* the header bytes reserved at the page base for the descriptor.
- * bytes aligned to every object slot remains KMEM_ALIGN */
-#define KMEM_SLAB_HDR                                                          \
-    ((sizeof(kmem_page_desc_t) + KMEM_ALIGN - 1) & ~((size_t)KMEM_ALIGN - 1))
-
-/* Extract the page descriptor from the ref to the base of Page */
-#define KMEM_PAGE_OF(ptr)                                                      \
-    ((kmem_page_desc_t *)((uintptr_t)(ptr) & ~(uniqueptr *)0xFFF))
 
 /* ===== PAGE DESCRIPTOR ====== */
 /** NOTES:
