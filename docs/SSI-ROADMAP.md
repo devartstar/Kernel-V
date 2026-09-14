@@ -64,6 +64,17 @@ look like one machine. Resources become fluid.
    byte.** A 2-node demo that skips auth teaches the wrong architecture.
 
 ### 1.4 Design tenets (the constitution)
+- **Fast and reliable, always — non-negotiable.** Every subsystem is designed
+  for the hot path first (latency + throughput) and for correctness under
+  failure second-to-none. Concretely this means, at every layer:
+  - *Predictable performance:* O(1)/O(log n) hot paths, no hidden allocation in
+    fast paths, bounded lock hold times, cache-friendly layout, zero-copy where
+    possible, batching over per-item overhead.
+  - *Reliability by construction:* explicit error paths, no silent drops,
+    timeouts on every wait, idempotent retries, invariants asserted in debug
+    builds, and every feature shipped with tests that prove it.
+  - *Measure, don't guess:* each core subsystem exposes counters/latency stats
+    so regressions are visible (ties into Observability, O2).
 - **Everything is a file / named object.** One access model, remote-able.
 - **Location transparency.** Callers never branch on "local vs remote."
 - **Capability security.** Access = holding an unforgeable handle, not identity
@@ -117,25 +128,50 @@ look like one machine. Resources become fluid.
 *These are the "don't skip" gaps. Each is justified by the network layer that
 immediately follows.*
 
-### Phase A0 — Dynamic kernel heap (`kmalloc`/`kfree`)  ⬜
+### Phase A0 — Dynamic kernel heap: **KAlloc**  ⬜
 *Why now:* packet buffers, connection state, remote-object tables, RPC messages
 are all variable-size and dynamic. Pools alone can't express them.
 
-- **A0.1 Design** ⬜
-  - [ ] Choose allocator strategy: free-list + coalescing vs. slab-on-pools vs.
-        buddy. (Recommendation: start with a **segregated free-list / K&R-style
-        heap** over page-allocated arenas; add slab caches later for hot types.)
-  - [ ] Decide arena source: grab pages from PMM; grow on demand.
-  - [ ] Alignment, min block size, header layout, overflow/red-zone strategy.
-- **A0.2 Implement core** ⬜
-  - [ ] `kmalloc(size)`, `kfree(ptr)`, `krealloc`, `kcalloc`.
-  - [ ] Arena growth (request pages from PMM, map into kernel heap region).
-  - [ ] Free-block coalescing to fight fragmentation.
+**Locked design — KAlloc: a tiered allocator under one unified page descriptor.**
+Route each size range to the family that is optimal for it, but resolve every
+pointer the same O(1) way (`addr & ~0xFFF` → page/segment descriptor). Design
+tenets: **deterministic worst-case O(1)**, **bounded internal fragmentation**,
+and an **SSI-forward arena seam** (arenas are the future unit of NUMA/node
+affinity and RDMA registration — a local pointer may one day bridge to a remote
+node's RAM, mirroring "a terminal is a named node whose port can be remote").
+
+| Tier | Range | Family | Notes |
+|------|-------|--------|-------|
+| **T0** | substrate | buddy over the 16 MB heap window | feeds upper tiers; O(log n) coalescing; *stubbed as a simple page-run bump first* |
+| **T1** | ≤ 2 KB | **slab, quarter-spaced size classes** | page-header slab (zero per-object overhead), per-CPU magazine-ready, O(1). **The 90% path — build first.** |
+| **T2** | 2–64 KB | TLSF (two-level segregated fit) | O(1) alloc+free, tight fit for odd sizes; *deferred* |
+| **T3** | > 64 KB | page-run from T0 | header cost negligible; *simple first* |
+
+**Distinctive commitments:** (1) worst-case O(1) at *every* tier; (2) one
+unified page/segment descriptor → no per-object header, no free-list search on
+free; (3) arena = node-affinity/RDMA seam (designed-for, deferred).
+**Build discipline (reality check):** design the descriptor + interface for all
+four tiers now, but implement only **T1 slab + a trivial large/page-run path**
+first. Add magazines, buddy T0, and TLSF T2 later only when profiling demands.
+Ground truth: mirror `pool_alloc.c` idioms; `pmm_alloc_frame()` returns a
+directly-dereferenceable 4 KB-aligned pointer, so slab pages come straight from
+PMM and `ptr & ~0xFFF` lands on the descriptor.
+
+- **A0.1 Design** ✅ *(locked: KAlloc, above)*
+  - [x] Allocator strategy: tiered slab + TLSF + page-run under unified descriptor.
+  - [x] Size classes: **quarter-spaced** (bounded ~25% internal waste) not pure powers of two.
+  - [x] Pointer→metadata: page-header slab, O(1) `addr & ~0xFFF`, zero per-object overhead.
+  - [x] Arena source: PMM frames (identity-mapped, like `pool_alloc.c`); heap window reserved for T0/large + future node-affine arenas.
+- **A0.2 Implement core (T1 + trivial large path)** ✅
+  - [x] A0.2a Descriptor + size-class table: `kmem_page_desc_t`, `size→class` O(1) lookup, class table.
+  - [x] A0.2b Slab engine (**per-page free list + partial-list + O(1) reclaim**): each page owns its free list + `in_use`; cache keeps a doubly-linked partial-page list; `slab_alloc`/`slab_free` O(1); emptied pages return to PMM.
+  - [x] A0.2c Public API: `kmalloc(size)`, `kfree(ptr)`, `kcalloc`, `krealloc`; large path via page-run.
+  - [x] A0.2d Init + wire into build (auto-discovered `.c`).
 - **A0.3 Hardening** ⬜
-  - [ ] Guard bytes / poison-on-free; double-free detection (debug build).
-  - [ ] Stats: bytes in use, peak, allocation count (feeds observability later).
+  - [ ] Magic/tier tag in descriptor; double-free detection; poison-on-free (debug).
+  - [ ] Per-class/per-tier stats: bytes in use, peak, alloc/free counts (observability seam).
 - **A0.4 Tests** ⬜
-  - [ ] Unit: alloc/free patterns, alignment, coalescing, fragmentation stress.
+  - [ ] Unit: size→class rounding, alignment, alloc/free reuse, cross-class isolation.
   - [ ] **M1**: randomized alloc/free stress test survives N iterations.
 - **Exit criterion:** M1 green; a subsystem can allocate arbitrary-size objects.
 

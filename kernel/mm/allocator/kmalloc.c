@@ -1,6 +1,14 @@
 #include "mm/kmalloc.h"
+#include "core/panik.h"
+#include "lib/printk.h"
 #include "lib/string.h"
 #include "mm/pmm.h"
+
+#ifdef DEBUG
+/* byte pattern stamped over a freed slot's payload (beyond the free-list
+ * link word) so use-after-free reads are easy to spot in a debugger */
+#define KMEM_POISON_BYTE 0xDE
+#endif
 
 /** Quater spaces sizes
  * classes of memory allocation; every class is a multiple of KMEM_ALIGN(8)
@@ -15,6 +23,9 @@ static const uint16_t g_size_classes[] = {
 
 const uint32_t g_kmem_num_classes =
     sizeof(g_size_classes) / sizeof(g_size_classes[0]);
+
+static uint32_t g_large_pages;
+static uint32_t g_large_bytes;
 
 /** Size to Class Lookup
  * Worst case lookup time is O(1) for size->class.
@@ -33,7 +44,7 @@ _Static_assert(sizeof(g_size_classes) / sizeof(g_size_classes[0]) ==
 #define KMEM_SLAB_HDR                                                          \
     ((sizeof(kmem_page_desc_t) + KMEM_ALIGN - 1) & ~((size_t)KMEM_ALIGN - 1))
 
-/* Max usable bytes in one large frame (after in-page descriptor) = 4096KB */
+/* Max usable bytes in one large frame (after in-page descriptor) ~ 4064KB */
 #define KMEM_LARGE_MAX ((uint32_t)(PAGE_SIZE - KMEM_SLAB_HDR))
 
 /* Extract the page descriptor from the ref to the base of Page */
@@ -134,6 +145,11 @@ static void kmem_partial_remove(kmem_chache_t *cache, kmem_page_desc_t *desc) {
 /* kmem_cache_grow - grows the cache for slab referenced by class_idx by one pmm
  * frame */
 static int kmem_cache_grow(kmem_chache_t *cache, uint32_t class_idx) {
+    /* Safety check. Use before init can cause kernel crash */
+    if (cache->obj_size == 0) {
+        panik("kmalloc: memory used before initialization.\n");
+    }
+
     void *page = pmm_alloc_frame();
     if (!page)
         return -1;
@@ -216,12 +232,41 @@ static void kmem_slab_free(void *ptr, kmem_page_desc_t *desc) {
      * allocated */
     kmem_chache_t *cache = &g_kmem_caches[desc->class_idx];
 
+    /* if the page has no live objects left it cannot legitimately own ptr -
+     * any free here is a double-free or heap corruption */
+    if (desc->in_use == 0) {
+        panik("kfree: double-free or corruption detected (empty page) at "
+              "%p",
+              ptr);
+        return;
+    }
+
+#ifdef DEBUG
+    /* double-free detection: walk this page's free list (bounded by slots
+     * per page) checking ptr isn't already reclaimed */
+    for (void *slot = desc->free_list; slot != NULL; slot = *(void **)slot) {
+        if (slot == ptr) {
+            panik("kfree: double-free detected at %p", ptr);
+            return;
+        }
+    }
+#endif
+
     /* check if no free slot in the page descriptor */
     int was_full = (desc->free_list == NULL);
 
     /* reclaim the slot back to the head of the page free_list */
     *(void **)ptr = desc->free_list;
     desc->free_list = ptr;
+
+#ifdef DEBUG
+    /* poison the payload bytes beyond the free-list link word so
+     * use-after-free reads/writes are easy to spot */
+    if (desc->obj_size > sizeof(void *)) {
+        memset((uint8_t *)ptr + sizeof(void *), KMEM_POISON_BYTE,
+               desc->obj_size - sizeof(void *));
+    }
+#endif
 
     /* update the page descriptor metadata */
     desc->in_use--;
@@ -275,7 +320,13 @@ static void *kmem_large_alloc(size_t size) {
     desc->free_list = NULL;
     desc->next = desc->prev = NULL;
 
-    return page;
+    /* update the metrics kernel maintains */
+    g_large_pages++;
+    g_large_bytes += (uint32_t)size;
+
+    /* Note. we need to return the memory location where user can start writing
+     * data. ie. the ref after the descriptor. */
+    return (uint8_t *)page + KMEM_SLAB_HDR;
 }
 
 /* ======= PUBLIC APIs + INIT ======= */
@@ -336,20 +387,44 @@ void *krealloc(void *ptr, size_t new_size) {
         return NULL;
     }
 
-    /* usable capacity of the block */
+    /* usable capacity of the block. Nore: for the slab tier, obj_size is the
+     * class slot size shared by every object on the page - it must never be
+     * mutated per-request. Only the large tier (one object per page) may
+     * update obj_size to track the caller's logical size. */
     uint32_t current_cap;
     if (desc->tier == KMEM_TIER_LARGE) {
         current_cap = KMEM_LARGE_MAX;
+    } else if (desc->tier == KMEM_TIER_SLAB) {
+        current_cap = kmem_class_size(desc->class_idx);
     } else {
-        current_cap = desc->obj_size;
+        return NULL;
     }
 
+    /* ---- SHRINK ---- */
     /* if the usable capacity in the current block can be extended */
     if (new_size <= current_cap) {
-        desc->obj_size = new_size;
+        if (desc->tier == KMEM_TIER_LARGE) {
+            if (new_size <= KMEM_SLAB_MAX) {
+                /* shrink across tier */
+                void *new_ptr = kmalloc(new_size);
+                if (new_ptr) {
+                    /* 1. copy the contents to the new loaction */
+                    memcpy(new_ptr, ptr, new_size);
+                    /* 2. free the previous help 4KB page */
+                    kfree(ptr);
+                    return new_ptr;
+                }
+                /* failed to allocate memory - fallback to keep large memory
+                 * occupied */
+            }
+            g_large_bytes -= desc->obj_size;
+            desc->obj_size = new_size;
+            g_large_bytes += desc->obj_size;
+        }
         return ptr;
     }
 
+    /* ---- GROWTH ---- */
     /* need to allocate a new memory block */
     void *new_ptr = kmalloc(new_size);
     if (!new_ptr) {
@@ -378,18 +453,54 @@ void kfree(void *ptr) {
 
     kmem_page_desc_t *desc = KMEM_PAGE_OF(ptr);
     if (desc->magic != KMEM_SLAB_MAGIC) {
-        /* todo: corruption or double free as memory ref. is not pointing to
-         * correct page descritor reference */
+#ifdef DEBUG
+        /* corruption or a pointer that never came from kmalloc (e.g. an
+         * already-freed large block whose page was recycled) */
+        panik("kfree: invalid or corrupted pointer %p (bad magic)", ptr);
+#endif
         return;
     }
 
     if (desc->tier == KMEM_TIER_LARGE) {
-        pmm_free_frame(ptr);
+        /* invalidate the descriptor first so a subsequent kfree() on the
+         * same (now-stale) pointer is caught as bad-magic instead of
+         * double-freeing the frame back to the PMM */
+        desc->magic = 0;
+        g_large_pages--;
+        g_large_bytes -= desc->obj_size;
+        pmm_free_frame(desc);
         return;
     }
 
     /* free up the slot */
     kmem_slab_free(ptr, desc);
+}
+
+void kmalloc_dump_stats(void) {
+    uint32_t pages = 0, live_objs = 0, free_slots = 0, live_bytes = 0;
+
+    for (uint32_t i = 0; i < KMEM_NUM_CLASSES; i++) {
+        kmem_chache_t *cache = &g_kmem_caches[i];
+        /* calculating the number of slots per cache */
+        uint32_t slots_per_page = kmem_slots_per_page(cache->obj_size);
+        uint32_t num_slots_live =
+            slots_per_page * cache->pages - cache->free_objs;
+
+        pages += cache->pages;
+        live_objs += num_slots_live;
+        free_slots += cache->free_objs;
+        live_bytes += num_slots_live * cache->obj_size;
+    }
+
+    KLOG_INFO("KMALLOC_STATS",
+              "kmalloc slab: \n\tpages in use =%u\n\tcount of allocations "
+              "in-use across classes=%u\n\tcount of allocation free across "
+              "classes=%u\n\ttoal heap in use=%ubytes\n",
+              pages, live_objs, free_slots, live_bytes);
+
+    KLOG_INFO("KMALLOC_STATS",
+              "kmalloc large: pages in use=%u, memory in use=%ubytes\n",
+              g_large_pages, g_large_bytes);
 }
 
 void kmalloc_init(void) {

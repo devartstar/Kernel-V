@@ -9,6 +9,7 @@
 
 //  Unit test headers - include if unit tests might be available
 #ifdef UNIT_TESTS
+#include "tests/test_kmalloc.h"
 #include "tests/test_panik.h"
 #include "tests/test_printk.h"
 #endif
@@ -37,6 +38,7 @@ void run_kernel_tests(void) {
     run_printk_tests();
     run_printk_scrolling_test();
     run_panik_unit_tests();
+    run_kmalloc_tests();
     KLOG_VERBOSE("TEST", "Unit Tests Complete.\n");
     tests_run = true;
 #endif

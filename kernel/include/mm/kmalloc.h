@@ -101,6 +101,9 @@ typedef struct kmem_cache {
     uint32_t free_objs;
 } kmem_chache_t;
 
+/* ===== STATS ======= */
+void kmalloc_dump_stats(void);
+
 /* ===== PUBLIC APIS ====== */
 void kmalloc_init(void);
 void *kmalloc(size_t size);

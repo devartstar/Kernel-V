@@ -5,6 +5,7 @@
 #include "arch/x86/tss.h"
 #include "core/debug.h"
 #include "core/debug_funcs.h"
+#include "mm/kmalloc.h"
 #include "mm/paging.h"
 #include "mm/pmm.h"
 #include "mm/stack_map.h"
@@ -96,6 +97,14 @@ void high_stack_entry() {
     debug_module(STACK_HEAP, "VGA memory test: wrote to 0xB8000\n");
 
     // ==========================================
+    // HEAP MEMORY MANAGEMENT INITIALIZATION
+    // ==========================================
+
+    // Dynamic Kernel Heap (KAlloc) Initialization.
+    kmalloc_init();
+    pr_info("Kernel heap(kmalloc) initialized.\n");
+
+    // ==========================================
     // PROCESS MANAGEMENT INITIALIZATION
     // ==========================================
 
@@ -176,6 +185,7 @@ void kernel_main() {
 
     /* Physical Memory Manager */
     pmm_init();
+    kmalloc_init();
 
     pmm_reserve_memory_region(RESERVED_TYPE_INIT);
     pmm_reserve_memory_region(RESERVED_TYPE_KERNEL);
