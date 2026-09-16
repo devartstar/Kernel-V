@@ -57,6 +57,13 @@ NASMFLAGS 		:= -f $(NASM_FORMAT) -g
 # --- Linker Flags ---
 LDFLAGS 		:= -m elf_i386 -nostdlib
 
+# --- Freestanding user-space program flags ---
+# Non-PIE flat binaries loaded at a fixed virtual address (see user.ld).
+USER_CFLAGS 	:= $(ARCH_FLAGS) $(COMMON_FLAGS) -std=c99 -O2 \
+				   -fno-pic -fno-pie -fno-asynchronous-unwind-tables \
+				   -Wall -Wextra
+USER_LD 		:= $(KERN_ARCH_DIR)/user/user.ld
+
 # --- Tools ---
 QEMU 			:= qemu-system-i386
 GDB 			:= gdb

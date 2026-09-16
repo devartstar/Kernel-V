@@ -54,7 +54,7 @@ void pagefault_interrupt_handler(uint32_t idt_index, regs_t *regs) {
         debug_module(PAGING, "[PAGE FAULT] Address within kernel heap region: "
                              "allocating and mapping new page.\n");
 
-        void *new_frame = pmm_alloc_frame();
+        phys_addr_t new_frame = pmm_alloc_frame();
         if (!new_frame) {
             panik("Out of memory: Unable to allocate frame for page fault at "
                   "address "
@@ -79,7 +79,7 @@ void pagefault_interrupt_handler(uint32_t idt_index, regs_t *regs) {
                 "[PAGE FAULT] Stack growth: mapping new stack page at 0x%x "
                 "(esp=0x%x)\n",
                 PRINT_UINT32(fault_address), PRINT_UINT32(regs->esp));
-            void *new_frame = pmm_alloc_frame();
+            phys_addr_t new_frame = pmm_alloc_frame();
             if (!new_frame)
                 panik("Out of memory in stack PF recovery");
             paging_map_page(fault_address, (uint32_t)new_frame,
@@ -118,6 +118,13 @@ void pagefault_interrupt_handler(uint32_t idt_index, regs_t *regs) {
     }
 
     //  halt or implement fault recovery
+    //  Unhandled fault (e.g. a kernel access to an unmapped user VA). Fail
+    //  loudly with full diagnostics instead of silently spinning in hlt, which
+    //  makes such bugs look like a mysterious hang.
+    panik("Unhandled page fault at 0x%x (error=0x%x, eip=0x%x)",
+          PRINT_UINT32(fault_address), PRINT_UINT32(regs->error_code),
+          PRINT_UINT32(regs->eip));
+
     while (1) {
         __asm__ __volatile__("hlt");
     }

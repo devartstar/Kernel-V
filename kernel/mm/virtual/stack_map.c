@@ -15,7 +15,7 @@ void map_high_stack(uint32_t stack_bottom, uint32_t stack_top, uint32_t flags) {
 
     for (uint32_t off = 0; off < stack_size; off += PAGE_SIZE) {
         uint32_t virt = stack_bottom + off;
-        void *phys_frame = pmm_alloc_frame();
+        phys_addr_t phys_frame = pmm_alloc_frame();
         if (!phys_frame) {
             debug_module(MEMORY,
                          "Failed to allocate stack frame for virt=0x%08x\n",

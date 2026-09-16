@@ -9,8 +9,8 @@ uint32_t kernel_page_directory[PAGE_ENTRIES]
     __attribute__((aligned(PAGE_SIZE)));
 uint32_t first_page_table[PAGE_ENTRIES] __attribute__((aligned(PAGE_SIZE)));
 
-uint32_t *kernel_page_directory_virt = kernel_page_directory;
-uint32_t kernel_page_directory_phys = (uint32_t)kernel_page_directory;
+virt_addr_t *kernel_page_directory_virt = kernel_page_directory;
+phys_addr_t kernel_page_directory_phys = (uint32_t)kernel_page_directory;
 
 //
 //  Initialize paging by setting up first entry in page directory
@@ -93,7 +93,7 @@ void debug_dump_pte(uint32_t virtual_addr) {
 }
 
 void paging_map_page_in_pd(uint32_t *pd_virt, uint32_t virt_addr,
-                           uint32_t phys_addr, uint32_t flags) {
+                           phys_addr_t phys_addr, uint32_t flags) {
     uint32_t pdir_index = PD_INDEX(virt_addr);
     uint32_t ptable_index = PT_INDEX(virt_addr);
 
@@ -101,26 +101,34 @@ void paging_map_page_in_pd(uint32_t *pd_virt, uint32_t virt_addr,
         panik("paging_map_page_in_pd: pd_virt is null");
     }
 
-    uint32_t *page_table;
+    phys_addr_t pt_phys;
+    uint32_t *pt_virt;
 
     if (pd_virt[pdir_index] & PAGE_PRESENT) {
-        page_table = (uint32_t *)(pd_virt[pdir_index] & 0xFFFFF000);
+        /* Page directory already exists - then extract the top 20bits which
+         * point to the page table frame */
+        pt_phys = (phys_addr_t)(pd_virt[pdir_index] & 0xFFFFF000);
+        pt_virt = (virt_addr_t *)phys_to_virt_identity(pt_phys);
     } else {
-        page_table = (uint32_t *)pmm_alloc_frame();
-        if (!page_table) {
+        /* Page directory doesn't exist then allocate a frame for Page Table */
+        pt_phys = pmm_alloc_frame();
+        if (!pt_phys) {
             panik("paging_map_page_in_pd: Unable to allocate frame for new "
                   "page table");
         }
 
+        /* Page directory entry will point to the page table frame */
+        pt_virt = (virt_addr_t *)phys_to_virt_identity(pt_phys);
+
         for (uint32_t entry = 0; entry < PAGE_ENTRIES; entry++) {
-            page_table[entry] = 0;
+            pt_virt[entry] = 0;
         }
 
-        pd_virt[pdir_index] = ((uint32_t)page_table) | PAGE_PRESENT |
-                              PAGE_WRITE | (flags & PAGE_USER);
+        pd_virt[pdir_index] =
+            pt_phys | PAGE_PRESENT | PAGE_WRITE | (flags & PAGE_USER);
     }
 
-    page_table[ptable_index] = (phys_addr & 0xFFFFF000) | (flags | 0xFFF);
+    pt_virt[ptable_index] = (phys_addr & 0xFFFFF000) | (flags | 0xFFF);
 
     /*
      * IMPORTANT:
@@ -144,7 +152,8 @@ void paging_map_page(uint32_t virtual_addr, uint32_t physical_addr,
     paging_map_page_in_pd(pd, virtual_addr, physical_addr, flags);
 }
 
-uint32_t paging_get_physical_address_in_pd(uint32_t *pd_virt, uint32_t virt) {
+phys_addr_t paging_get_physical_address_in_pd(uint32_t *pd_virt,
+                                              virt_addr_t virt) {
     uint32_t pdir_index = PD_INDEX(virt);
     uint32_t ptable_index = PT_INDEX(virt);
 
@@ -156,19 +165,20 @@ uint32_t paging_get_physical_address_in_pd(uint32_t *pd_virt, uint32_t virt) {
         return 0;
     }
 
-    uint32_t *page_table = (uint32_t *)(pd_virt[pdir_index] & 0xFFFFF000);
+    phys_addr_t pt_phys = (phys_addr_t)(pd_virt[pdir_index] & 0xFFFFF000);
+    virt_addr_t *pt_virt = (virt_addr_t *)phys_to_virt_identity(pt_phys);
 
-    if (!(page_table[ptable_index] & PAGE_PRESENT)) {
+    if (!(pt_virt[ptable_index] & PAGE_PRESENT)) {
         return 0;
     }
 
-    uint32_t phy_base = page_table[ptable_index] & 0xFFFFF000;
-    uint32_t offset = page_table[ptable_index] & 0xFFF;
+    phys_addr_t page_base = (phys_addr_t)(pt_virt[ptable_index] & 0xFFFFF000);
+    phys_addr_t page_offset = (phys_addr_t)(virt & 0xFFF);
 
-    return phy_base + offset;
+    return (page_base | page_offset);
 }
 
-uint32_t paging_get_physical_address(uint32_t virt) {
+phys_addr_t paging_get_physical_address(uint32_t virt) {
     // 32 bit address ->
     // each entry of pagetable/directory = 12 LSB are for flags, 20 MSB is the
     // address
@@ -176,7 +186,8 @@ uint32_t paging_get_physical_address(uint32_t virt) {
     // => 10 MSB -> 31-22 -> page dir index in (1024) entries of page directory
     // => 10 MSB -> 21-12 -> page table index in (1024) entries of page table
     //
-    return paging_get_physical_address_in_pd(current_proc->page_directory_virt, virt);
+    return paging_get_physical_address_in_pd(current_proc->page_directory_virt,
+                                             virt);
 }
 
 void paging_unmap_page_in_pd(uint32_t *pd_virt, uint32_t virt) {
@@ -191,13 +202,14 @@ void paging_unmap_page_in_pd(uint32_t *pd_virt, uint32_t virt) {
         return;
     }
 
-    uint32_t *page_table = (uint32_t *)(pd_virt[pdir_index] & 0xFFFFF000);
+    phys_addr_t pt_phys = (phys_addr_t)(pd_virt[pdir_index] & 0xFFFFF000);
+    virt_addr_t *pt_virt = (virt_addr_t *)phys_to_virt_identity(pt_phys);
 
-    if (!(page_table[ptable_index] & PAGE_PRESENT)) {
+    if (!(pt_virt[ptable_index] & PAGE_PRESENT)) {
         return;
     }
 
-    page_table[ptable_index] = 0;
+    pt_virt[ptable_index] = 0;
 
     __asm__ __volatile__("invlpg (%0)" : : "r"(virt) : "memory");
 }
@@ -216,44 +228,49 @@ void paging_switch_address_space(uint32_t pd_phys) {
     __asm__ __volatile__("mov %0, %%cr3" : : "r"(pd_phys) : "memory");
 }
 
-int paging_create_address_space(uint32_t **out_pd_virt, uint32_t *out_pd_phys) {
+int paging_create_address_space(uint32_t **out_pd_virt,
+                                phys_addr_t *out_pd_phys) {
     if (!out_pd_virt || !out_pd_phys) {
         return -1;
     }
 
-    uint32_t *new_pd = (uint32_t *)pmm_alloc_frame();
-    if (!new_pd) {
+    phys_addr_t new_pd_phys = pmm_alloc_frame();
+    if (!new_pd_phys) {
         return -1;
     }
 
+    virt_addr_t *new_pd_virt =
+        (virt_addr_t *)phys_to_virt_identity(new_pd_phys);
+
     for (uint32_t i = 0; i < PAGE_ENTRIES; i++) {
-        new_pd[i] = 0;
+        new_pd_virt[i] = 0;
     }
 
-    /* Copy identity map (PDE[0]) so kernel code at 0x0001xxxx stays reachable */
-    new_pd[0] = kernel_page_directory_virt[0];
+    /* Copy identity map (PDE[0]) so kernel code at 0x0001xxxx stays reachable
+     */
+    new_pd_virt[0] = kernel_page_directory_virt[0];
 
     /* Copy kernel high-half page dir entries from master kernel page dir */
     for (uint32_t i = KERNEL_PDE_START; i < PAGE_ENTRIES; i++) {
-        new_pd[i] = kernel_page_directory_virt[i];
+        new_pd_virt[i] = kernel_page_directory_virt[i];
     }
 
-    *out_pd_virt = new_pd;
-    *out_pd_phys = (uint32_t)new_pd;
+    *out_pd_virt = new_pd_virt;
+    *out_pd_phys = new_pd_phys;
 
     return 0;
 }
 
 void paging_free_region_in_pd(uint32_t *pd_virt, uint32_t start,
                               uint32_t size) {
-    uint32_t addr = PAGE_ALIGN_DOWN(start);
-    uint32_t end = PAGE_ALIGN_UP(start + size);
+    phys_addr_t addr = PAGE_ALIGN_DOWN(start);
+    phys_addr_t end = PAGE_ALIGN_UP(start + size);
 
     for (; addr < end; addr += PAGE_SIZE) {
-        uint32_t phys = paging_get_physical_address_in_pd(pd_virt, addr);
+        phys_addr_t phys = paging_get_physical_address_in_pd(pd_virt, addr);
 
         if (phys) {
-            pmm_free_frame((void *)(phys & 0xFFFFF000));
+            pmm_free_frame((phys_addr_t)(phys & 0xFFFFF000));
         }
 
         paging_unmap_page_in_pd(pd_virt, addr);
@@ -262,4 +279,12 @@ void paging_free_region_in_pd(uint32_t *pd_virt, uint32_t start,
 
 void paging_free_region(uint32_t start, uint32_t size) {
     paging_free_region_in_pd(current_proc->page_directory_virt, start, size);
+}
+
+void *phys_to_virt_identity(phys_addr_t phys) {
+    if (phys > 0x00400000) {
+        panik("phys_to_virt_identity: physical address outside current low "
+              "identity map");
+    }
+    return (void *)phys;
 }

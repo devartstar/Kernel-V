@@ -1,12 +1,17 @@
 #ifndef PROC_H
 #define PROC_H
 
+#include "fs/ramfs.h"
+#include "proc/signal.h"
 #include <stdint.h>
 
 #define PROC_NAME_MAX 16
 #define KERNEL_STACK_SIZE 4096
 #define DEFAULT_TIMESLICE 10
 #define KERNEL_MAIN_TIMESLICE 20
+
+#define PROCESS_MAX_FDS 32
+#define PROCESS_FIRST_NORMAL_FD 3
 
 //
 // Process Types
@@ -31,27 +36,30 @@ typedef enum {
 } proc_state_t;
 
 //
-//  Process reason for waiting - lets a waker target exactly the right sleepers
-//  instead of waking everyone and having them re-check (thundering herd).
+// Process reason for waiting
 //
 typedef enum {
-    PROC_WAIT_NONE = 0, //  not waiting / cleared on wakeup
-    PROC_WAIT_SLEEP,    //  timer-driven sleep (uses wait_tick_count)
-    PROC_WAIT_OBJECT    //  blocked on a specific object/channel (wait_channel)
+    PROC_WAIT_NONE = 0,
+    PROC_WAIT_SLEEP,
+    PROC_WAIT_CONSOLE_INPUT,
+    /* Generic object/channel wait (semaphores, mutexes) - the waiter parks on
+     * an arbitrary object address; woken by proc_wakeup_all_on(obj). */
+    PROC_WAIT_OBJECT
 } proc_wait_reason_t;
 
 //
-//  Process wait information: why a process is blocked and on what.
+// Process wait information
 //
 typedef struct proc_wait_info {
     proc_wait_reason_t wait_reason;
     uint32_t wait_tick_count;
-    /*
-     * wait_channel - opaque identity of the object the process is blocked upon.
-     * NULL for reason-only waits (sleep). Object waiters store the address of
-     * their wait object so a producer can wake exactly those blocked on it
-     * (proc_wakeup_all_on). This is the seam that later lets a wait target a
-     * REMOTE object in the SSI future - the read/write path stays pure.
+
+    /**
+     * wait_channel - opaque identity of the object process is blocked upon.
+     * NULL for reason only wait. (sleep, legacy console).
+     *
+     * Object waiters store the address of their wait objects. Producers can
+     * wake up exactly those who are blocked on the objects.
      */
     void *wait_channel;
 } proc_wait_info_t;
@@ -75,7 +83,7 @@ typedef struct regs_context {
  * @kernel_stack_base Kernel stack bottom address for the process
  * @kernel_stack_top Kernel stack top address for the process
  * @kernel_stack_size Kernel stack size for the process
- * @wait_info Why the process is blocked (reason) and on what (channel/ticks)
+ * @proc_wait_info Process reason for wait and ticks to wait for
  * @timeslice_ticks Cycles for the process to execute before switch
  * @user_stack_top User stack top address for the process
  * @user_stack_size User stack size for the process
@@ -94,14 +102,34 @@ typedef struct pcb {
     uint8_t has_exited;
     int32_t exit_code;
 
+    /* When set, the idle reaper (cleanup_terminated_processes) must not free
+     * this PCB even after it has terminated. Used by observers (e.g. the
+     * syscall integration harness) that hold a raw PCB pointer and need to read
+     * the exit code after termination; the observer clears this flag once it
+     * has snapshotted what it needs so the PCB can be reclaimed. */
+    uint8_t reap_blocked;
+
     /* Kernel Stack */
     uint8_t *kernel_stack_base;
     uint8_t *kernel_stack_top;
     uint32_t kernel_stack_size;
 
     /* Scheduling */
-    proc_wait_info_t wait_info;
     uint32_t timeslice_ticks;
+
+    /* reason for process to get to wait state */
+    proc_wait_info_t wait_info;
+
+    /* 0 = none; else signal number to act on at wakeup */
+    uint32_t sigpending;
+
+    /* Log correlation (sc=) tracing.
+     * trace_id: id this process is currently running under (restored by
+     *           yield() on context switch so it survives yields/preemption).
+     * trace_id_saved: background id stashed while a syscall runs under a fresh
+     *           per-operation id. */
+    uint32_t trace_id;
+    uint32_t trace_id_saved;
 
     /* User Space */
     uint32_t user_entry;
@@ -112,6 +140,17 @@ typedef struct pcb {
     /* Address space */
     uint32_t *page_directory_virt;
     uint32_t page_directory_phys;
+
+    /* File descriptor table */
+    vfs_file_t *fds[PROCESS_MAX_FDS];
+
+    /** Controlling terminal: the tty node this process stdio is bound to.
+     * The session lives in node->private_data so process read/write from/to a
+     * file does not consult a global.
+     * Remote terminals - just a node whose port bridges elsewhere. Inherited on
+     * fork; default to foreground console at creation.
+     */
+    vfs_node_t *ctty;
 
     /* Process tree */
     struct pcb *parent;
@@ -193,12 +232,33 @@ void proc_mark_ready(pcb_t *proc);
 const char *proc_type_to_string(proc_type_t type);
 
 /**
- * proc_sleep - Puts the current running process to sleep till next tick.
+ * proc_wait_sleep - Puts the current running process to sleep till next tick.
  * @ticks - count of cpu intervals for process to sleep.
  *
  * @return - void
  */
-void proc_sleep(uint32_t ticks);
+void proc_wait_sleep(uint32_t ticks);
+
+/**
+ * proc_wait_console_input - Puts the current running process to sleep till
+ * console input is available
+ */
+void proc_wait_console_input(void);
+
+/**
+ * @proc_wait_prepare_console_input - similar to proc_wait_console_input without
+ * yieling. sets up wait reason and ticks and removed from ready queue to add to
+ * wait queue.
+ */
+void proc_wait_prepare_console_input(void);
+
+/**
+ * @proc_wait_prepare_on - object based wait preperation. (no yield)
+ * marks the current process waiting on channel object. records the wait reason
+ * moves the process from ready to wait queue.
+ * process woken selectively by proc_wakeup_all_on based on @channel
+ */
+void proc_wait_prepare_on(proc_wait_reason_t reason, void *channel);
 
 /**
  * proc_wakeup - Wakes up a sleeping process and adds to ready queue.
@@ -209,24 +269,17 @@ void proc_sleep(uint32_t ticks);
 void proc_wakeup(pcb_t *proc);
 
 /**
- * proc_wait_prepare_on - object-based wait setup (does NOT yield).
- * Marks current_proc WAITING on @channel with @reason and moves it from the
- * ready queue to the wait queue. Callers typically loop:
- *     while (condition_false) { proc_wait_prepare_on(...); yield(); }
- * woken selectively by proc_wakeup_all_on(channel).
+ * proc_wakeup_one_reason - wakes up one of the waiting process under a
+ * specific reason
+ *
+ * @reason - reason for wait
  */
-void proc_wait_prepare_on(proc_wait_reason_t reason, void *channel);
+void proc_wakeup_one_reason(uint32_t reason);
 
 /**
- * proc_wakeup_one_reason - wake the FIRST process waiting for a given reason.
- * @reason - reason to match
- */
-void proc_wakeup_one_reason(proc_wait_reason_t reason);
-
-/**
- * proc_wakeup_all_on - wake EVERY process blocked on the wait object @channel.
- * Object-based counterpart of proc_wakeup_one_reason; the primitive that
- * semaphores/mutexes (and later TTY/RPC) build on. Safe from IRQ context.
+ * proc_wakeup_all_on - wakeup every process blocked on the wait object
+ * Object based counterpart of proc_wakeup_one_reason.
+ * @channel - object the process are waiting on
  */
 void proc_wakeup_all_on(void *channel);
 
@@ -335,6 +388,24 @@ void proc_kernel_main_exit(void);
  * @proc - process to log the info for
  */
 void print_proc_info(const pcb_t *proc);
+
+/**
+ * Act for any signal pending for the current process.
+ * Runs in the process's OWN context at a safe point (never in IRQ)
+ * Returns 1 if the signal was acted upon (caller may need to bail out)
+ * 0 if nothing was pending
+ */
+int proc_handle_pending_signals(void);
+
+/**
+ * proc_signal_channel - deliver a signal to every process parked on the
+ * channel. they wake them so they act on it at their safe point.
+ *
+ * called from IRQ context (canon INTR/QUIT detection). We only mark the signal
+ * + wake here; the target consumes the bit in proc_handle_pending_signals()
+ * after it resumes.
+ */
+void proc_signal_channel(void *channel, int signo);
 
 extern pcb_t *current_proc;
 

@@ -6,6 +6,7 @@
 #include <stdint.h>
 
 #define IDT_VECTOR_COUNT 256
+#define EFLAG_IF (1u << 9)
 
 /**
  * We get a string of ranges of IRQ enabled for debugging.
@@ -104,11 +105,11 @@ static inline irq_flags_t irq_save(void) {
 static inline void irq_restore(irq_flags_t flags) {
     /* "memory" - prevents the compiler from reordering memory accesses across
      * interrupt boundaries */
-    __asm__ __volatile__("push %0\n"
-                         "popf"
-                         :
-                         : "r"(flags)
-                         : "memory", "cc");
+    if (flags & EFLAG_IF) {
+        __asm__ __volatile__("sti" ::: "memory");
+    } else {
+        __asm__ __volatile__("cli" ::: "memory");
+    }
 }
 
 /**

@@ -23,6 +23,7 @@
 #define KERN_WARN KERN_SOH "2"    //  Warning messages
 #define KERN_INFO KERN_SOH "3"    //  Informational messages
 #define KERN_VERBOSE KERN_SOH "4" //  Verbose messages
+#define KERN_DEBUG KERN_SOH "5"   //  Debug mesages
 
 #ifndef CONFIG_TRACE_LEVEL
 
@@ -53,6 +54,7 @@ int printk(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 #define pr_warn(fmt, ...) printk(KERN_WARN fmt, ##__VA_ARGS__)
 #define pr_info(fmt, ...) printk(KERN_INFO fmt, ##__VA_ARGS__)
 #define pr_verbose(fmt, ...) printk(KERN_VERBOSE fmt, ##__VA_ARGS__)
+#define pr_debug(fmt, ...) printk(KERN_DEBUG fmt, ##__VA_ARGS__)
 
 /* Updating the File to just print the filename and not entire path */
 #define __FILENAME__                                                           \
@@ -67,23 +69,54 @@ int printk(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 #define KLOG_WARN(tag, fmt, ...) KLOG(KERN_WARN, tag, fmt, ##__VA_ARGS__);
 #define KLOG_INFO(tag, fmt, ...) KLOG(KERN_INFO, tag, fmt, ##__VA_ARGS__);
 #define KLOG_VERBOSE(tag, fmt, ...) KLOG(KERN_VERBOSE, tag, fmt, ##__VA_ARGS__);
+#define KLOG_DEBUG(tag, fmt, ...) KLOG(KERN_DEBUG, tag, fmt, ##__VA_ARGS__);
+
+/**
+ * log_trace_id - Correlation id of the current execution activation.
+ *
+ * Included in every log prefix as "sc=<id>". The id travels with the running
+ * process: each process carries its current id in its PCB (pcb_t.trace_id) and
+ * yield() restores it on context switch, so an id survives across yields and
+ * preemption. A syscall mints a fresh, unique id on entry and restores the
+ * process background id on exit, so each operation (SYSCALL -> FD -> VFS ->
+ * RAMFS) is isolated - even two syscalls in the same timeslice differ. Trace a
+ * single operation across the user<->kernel boundary with `grep 'sc=<id>'`.
+ */
+extern volatile uint32_t log_trace_id;
+
+/**
+ * log_trace_begin - Assign a fresh correlation id and make it active.
+ * @returns the newly assigned (and now active) trace id.
+ */
+uint32_t log_trace_begin(void);
+
+/**
+ * log_trace_next - Mint a fresh correlation id WITHOUT changing the active id.
+ *
+ * Use to pre-assign an id (e.g. a per-process background id) without
+ * disturbing the caller's current trace context.
+ * @returns the newly minted trace id.
+ */
+uint32_t log_trace_next(void);
+
+/**
+ * log_trace_set - Force the active correlation id to a specific value.
+ * @id - trace id to make active (e.g. to restore a saved id).
+ * @returns void.
+ */
+void log_trace_set(uint32_t id);
+
+/**
+ * log_trace_end - Clear the current correlation scope (resets id to 0).
+ * @returns void.
+ */
+void log_trace_end(void);
 
 /**
  * printk_init - Initialize printk subsystem.
  * @returns void.
  */
 void printk_init(void);
-
-/**
- * my_vsnprintf - Internal formatting function to generate the final string
- * after parsing arguments.
- * @buf - buffer to write formatted string
- * @size - size of the buffer
- * @fmt - format string
- * @args - variable argument list
- * @returns number of characters written
- */
-int my_vsnprintf(char *buf, size_t size, const char *fmt, va_list args);
 
 /**
  * ringbuf_write - Write a string to the ring buffer.

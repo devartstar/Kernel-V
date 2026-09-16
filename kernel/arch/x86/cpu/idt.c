@@ -4,6 +4,7 @@
 #include "arch/x86/tss.h"
 #include "core/debug.h"
 #include "core/debug_funcs.h"
+#include "drivers/serial.h"
 #include "proc/syscall.h"
 #include "tests/nested_irq.h"
 #include "time/timer.h"
@@ -106,6 +107,14 @@ void idt_init() {
     extern void isr_stub_128();
     idt_set_gate(128, (uint32_t)isr_stub_128, 0x08, 0xEF);
     debug_module(IDT_GDT, "[IDT] Syscall Entry Initialized successfully!\n");
+
+    /* SET up IDT entry for serial interrupt handler.
+       COM1 raises IRQ4 -> PIC delivers vector 36 (IRQ base 32 + IRQ4) */
+    register_interrupt_handler(36, serial_irq_handler, "SERIAL");
+    extern void isr_stub_36();
+    idt_set_gate(36, (uint32_t)isr_stub_36, 0x08, 0x8E);
+    irq_unmask(SERIAL_IRQ_COM1);
+    serial_enable_rx_interrupt(SERIAL_COM1);
 
     idt_flush((uint32_t)&idt_ptr);
     pr_info("[IDT] Loaded successfully!\n");

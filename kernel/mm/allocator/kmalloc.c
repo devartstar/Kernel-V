@@ -150,7 +150,7 @@ static int kmem_cache_grow(kmem_chache_t *cache, uint32_t class_idx) {
         panik("kmalloc: memory used before initialization.\n");
     }
 
-    void *page = pmm_alloc_frame();
+    phys_addr_t page = pmm_alloc_frame();
     if (!page)
         return -1;
 
@@ -287,7 +287,7 @@ static void kmem_slab_free(void *ptr, kmem_page_desc_t *desc) {
         kmem_partial_remove(cache, desc);
         cache->free_objs -= kmem_slots_per_page(desc->obj_size);
         cache->pages--;
-        pmm_free_frame(desc);
+        pmm_free_frame((phys_addr_t)desc);
     }
 }
 
@@ -304,7 +304,7 @@ static void *kmem_large_alloc(size_t size) {
     }
 
     /* allocate a page */
-    void *page = pmm_alloc_frame();
+    phys_addr_t page = pmm_alloc_frame();
     if (!page) {
         return NULL;
     }
@@ -468,7 +468,7 @@ void kfree(void *ptr) {
         desc->magic = 0;
         g_large_pages--;
         g_large_bytes -= desc->obj_size;
-        pmm_free_frame(desc);
+        pmm_free_frame((phys_addr_t)desc);
         return;
     }
 

@@ -1,15 +1,11 @@
 #include "arch/x86/interrupt.h"
+#include "arch/x86/pic.h"
 #include "core/io.h"
 #include "lib/printk.h"
 #include "time/timer.h"
 
 #define REG_LINE(name, val)                                                    \
     printk("| %10s | 0x%08lx |\n", name, (uint32_t)(val))
-
-// PIC EOI command
-#define PIC1_COMMAND 0x20
-#define PIC2_COMMAND 0xA0
-#define PIC_EOI 0x20
 
 /**
  * An array of interrupt handlers -
@@ -53,15 +49,6 @@ void default_interrupt_handler(uint32_t idt_index, regs_t *regs) {
     (void)regs;
     pr_error("[IDT] Unhandeled Interrupt %lu\n", idt_index);
     // Todo: Halt or Trigger kernel debugger
-}
-
-void pic_send_eoi(uint8_t irq) {
-    // If IRQ came from slave PIC (IRQ 8-15), send EOI to both PICs
-    if (irq >= 8) {
-        outb(PIC2_COMMAND, PIC_EOI);
-    }
-    // Always send EOI to master PIC for IRQs 0-15
-    outb(PIC1_COMMAND, PIC_EOI);
 }
 
 void dump_regs(regs_t *r) {

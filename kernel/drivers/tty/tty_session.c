@@ -1,0 +1,177 @@
+#include "drivers/tty_session.h"
+#include "arch/x86/interrupt.h"
+#include "drivers/tty_recipe.h"
+#include "lib/printk.h"
+#include "tty_port.h"
+
+int tty_session_init(tty_session_t *sess, tty_port_t *port) {
+    int err;
+
+    /* session should be valid */
+    if (!sess) {
+        return TTY_CHAN_ERR_INVALID;
+    }
+
+    /* port should be vaild */
+    if (!port) {
+        return TTY_CHAN_ERR_INVALID;
+    }
+
+    /* Initialize the input channel */
+    err = tty_chan_init(&sess->input, sess->in_buf, TTY_INPUT_BUF_SIZE);
+    if (err != TTY_CHAN_OK) {
+        return err;
+    }
+
+    /* Initialize the output channel */
+    err = tty_chan_init(&sess->output, sess->out_buf, TTY_OUTPUT_BUF_SIZE);
+    if (err != TTY_CHAN_OK) {
+        return err;
+    }
+
+    /* Initialize the backing port for the channel */
+    sess->port = port;
+    port->session = sess;
+
+    /* initialize the terminal settings */
+    tty_termios_init_cooked(&sess->term);
+
+    /* --- OUTPUT pipeline: bind shared cooked-out recipe --- */
+    sess->out_pipeline.def = &tty_cooked_out_def;
+    sess->out_pipeline.state[0] = NULL; /* onlcr stateless */
+    sess->out_pipeline.term = &sess->term;
+
+    /* --- INPUT PIPELINE: bind shared cooked-in recipe --- */
+
+    /* [1] initialize the sessions canon state
+     * when echo enabled in canon stage will echo through this out pipeline to
+     * the sink */
+    tty_stage_canon_state_init(&sess->canon, &sess->out_pipeline, tty_port_sink,
+                               port);
+    sess->canon.on_signal = tty_session_signal_sink;
+    sess->canon.signal_ctx = sess;
+
+    /* [2] initialize the sessions input pipeline */
+    sess->in_pipeline.def = &tty_cooked_in_def;
+    sess->in_pipeline.state[0] = NULL;         /* icrnl stateless */
+    sess->in_pipeline.state[1] = &sess->canon; /* canon state */
+    sess->in_pipeline.term = &sess->term;
+
+    return TTY_CHAN_OK;
+}
+
+void tty_session_get_termios(tty_session_t *s, ktermios_t *out) {
+    *out = s->term;
+}
+
+int tty_session_set_termios(tty_session_t *s, const ktermios_t *in) {
+    int canon_now = (s->term.c_lflag & ICANON) != 0;
+    int canon_new = (in->c_lflag & ICANON) != 0;
+
+    if (canon_now && !canon_new) {
+        /* TODO: keep it unimplemented for now */
+        /* tty_canon_flush(); */
+    }
+
+    /* torn-write guard: a concurrent per-byte spanshot must never observe a
+     * half-updated struct */
+    uint32_t guard_flags = irq_save();
+    s->term = *(in);
+    irq_restore(guard_flags);
+
+    return 0;
+}
+
+void tty_input_step(tty_session_t *sess, uint8_t byte) {
+    (void)byte;
+
+    if (!sess) {
+        return;
+    }
+
+    /* Raw policy: publish immediately so the byte is readable at once */
+    tty_chan_commit(&sess->input);
+    KLOG_VERBOSE("TTY", "committed byte 0x%02x\n", byte);
+}
+
+static void tty_announce_waiting(tty_session_t *sess) {
+    static const char msg[] = "\n[waiting for input] ";
+    for (const char *p = msg; *p; p++) {
+        tty_port_sink(sess->port, (uint8_t)*p);
+    }
+}
+
+int tty_read(tty_session_t *sess, uint8_t *buf, uint32_t len) {
+    int ret;
+
+    /* check for valid session */
+    if (!sess) {
+        return TTY_CHAN_ERR_INVALID;
+    }
+
+    /* check if buffer is valid and read byte > 0 */
+    if (!buf && len > 0) {
+        return TTY_CHAN_ERR_INVALID;
+    }
+
+    if (len == 0) {
+        return 0;
+    }
+
+    /* Annount - blocking read waiting for user input */
+    tty_announce_waiting(sess);
+
+    /* blocking read from channel */
+    ret =
+        tty_chan_read_blocking(&sess->input, buf, len, PROC_WAIT_CONSOLE_INPUT);
+
+    KLOG_VERBOSE("TTY", "read returned %d byte(s)\n", ret);
+    return ret;
+}
+
+int tty_write(tty_session_t *sess, const uint8_t *buf, uint32_t len) {
+    /* check for valid session */
+    if (!sess) {
+        return TTY_CHAN_ERR_INVALID;
+    }
+
+    if (!sess->port) {
+        return TTY_CHAN_ERR_INVALID;
+    }
+
+    if (!sess->port->ops || !sess->port->ops->putc) {
+        return TTY_CHAN_ERR_INVALID;
+    }
+
+    if (!buf && len > 0) {
+        return TTY_CHAN_ERR_INVALID;
+    }
+
+    if (len == 0) {
+        return 0;
+    }
+
+    /* write_len is the number of bytes written to port before processing
+     * number of actual bytes might differ based on line processing. */
+    uint32_t write_len = 0;
+    for (uint32_t i = 0; i < len; i++) {
+        if (sess->out_pipeline.def) {
+            tty_pipeline_run(&sess->out_pipeline, buf[i], tty_port_sink,
+                             sess->port);
+        } else {
+            tty_port_sink(sess->port, buf[i]);
+        }
+        write_len++;
+    }
+
+    KLOG_VERBOSE("TTY", "wrote %u byte(s)\n", write_len);
+    return write_len;
+}
+
+void tty_session_signal_foreground(tty_session_t *sess, int sig) {
+    proc_signal_channel(&sess->input, sig);
+}
+
+void tty_session_signal_sink(void *ctx, int sig) {
+    tty_session_signal_foreground((tty_session_t *)ctx, sig);
+}

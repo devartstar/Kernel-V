@@ -43,7 +43,7 @@ void *pool_alloc(pool_allocator_t *pool) {
 
     /* If no free object, allocate a new page and split into object */
     if (!pool->free_list) {
-        void *page = pmm_alloc_frame();
+        phys_addr_t page = pmm_alloc_frame();
         if (!page) {
             return NULL;
         }
@@ -61,10 +61,7 @@ void *pool_alloc(pool_allocator_t *pool) {
     }
 
     /* Pop the first free object */
-    /* pool->free_list references to the address of the first free meomry block
-     * of size pool->object_size */
     void *obj = pool->free_list;
-    /* update free_list to store the address to the next free object */
     pool->free_list = *((void **)obj);
 
     return obj;

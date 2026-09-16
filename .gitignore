@@ -9,3 +9,4 @@ errors.log
 warnings.log
 .cache/
 serial.log
+local.mk

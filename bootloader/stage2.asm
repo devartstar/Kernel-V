@@ -3,6 +3,8 @@ BITS 16
 [org 0x7e00]
 %endif
 
+%include "stage2_kernel.inc"
+
 Start:
     mov dl, 0x80
     mov ah, 0x41
@@ -12,7 +14,7 @@ Start:
     cmp bx, 0xAA55
     jne NotSupported
 
-    ; ReadPacket - 16 Bytes.
+    ; ReadPacket
     ; si = *ReadPacket
     ; [si]              - to store the size of Read Packet
     ; [si+1]            - Reserved (must be 0)
@@ -22,36 +24,52 @@ Start:
     ; [si+8] [si+15]    - LBA to Read from the Disk
     ; 1. Load the Kernel into memory 0x10000 ()
     ; [PMM] Reserved kernel range: 0x65536 - 0x78800 
-    ; INT 0x13/AH=42h can only load up to 64KB (127 sectors) per call
-    ; due to segment:offset limits.  Split into two reads.
+    ; INT 0x13/AH=42h can only load up to 64KB (127 sectors) per call.
+    ; Read the kernel in 127-sector chunks based on generated build size.
 LoadKernel:
-    ; --- Read 1: Load first 127 sectors to 0x1000:0x0000 (phys 0x10000) ---
     mov si, ReadPacket
-    mov word[si], 0x10
-    mov word[si+2], 0x7F            ; 127 sectors = 0xFE00 bytes
-    mov word[si+4], 0x00            ; Offset 0x0000
-    mov word[si+6], 0x1000          ; Segment 0x1000 -> phys 0x10000
-    mov dword[si+8], 0x09           ; LBA 9
-    mov dword[si+12], 0x00
+    mov word [si], 0x10
+    mov word [si+4], 0x0000
+    mov dword [si+12], 0
+
+    mov word [kernel_load_segment], 0x1000
+    mov dword [kernel_next_lba], KERNEL_START_LBA
+    mov word [kernel_sectors_left], KERNEL_TOTAL_SECTORS
+
+.read_loop:
+    mov ax, [kernel_sectors_left]
+    test ax, ax
+    jz GetMemoryMap
+
+    cmp ax, 127
+    jbe .set_count
+    mov ax, 127
+
+.set_count:
+    mov word [kernel_chunk_sectors], ax
+    mov word [si+2], ax
+    mov bx, [kernel_load_segment]
+    mov word [si+6], bx
+    mov eax, [kernel_next_lba]
+    mov dword [si+8], eax
+    mov si, ReadPacket
 
     mov ah, 0x42
     mov dl, 0x80
     int 0x13
     jc ReadError
 
-    ; --- Read 2: Load next sectors to 0x1FE0:0x0000 (phys 0x1FE00) ---
-    mov si, ReadPacket
-    mov word[si], 0x10
-    mov word[si+2], 0x30            ; 48 more sectors = 24KB (total 175 = ~87KB headroom)
-    mov word[si+4], 0x00            ; Offset 0x0000
-    mov word[si+6], 0x1FE0          ; Segment 0x1FE0 -> phys 0x1FE00 (contiguous)
-    mov dword[si+8], 0x88           ; LBA = 9 + 127 = 136 (0x88)
-    mov dword[si+12], 0x00
+    ; Advance destination by (count * 512 bytes) => (count * 32) paragraphs.
+    mov ax, [kernel_chunk_sectors]
+    mov bx, ax
+    shl bx, 5
+    add word [kernel_load_segment], bx
 
-    mov ah, 0x42
-    mov dl, 0x80
-    int 0x13
-    jc ReadError
+    sub word [kernel_sectors_left], ax
+    xor eax, eax
+    mov ax, [kernel_chunk_sectors]
+    add dword [kernel_next_lba], eax
+    jmp .read_loop
 
 GetMemoryMap:
     xor ax, ax
@@ -129,6 +147,10 @@ MsgNoSupportL:  equ $-MsgNoSupport
 
 ReadPacket:     times 16 db 0
 memmap_count:   dw 0
+kernel_sectors_left: dw 0
+kernel_chunk_sectors: dw 0
+kernel_load_segment: dw 0
+kernel_next_lba:     dd 0
 
 ; Global Descriptor Table
 GDT32:

@@ -42,3 +42,12 @@ static inline uint8_t pic_read_mask(uint8_t pic) {
 static inline void pic_write_mask(uint8_t pic, uint8_t mask) {
     outb(pic == 1 ? PIC1_DATA : PIC2_DATA, mask);
 }
+
+static inline void pic_send_eoi(uint8_t irq) {
+    // If IRQ came from slave PIC (IRQ 8-15), send EOI to both PICs
+    if (irq >= 8) {
+        outb(PIC2_COMMAND, PIC_EOI);
+    }
+    // Always send EOI to master PIC for IRQs 0-15
+    outb(PIC1_COMMAND, PIC_EOI);
+}

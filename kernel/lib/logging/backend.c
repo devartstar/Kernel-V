@@ -1,5 +1,5 @@
-#include "drivers/vga.h"
 #include "drivers/serial.h"
+#include "drivers/vga.h"
 #include "lib/logbackend.h"
 #include "lib/printk.h"
 
@@ -19,8 +19,7 @@ void log_dispatch_to_backends(const char *msg, size_t len, char color) {
 }
 
 void vga_backend(const char *msg, size_t len, char color) {
-    (void)len;
-    vga_print_string(msg, color);
+    vga_write(msg, len, color);
 }
 
 void ringbuf_backend(const char *msg, size_t len, char color) {
@@ -30,5 +29,5 @@ void ringbuf_backend(const char *msg, size_t len, char color) {
 
 void serial_backend(const char *msg, size_t len, char color) {
     (void)color;
-    serial_write(msg, len);
+    serial_log_write(msg, len);
 }

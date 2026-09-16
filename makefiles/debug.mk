@@ -36,17 +36,17 @@ verify-symbols: debug-symbols ## Verify debug symbols are present
 debug-stage1: debug-symbols all ## Debug Stage 1 bootloader
 	$(ECHO) "Starting QEMU for Stage1 debugging..."
 	$(ECHO) "Connect with: $(GDB) -x tools/gdb/stage1.gdb"
-	$(Q)$(QEMU) -drive format=raw,file=$(DISK_IMG) -s -S -display curses
+	$(Q)$(QEMU) $(QEMU_DRIVE_FLAGS)$(if $(wildcard $(DISK_IMG)),$(DISK_IMG),$(DISK_TEST_IMG)) -s -S -display curses
 
 debug-stage2: debug-symbols all ## Debug Stage 2 bootloader
 	$(ECHO) "Starting QEMU for Stage2 debugging..."
 	$(ECHO) "Connect with: $(GDB) -x tools/gdb/stage2.gdb"
-	$(Q)$(QEMU) -drive format=raw,file=$(DISK_IMG) -s -S -display curses
+	$(Q)$(QEMU) $(QEMU_DRIVE_FLAGS)$(if $(wildcard $(DISK_IMG)),$(DISK_IMG),$(DISK_TEST_IMG)) -s -S -display curses
 
 debug-bootloader: debug-symbols all ## Debug both bootloader stages
 	$(ECHO) "Starting QEMU for bootloader debugging..."
 	$(ECHO) "Connect with: $(GDB) -x tools/gdb/bootloader.gdb"
-	$(Q)$(QEMU) -drive format=raw,file=$(DISK_IMG) -s -S -display curses
+	$(Q)$(QEMU) $(QEMU_DRIVE_FLAGS)$(if $(wildcard $(DISK_IMG)),$(DISK_IMG),$(DISK_TEST_IMG)) -s -S -display curses
 
 debug-kernel: debug-symbols ## Debug kernel with appropriate test image
 ifeq ($(CONFIG_TESTS_UNIT)$(CONFIG_TESTS_INTEGRATION), yy)
@@ -75,11 +75,21 @@ else
 	$(Q)$(QEMU) -drive format=raw,file=$(DISK_IMG) -s -S -display curses
 endif
 
-debug-test-integration: $(DISK_INTEGRATION_IMG) gdb-test-integration ## Debug integration tests with proper symbols
+debug-test-integration: gdb-test-integration ## Debug integration tests with proper symbols
 ifeq ($(CONFIG_TESTS_INTEGRATION), y)
+ifeq ($(CONFIG_TESTS_UNIT), y)
+	@echo "Building combined test disk image (unit + integration)..."
+	$(MAKE) $(DISK_TEST_IMG)
+	@echo "Starting QEMU for integration test debugging..."
+	@echo "Connect with: $(GDB) -x tools/gdb/integration_debug.gdb"
+	$(Q)$(QEMU) -drive format=raw,file=$(DISK_TEST_IMG) -s -S -display curses
+else
+	@echo "Building integration test disk image..."
+	$(MAKE) $(DISK_INTEGRATION_IMG)
 	@echo "Starting QEMU for integration test debugging..."
 	@echo "Connect with: $(GDB) -x tools/gdb/integration_debug.gdb"
 	$(Q)$(QEMU) -drive format=raw,file=$(DISK_INTEGRATION_IMG) -s -S -display curses
+endif
 else
 	@echo "Integration tests not enabled!"
 endif
@@ -226,7 +236,11 @@ ifeq ($(CONFIG_TESTS_INTEGRATION), y)
 	@mkdir -p tools/gdb
 	@echo "set architecture i386" > tools/gdb/integration_debug.gdb
 	@echo "target remote :1234" >> tools/gdb/integration_debug.gdb
+ifeq ($(CONFIG_TESTS_UNIT), y)
+	@echo "symbol-file $(KERNEL_TEST_ELF)" >> tools/gdb/integration_debug.gdb
+else
 	@echo "symbol-file $(KERNEL_INTEGRATION_ELF)" >> tools/gdb/integration_debug.gdb
+endif
 	@echo "# Enable TUI mode with source layout" >> tools/gdb/integration_debug.gdb
 	@echo "tui enable" >> tools/gdb/integration_debug.gdb
 	@echo "layout src" >> tools/gdb/integration_debug.gdb

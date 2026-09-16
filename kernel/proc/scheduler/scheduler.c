@@ -29,6 +29,12 @@ void enqueue_ready(pcb_t *proc) {
 }
 
 void dequeue_ready(pcb_t *proc) {
+    /* Guard against double-dequeue: if the process is not in the ready list,
+       skip. A process with no prev/next that isn't the head is not linked. */
+    if (!proc->prev && !proc->next && proc != ready_list_head) {
+        return;
+    }
+
     if (proc->prev) {
         /* Adjust the process pointer prior to the one dequeued */
         proc->prev->next = proc->next;
@@ -76,6 +82,11 @@ void enqueue_wait(pcb_t *proc) {
 }
 
 void dequeue_wait(pcb_t *proc) {
+    /* Guard against double-dequeue */
+    if (!proc->prev && !proc->next && proc != wait_list_head) {
+        return;
+    }
+
     if (proc->prev) {
         /* Process to be removed is not first entry */
         proc->prev->next = proc->next;
@@ -97,6 +108,6 @@ void dequeue_wait(pcb_t *proc) {
 
     KLOG_VERBOSE(
         "SCHEDULER",
-        "Dequeue from weady list successful: name=%s (pid=%u, type=%s)\n",
+        "Dequeue from wait list successful: name=%s (pid=%u, type=%s)\n",
         proc->name, proc->pid, proc_type_to_string(proc->type));
 }

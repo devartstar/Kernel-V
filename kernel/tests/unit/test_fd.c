@@ -1,0 +1,785 @@
+#include "drivers/console_input.h"
+#include "drivers/tty_console.h"
+#include "fs/fd.h"
+#include "fs/vfs_utils.h"
+#include "lib/printk.h"
+
+int fd_alloc_free_test() {
+    pcb_t proc_obj;
+    pcb_t *proc = &proc_obj;
+    vfs_file_t *file;
+
+    /* create a pcb object */
+    if (!proc) {
+        KLOG_ERROR(
+            "FD_TEST",
+            "alloc_free test failed. failed to allocate memory for pcb.\n");
+        return 0;
+    }
+
+    /* allocate 0 to the pcb object */
+    memset(proc, 0, sizeof(pcb_t));
+
+    /* create a file object */
+    file = vfs_file_alloc();
+    if (!file) {
+        KLOG_ERROR(
+            "FD_TEST",
+            "alloc_free test failed. failed to allocate memory for file.\n");
+        return 0;
+    }
+
+    /* allocate file desctiptor for the file object */
+    int fd = fd_alloc(proc, file);
+
+    /* verificatiom */
+    if (fd != PROCESS_FIRST_NORMAL_FD) {
+        KLOG_ERROR(
+            "FD_TEST",
+            "alloc_free test failed. failed to allocate file descriptor. fd "
+            "= %u, expected fd = %u.\n",
+            fd, PROCESS_FIRST_NORMAL_FD);
+        return 0;
+    }
+
+    if (proc->fds[fd] != file) {
+        KLOG_ERROR("FD_TEST", "alloc_free test failed. for fd = %u expected "
+                              "file to be attached.\n");
+        return 0;
+    }
+
+    /* free the memory allocated for the file back to the pool */
+    int res = vfs_file_free(file);
+    if (res != VFS_OK) {
+        KLOG_ERROR("FD_TEST", "alloc_free test failed. failed to free "
+                              "allocated memory for file.\n");
+        return 0;
+    }
+
+    KLOG_INFO("FD_TEST", "alloc test passed.\n");
+    return 1;
+}
+
+uint8_t fd_get_test() {
+    pcb_t proc_obj;
+    pcb_t *proc = &proc_obj;
+    vfs_file_t *file;
+
+    /* allocate memory for pcb block */
+    if (!proc) {
+        KLOG_ERROR("FD_TEST",
+                   "get test failed. failed to allocate memory for pcb.\n");
+        return 0;
+    }
+
+    /* zero out the memory allocated to the pcb object */
+    memset(proc, 0, sizeof(pcb_t));
+
+    /* allocates zeroed memory for a file object */
+    file = vfs_file_alloc();
+    if (!file) {
+        KLOG_ERROR("FD_TEST",
+                   "get test failed. failed to allocate memory for file.\n");
+        return 0;
+    }
+
+    /* allocate file descriptor for the file in the process */
+    int fd = fd_alloc(proc, file);
+    if (fd != PROCESS_FIRST_NORMAL_FD) {
+        KLOG_ERROR("FD_TEST",
+                   "get test failed. failed to allocate file descriptor. fd = "
+                   "%u, expected fd = %u\n",
+                   fd, PROCESS_FIRST_NORMAL_FD);
+        return 0;
+    }
+
+    /* verification */
+
+    /* case 1: try to get file from correct fd */
+    if (fd_get(proc, fd) != file) {
+        KLOG_ERROR("FD_TEST",
+                   "get test failed. failed to get file from fd %u.\n", fd);
+        return 0;
+    }
+
+    /* case 2: try to get file from a negative fd */
+    if (fd_get(proc, -1) != NULL) {
+        KLOG_ERROR("FD_TEST", "get test failed. recieved file from negative fd "
+                              "-1. expected NULL\n");
+        return 0;
+    }
+
+    /* case 3: try to get file from fd above max fd */
+    if (fd_get(proc, PROCESS_MAX_FDS) != NULL) {
+        KLOG_ERROR("FD_TEST",
+                   "get test failed. recieved file from fd %u out of range.\n",
+                   PROCESS_MAX_FDS);
+        return 0;
+    }
+
+    /* case 4: try to get file from un-allocated fd */
+    if (fd_get(proc, 10) != NULL) {
+        KLOG_ERROR("FD_TEST",
+                   "get test failed. recieved file from unallocated fd 10. "
+                   "expected NULL\n",
+                   PROCESS_MAX_FDS);
+        return 0;
+    }
+
+    /* case 5: try to get file from invalid process */
+    if (fd_get(NULL, fd) != NULL) {
+        KLOG_ERROR(
+            "FD_TEST",
+            "get test failed. recieved file from fd %u from a NULL process.\n",
+            PROCESS_MAX_FDS);
+        return 0;
+    }
+
+    KLOG_INFO("FD_TEST", "get fd test passed.\n");
+    return 1;
+}
+
+uint8_t fd_close_test() {
+    pcb_t proc_obj;
+    pcb_t *proc = &proc_obj;
+    vfs_file_t *file;
+
+    /* allocate memory for pcb block */
+    if (!proc) {
+        KLOG_ERROR("FD_TEST",
+                   "close test failed. failed to allocate memory for pcb.\n");
+        return 0;
+    }
+
+    /* zero out the memory allocated to the pcb object */
+    memset(proc, 0, sizeof(pcb_t));
+    proc->pid = 102;
+    strncpy(proc->name, "fdclose", PROC_NAME_MAX);
+    proc->name[PROC_NAME_MAX - 1] = '\0';
+
+    /* allocates zeroed memory for a file object */
+    file = vfs_file_alloc();
+    if (!file) {
+        KLOG_ERROR("FD_TEST",
+                   "close test failed. failed to allocate memory for file.\n");
+        return 0;
+    }
+
+    /* allocate file descriptor for the file in the process */
+    int fd = fd_alloc(proc, file);
+    if (fd != PROCESS_FIRST_NORMAL_FD) {
+        KLOG_ERROR(
+            "FD_TEST",
+            "close test failed. failed to allocate file descriptor. fd = "
+            "%u, expected fd = %u\n",
+            fd, PROCESS_FIRST_NORMAL_FD);
+        return 0;
+    }
+
+    /* verification */
+
+    /* case 1: close the file  */
+    if (fd_close(proc, fd) != VFS_OK) {
+        KLOG_ERROR("FD_TEST",
+                   "close test failed. close fd error, expected %u.\n", VFS_OK);
+        return 0;
+    }
+
+    /* case 2: failure case to get the closed file */
+    if (fd_get(proc, fd) != NULL) {
+        KLOG_ERROR(
+            "FD_TEST",
+            "close test failed. querying closed fd returned non NUll ref.\n");
+        return 0;
+    }
+
+    /* case 3: failure case, close an already closed file */
+    if (fd_close(proc, fd) == VFS_OK) {
+        KLOG_ERROR("FD_TEST", "close test failed. closing previously closed "
+                              "file returned success.\n");
+        return 0;
+    }
+
+    KLOG_INFO("FD_TEST", "close test passed.\n");
+    return 1;
+}
+
+uint8_t fd_reuse_test() {
+    pcb_t proc_obj;
+    pcb_t *proc = &proc_obj;
+    uint8_t fd1, fd2;
+    vfs_file_t *file1, *file2;
+
+    /* simulate a process structure */
+    if (!proc) {
+        KLOG_ERROR(
+            "FD_TEST",
+            "reuse test failed. failed to allocate memory to process.\n");
+        return 0;
+    }
+    memset(proc, 0, sizeof(pcb_t));
+    proc->pid = 102;
+    strncpy(proc->name, "reusetestproc", PROC_NAME_MAX);
+    proc->name[PROC_NAME_MAX - 1] = '\0';
+
+    /* create a file 1 and allocate fd */
+    file1 = vfs_file_alloc();
+    if (!file1) {
+        KLOG_ERROR("FD_TEST",
+                   "reuse test failed. failed to allocate memory to file 1.\n");
+        return 0;
+    }
+    fd1 = fd_alloc(proc, file1);
+    if (fd1 < 0 || fd1 >= PROCESS_MAX_FDS) {
+        KLOG_ERROR("FD_TEST",
+                   "reuse test failed. fd %u, expected between 0-%u.\n", fd1,
+                   PROCESS_MAX_FDS);
+        return 0;
+    }
+
+    if (proc->fds[fd1] != file1) {
+        KLOG_ERROR("FD_TEST",
+                   "reuse test failed. fd %u entry in process doesnt point to "
+                   "file 1.\n",
+                   fd1);
+        return 0;
+    }
+
+    /* close file 1 */
+    int ret1 = fd_close(proc, fd1);
+    if (ret1 != VFS_OK) {
+        KLOG_ERROR("FD_TEST",
+                   "reuse test failed. failed to close file 1. status = %d, "
+                   "expected = %d.\n",
+                   ret1, VFS_OK);
+        return 0;
+    }
+
+    /* create a file 2 and allocate fd */
+    file2 = vfs_file_alloc();
+    if (!file2) {
+        KLOG_ERROR("FD_TEST",
+                   "reuse test failed. failed to allocate memory to file 2.\n");
+        return 0;
+    }
+    fd2 = fd_alloc(proc, file2);
+    if (fd2 != fd1) {
+        KLOG_ERROR("FD_TEST",
+                   "reuse test failed. fd %u allocated to file 2, expected "
+                   "fd %u, same as of file 1 since it was freed.\n",
+                   fd2, fd1);
+        return 0;
+    }
+
+    if (proc->fds[fd2] != file2) {
+        KLOG_ERROR("FD_TEST",
+                   "reuse test failed. fd %u entry in process doesnt point to "
+                   "file 2.\n",
+                   fd2);
+        return 0;
+    }
+
+    /* close file 2 */
+    int ret2 = fd_close(proc, fd2);
+    if (ret2 != VFS_OK) {
+        KLOG_ERROR("FD_TEST",
+                   "reuse test failed. failed to close file 2. status = %d, "
+                   "expected = %d.\n",
+                   ret2, VFS_OK);
+        return 0;
+    }
+
+    KLOG_INFO("FD_TEST", "reuse test passed.\n");
+    return 1;
+}
+
+uint8_t fd_close_all_test() {
+    pcb_t proc_obj;
+    pcb_t *proc = &proc_obj;
+    vfs_file_t *file1, *file2;
+    uint32_t fd1, fd2;
+
+    /* allocate memory to simulate a test process */
+    if (!proc) {
+        KLOG_ERROR(
+            "FD_TEST",
+            "close_all test failed. failed to allocate memory to process.\n");
+        return 0;
+    }
+    memset(proc, 0, sizeof(pcb_t));
+    strncpy(proc->name, "close_all_test", PROC_NAME_MAX);
+    proc->pid = 102;
+
+    /* allocate memory for the file objects */
+    file1 = vfs_file_alloc();
+    file2 = vfs_file_alloc();
+    if (!file1 || !file2) {
+        KLOG_ERROR(
+            "FD_TEST",
+            "close_all test failed. failed to allocate memory for files.\n");
+        return 0;
+    }
+
+    /* assign file descriptor for the files in the process */
+    fd1 = fd_alloc(proc, file1);
+    fd2 = fd_alloc(proc, file2);
+    if (fd1 != PROCESS_FIRST_NORMAL_FD || fd2 != PROCESS_FIRST_NORMAL_FD + 1) {
+        KLOG_ERROR("FD_TEST",
+                   "close_all test failed. failed to allocate correct fd for "
+                   "process fd1 %u, fd2 %u.\n",
+                   fd1, fd2);
+        return 0;
+    }
+
+    /* close all reference to the files in the process */
+    if (fd_close_all(proc) != VFS_OK) {
+        KLOG_ERROR("FD_TEST",
+                   "close_all test failed. failed to close all files inside "
+                   "process %s.\n",
+                   proc->name);
+        return 0;
+    }
+
+    if (proc->fds[fd1] || proc->fds[fd2]) {
+        KLOG_ERROR(
+            "FD_TEST",
+            "close_all test failed. process %s still holds file reference.\n",
+            proc->name);
+        return 0;
+    }
+
+    KLOG_INFO("FD_TEST", "close_all test passed.\n");
+    return 1;
+}
+
+uint8_t fd_open_path_test() {
+    pcb_t proc_obj;
+    pcb_t *proc = &proc_obj;
+    vfs_file_t *file;
+    int fd;
+
+    /* allocate memory for the process */
+    if (!proc) {
+        KLOG_ERROR(
+            "FD_TEST",
+            "open_path test failed. failed to allocate memory to process.\n");
+        return 0;
+    }
+    memset(proc, 0, sizeof(pcb_t));
+    strncpy(proc->name, "open_path_test", PROC_NAME_MAX);
+    proc->name[PROC_NAME_MAX - 1] = '\0';
+
+    /* open a file for a process */
+    fd = fd_open_path(proc, "/hello.txt", 0);
+    if (fd != PROCESS_FIRST_NORMAL_FD) {
+        KLOG_ERROR("FD_TEST",
+                   "open_path test failed. failed to open path for file "
+                   "/hello.txt for process %s. fd = %d, expected fd = %d\n",
+                   proc->name, fd, PROCESS_FIRST_NORMAL_FD);
+        return 0;
+    }
+
+    /* verification */
+
+    /* check if the file referenced by the fd is valid */
+    file = fd_get(proc, fd);
+    if (!file) {
+        KLOG_ERROR("FD_TEST",
+                   "open_path test failed. invalid file ref for fd %d.\n", fd);
+        return 0;
+    }
+
+    /* file should have valid vfs node reference */
+    if (!file->node) {
+        KLOG_ERROR(
+            "FD_TEST",
+            "open_path test failed. file has no valid node reference.\n");
+        return 0;
+    }
+
+    /* compare the file name returned by fd with the one opened */
+    if (strcmp(file->node->name, "hello.txt") != 0) {
+        KLOG_ERROR("FD_TEST",
+                   "open_path test failed. file returned by fd %s, expected "
+                   "hello.txt.\n",
+                   file->node->name);
+        return 0;
+    }
+
+    /* validate other file fields */
+    if (file->offset != 0) {
+        KLOG_ERROR(
+            "FD_TEST",
+            "open_path test failed. offset for net file %u, expected 0.\n",
+            file->offset);
+        return 0;
+    }
+
+    /* negative case, try opening a file which doesn't exists */
+    if (fd_open_path(proc, "/does-not-exist", 0) != VFS_ERR_NOTFOUND) {
+        KLOG_ERROR("FD_TEST", "open_path test failed. missing path "
+                              "/does-not-exist should have returned null.\n");
+        return 0;
+    }
+
+    KLOG_INFO("FD_TEST", "open_path test passed.\n");
+    return 1;
+}
+
+uint8_t fd_read_test() {
+    pcb_t proc_obj;
+    pcb_t *proc = &proc_obj;
+    int fd;
+    int ret;
+    char buf[8];
+
+    /* create a process object */
+    if (!proc) {
+        KLOG_ERROR(
+            "FD_TEST",
+            "read test failed. failed to allocate memory for process.\n");
+        return 0;
+    }
+    memset(proc, 0, sizeof(pcb_t));
+    strncpy(proc->name, "fd_read_test", PROC_NAME_MAX);
+    proc->name[PROC_NAME_MAX - 1] = '\0';
+    proc->pid = 102;
+
+    /* initialize the buffer with zeroed memory */
+    memset(buf, 0, sizeof(buf));
+
+    /* open a file and associate it with process */
+    fd = fd_open_path(proc, "/hello.txt", 0);
+    if (fd != PROCESS_FIRST_NORMAL_FD) {
+        KLOG_ERROR("FD_TEST",
+                   "read test failed. opening file: /hello.txt in proc %s, "
+                   "returned fd %u, expected %u.\n",
+                   proc->name, fd, PROCESS_FIRST_NORMAL_FD);
+        return 0;
+    }
+
+    /* read the content of the file */
+    ret = fd_read(proc, fd, buf, 5);
+
+    /* verification */
+    /* verify the read length */
+    if (ret != 5) {
+        KLOG_ERROR("FD_TEST",
+                   "read test failed. read length %d (%s), expected 5.\n", ret,
+                   vfs_get_status_string(ret));
+        return 0;
+    }
+
+    /* verify the read content */
+    if (buf[0] != 'h' && buf[4] != 'o') {
+        KLOG_ERROR("FD_TEST",
+                   "read test failed. read content = %s, expected = hello.\n",
+                   buf);
+        return 0;
+    }
+
+    /* verify the file offset after read */
+    uint32_t offset = fd_get(proc, fd)->offset;
+    if (offset != 5) {
+        KLOG_ERROR(
+            "FD_TEST",
+            "read test failed. file offset after read = %u, expected = 5.\n",
+            offset);
+        return 0;
+    }
+
+    KLOG_INFO("FD_TEST", "read test passed.\n");
+    return 1;
+}
+
+uint8_t fd_write_test() {
+    pcb_t proc_obj;
+    pcb_t *proc = &proc_obj;
+    vfs_file_t *file;
+    int fd;
+    int ret;
+    const char *msg = "TEST";
+    uint32_t msg_len = 4;
+
+    /* create a process object */
+    if (!proc) {
+        KLOG_ERROR(
+            "FD_TEST",
+            "write test failed. failed to allocate memory for process.\n");
+        return 0;
+    }
+    memset(proc, 0, sizeof(pcb_t));
+    strncpy(proc->name, "fd_write_test", PROC_NAME_MAX);
+    proc->name[PROC_NAME_MAX - 1] = '\0';
+    proc->pid = 102;
+
+    /* open a file and associate it with process */
+    fd = fd_open_path(proc, "/hello.txt", 0);
+    if (fd != PROCESS_FIRST_NORMAL_FD) {
+        KLOG_ERROR("FD_TEST",
+                   "write test failed. opening file: /hello.txt in proc %s, "
+                   "returned fd %u, expected %u.\n",
+                   proc->name, fd, PROCESS_FIRST_NORMAL_FD);
+        return 0;
+    }
+
+    /* write the content to the file */
+    ret = fd_write(proc, fd, msg, msg_len);
+
+    /* verification */
+    /* verify the write length */
+    if (ret != 4) {
+        KLOG_ERROR("FD_TEST",
+                   "write test failed. write length %d (%s), expected 4.\n",
+                   ret, vfs_get_status_string(ret));
+        return 0;
+    }
+
+    /* verify the read content */
+    if (msg[0] != 'T' && msg[3] != 'T') {
+        KLOG_ERROR("FD_TEST",
+                   "write test failed. file content = %s, expected = TEST.\n",
+                   msg);
+        return 0;
+    }
+
+    /* verify the file offset after read */
+    uint32_t offset = fd_get(proc, fd)->offset;
+    if (offset != 4) {
+        KLOG_ERROR(
+            "FD_TEST",
+            "write test failed. file offset after write = %u, expected = 5.\n",
+            offset);
+        return 0;
+    }
+
+    KLOG_INFO("FD_TEST", "write test passed.\n");
+    return 1;
+}
+
+uint8_t fd_seek_test() {
+    pcb_t proc_obj;
+    pcb_t *proc = &proc_obj;
+    vfs_file_t *file;
+    int fd;
+    int ret;
+    char buf[8];
+
+    /* create a process object */
+    if (!proc) {
+        KLOG_ERROR(
+            "FD_TEST",
+            "seek test failed. failed to allocate memory for process.\n");
+        return 0;
+    }
+    memset(proc, 0, sizeof(pcb_t));
+    strncpy(proc->name, "fd_seek_test", PROC_NAME_MAX);
+    proc->name[PROC_NAME_MAX - 1] = '\0';
+    proc->pid = 102;
+
+    /* initialize the buffer with zeroed memory */
+    memset(buf, 0, sizeof(buf));
+
+    /* open a file and associate it with process */
+    fd = fd_open_path(proc, "/hello.txt", 0);
+    if (fd != PROCESS_FIRST_NORMAL_FD) {
+        KLOG_ERROR("FD_TEST",
+                   "seek test failed. opening file: /hello.txt in proc %s, "
+                   "returned fd %u, expected %u.\n",
+                   proc->name, fd, PROCESS_FIRST_NORMAL_FD);
+        return 0;
+    }
+
+    /* open file with set the offset to 0, move offset forward by 2 from start
+     */
+    ret = fd_lseek(proc, fd, 2, VFS_SEEK_SET);
+
+    /* get the file using the fd and test file offset */
+    file = fd_get(proc, fd);
+    if (!file) {
+        KLOG_ERROR(
+            "FD_TEST",
+            "seek test failed. unable to ref. file for fd %u in process %s.\n",
+            fd, proc->name);
+        return 0;
+    }
+
+    if (file->offset != 2) {
+        KLOG_ERROR("FD_TEST",
+                   "seek test failed. file for fd %u in process %s, offset = "
+                   "%u, expected = 2.\n",
+                   fd, proc->name, file->offset);
+        return 0;
+    }
+
+    /* read file from offset 2 */
+    ret = fd_read(proc, fd, buf, 3);
+    if (ret != 3) {
+        KLOG_ERROR("FD_TEST",
+                   "seek test failed. reading file for fd %u in process %s. "
+                   "length read = %u (%s), expected = 3.\n",
+                   fd, proc->name, ret, vfs_get_status_string(ret));
+        return 0;
+    }
+
+    /* verify the read content */
+    if (buf[0] != 'l' && buf[2] != 'o') {
+        KLOG_ERROR("FD_TEST",
+                   "seek test failed. file %s, offset 2 in process %s. data "
+                   "read = %s, expected = llo.\n",
+                   file->node->name, proc->name, buf);
+        return 0;
+    }
+
+    /* verify the offset after read */
+    if (file->offset != 5) {
+        KLOG_ERROR("FD_TEST",
+                   "seek test failed. file %s in process %s, after read. "
+                   "offset = %u, expected = 5.\n",
+                   file->node->name, proc->name, file->offset);
+        return 0;
+    }
+
+    /* update the offset to move 2 back from current */
+    ret = fd_lseek(proc, fd, -2, VFS_SEEK_CUR);
+    if (ret != 3 || file->offset != 3) {
+        KLOG_ERROR("FD_TEST",
+                   "seek test failed. file %s in process %s. offset = %u, "
+                   "expected = 3.\n",
+                   file->node->name, proc->name, file->offset);
+    }
+
+    /* update offset to move 1 back from the end */
+    ret = fd_lseek(proc, fd, -1, VFS_SEEK_END);
+    if (ret < 0) {
+        KLOG_ERROR("FD_TEST",
+                   "seek test failed. file %s in process %s. offset = %u. "
+                   "status %d (%s).\n",
+                   file->node->name, proc->name, file->offset, ret,
+                   vfs_get_status_string(ret));
+        return 0;
+    }
+
+    /* negative case: update offset to move 1000 back from the 0 */
+    ret = fd_lseek(proc, fd, -1000, VFS_SEEK_SET);
+    if (ret != VFS_ERR_INVALID) {
+        KLOG_ERROR("FD_TEST",
+                   "seek test failed. file %s in process %s. offset = %u. "
+                   "status %u (%s), expected ERR_INVALID\n",
+                   file->node->name, proc->name, file->offset, ret,
+                   vfs_get_status_string(ret));
+        return 0;
+    }
+
+    KLOG_INFO("FD_TEST", "seek test passed.\n");
+    return 1;
+}
+
+uint8_t fd_setup_stdio_test() {
+
+    /* simulate a process structure */
+    pcb_t proc;
+    memset(&proc, 0, sizeof(proc));
+    proc.pid = 101;
+    strncpy(proc.name, "stdio", PROC_NAME_MAX);
+    proc.name[PROC_NAME_MAX - 1] = '\0';
+
+    /* setup stdio for the process */
+    if (fd_setup_stdio(&proc) != VFS_OK) {
+        KLOG_ERROR("FD_TEST", "setup_stdio test failed. stdio setup failed.\n");
+        return 0;
+    }
+
+    if (!proc.ctty) {
+        KLOG_ERROR("FD_TEST", "setup_stdio test failed. process controlling "
+                              "terminal is not valid.\n");
+        return 0;
+    }
+
+    /* check if the fd 0/1/2 is set properly */
+    if (!proc.fds[0] || !proc.fds[1] || !proc.fds[2]) {
+        KLOG_ERROR("FD_TEST",
+                   "setup_stdio test failed. fds are not initialized.\n");
+        return 0;
+    }
+
+    /* fd 0/1/2 must reference to same tty terminal session. */
+    if (proc.fds[0]->node != proc.ctty || proc.fds[1]->node != proc.ctty ||
+        proc.fds[2]->node != proc.ctty) {
+        KLOG_ERROR("FD_TEST", "setup_stdio test failed. fd 0/1/2 do not point "
+                              "to process controlling terminal.\n");
+        return 0;
+    }
+
+    /* default ctty is console termina */
+    if (strcmp(proc.ctty->name, "console") != 0) {
+        KLOG_ERROR("FD_TEST", "setup_stdio test failed. default process "
+                              "controlling terminal is not console.\n");
+        return 0;
+    }
+
+    fd_close_all(&proc);
+
+    KLOG_INFO("FD_TEST", "fd_setup_stdio test passed.\n");
+    return 1;
+}
+
+uint8_t devstdin_read_test() {
+    int ret;
+    char buf[8];
+
+    /* initialize a dummy process */
+    pcb_t proc;
+    memset(&proc, 0, sizeof(pcb_t));
+    proc.pid = 301;
+    strncpy(proc.name, "stdin_test", PROC_NAME_MAX);
+    proc.name[PROC_NAME_MAX - 1] = '\0';
+
+    /* initialize console layer */
+    console_input_init();
+
+    /* setup the stdio fds in the dummy process */
+    if (fd_setup_stdio(&proc) != VFS_OK) {
+        KLOG_ERROR("FD_TEST", "devstdin_read_test failed. failed to setup "
+                              "stdio fds in process.\n");
+        return 0;
+    }
+
+    /* /dev/stdin reads now block until data is available, so seed the console
+     * buffer before reading to avoid parking this test thread indefinitely. */
+
+    /* /dev/stdin now reads from the console TTY input channel, not the legacy
+     * console_input ring. Seed the TTY the same way a real keystroke would —
+     * tty_console_rx() stages + commits each byte into the input channel. */
+    tty_console_rx('A');
+    tty_console_rx('B');
+    tty_console_rx('C');
+    tty_console_rx('\n');
+
+    memset(buf, 0, sizeof(buf));
+
+    /* read the console buffer content using read on fd 0 */
+    ret = fd_read(&proc, 0, buf, sizeof(buf));
+    if (ret != 3) {
+        KLOG_ERROR(
+            "FD_TEST",
+            "devstdin_read test failed. characters read %u, expected 3.\n",
+            ret);
+        fd_close_all(&proc);
+        return 0;
+    }
+
+    /* check for the validity of the read content */
+    if (buf[0] != 'A' || buf[1] != 'B' || buf[2] != 'C') {
+        KLOG_ERROR(
+            "FD_TEST",
+            "devstdin_read test failed. read content %s, expected ABC.\n", buf);
+        fd_close_all(&proc);
+        return 0;
+    }
+
+    fd_close_all(&proc);
+
+    KLOG_INFO("FD_TEST", "devstdin_read test passed.\n");
+    return 1;
+}

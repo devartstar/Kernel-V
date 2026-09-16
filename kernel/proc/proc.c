@@ -3,6 +3,7 @@
 #include "arch/x86/tss.h"
 #include "core/debug.h"
 #include "core/panik.h"
+#include "fs/fd.h"
 #include "lib/printk.h"
 #include "lib/string.h"
 #include "mm/paging.h"
@@ -30,7 +31,6 @@ void cleanup_terminated_processes(void) {
                          "Reclaiming process: %s (pid=%u, type=%s)\n", p->name,
                          p->pid, proc_type_to_string(p->type));
             dequeue_proc_list(p);
-            dequeue_ready(p);
             proc_free(p);
         }
 
@@ -89,8 +89,7 @@ void proc_init(void) {
     print_proc_info(idle);
     proc_mark_ready(idle);
 
-    debug_module(PROCESS_MGMT, "Created idle process with PID %d\n",
-                 idle->pid);
+    debug_module(PROCESS_MGMT, "Created idle process with PID %d\n", idle->pid);
 }
 
 pcb_t *proc_alloc(const char *name) {
@@ -106,6 +105,15 @@ pcb_t *proc_alloc(const char *name) {
     new_proc->type = PROC_TYPE_UNASSIGNED;
     new_proc->exit_code = 0;
     new_proc->has_exited = 0;
+    new_proc->wait_info.wait_reason = PROC_WAIT_NONE;
+    new_proc->wait_info.wait_tick_count = 0;
+
+    new_proc->sigpending = SIG_MASK_EMPTY;
+
+    /* Background trace id for this process's non-syscall execution.
+     * Minted without disturbing the caller's active sc. */
+    new_proc->trace_id = log_trace_next();
+    new_proc->trace_id_saved = new_proc->trace_id;
 
     new_proc->kernel_stack_base = NULL;
     new_proc->kernel_stack_top = NULL;
@@ -157,24 +165,25 @@ void enqueue_proc_list(pcb_t *proc) {
 }
 
 void dequeue_proc_list(pcb_t *proc) {
+    /* Guard against double-dequeue */
+    if (!proc->all_prev && !proc->all_next && proc != proc_list_head) {
+        return;
+    }
+
     if (proc->all_prev) {
         /* If not the first process in list */
         proc->all_prev->all_next = proc->all_next;
-        proc->all_next->all_prev = proc->all_prev;
     } else {
         /* First entry in the list */
         proc_list_head = proc->all_next;
-        proc_list_head->all_prev = NULL;
     }
 
     if (proc->all_next) {
         /* If not the last process in list */
-        proc->all_prev->all_next = proc->all_next;
         proc->all_next->all_prev = proc->all_prev;
     } else {
         /* Last entry in the list */
         proc_list_tail = proc->all_prev;
-        proc_list_tail->all_next = NULL;
     }
 
     proc->all_next = NULL;
@@ -197,12 +206,14 @@ void proc_cleanup_kernel(pcb_t *proc) {
     // Don't set state here - should already be TERMINATED
     // Don't dequeue here - should already be dequeued
 
+    /* close all the file ref. for the process */
+    fd_close_all(proc);
+
     /* Free up the process kernel stack memory */
     if (proc->kernel_stack_base && proc->kernel_stack_size) {
         for (uint32_t offset = 0; offset < proc->kernel_stack_size;
              offset += PAGE_SIZE) {
-            pmm_free_frame(
-                (void *)((uint8_t *)proc->kernel_stack_base + offset));
+            pmm_free_frame((phys_addr_t)proc->kernel_stack_base + offset);
         }
     }
 
@@ -226,6 +237,9 @@ void proc_cleanup_user(pcb_t *proc) {
         proc->name, proc->pid, proc_type_to_string(proc->type),
         proc->user_entry, proc->user_stack_top, proc->user_code_size)
 
+    /* close all the file ref. by the process */
+    fd_close_all(proc);
+
     /* Free user code backing frame */
     if (proc->user_entry && (proc->user_code_size > 0)) {
         paging_free_region_in_pd(proc->page_directory_virt, proc->user_entry,
@@ -239,26 +253,27 @@ void proc_cleanup_user(pcb_t *proc) {
                                  proc->user_stack_size);
     }
 
-    /* No need to free kernel half of PDE */
-    /* Free the user half PDE, skip PDE[0] (kernel identity map) */
+    /* No need to free lower kernel half of PDE */
+    /* Free the higher half PDE, skip PDE[0] (kernel identity map) */
     for (uint32_t i = 1; i < KERNEL_PDE_START; i++) {
+        /* Get the physical address of the page directory entry */
         uint32_t pde = proc->page_directory_virt[i];
         if (pde & PAGE_PRESENT) {
-            uint32_t *pt_virt = (uint32_t *)(pde & 0xFFFFF000);
-            pmm_free_frame(pt_virt);
+            phys_addr_t pt_phys = (phys_addr_t)(pde & 0xFFFFF000);
+            pmm_free_frame(pt_phys);
             proc->page_directory_virt[i] = 0;
         }
     }
 
     /* Free the Page Dir frame */
-    pmm_free_frame(proc->page_directory_virt);
+    pmm_free_frame(proc->page_directory_phys);
     proc->page_directory_virt = NULL;
     proc->page_directory_phys = 0;
 
     /* Free kernel stack */
     if (proc->kernel_stack_base && proc->kernel_stack_size) {
         uint32_t pages = proc->kernel_stack_size / PAGE_SIZE;
-        uint8_t *page = proc->kernel_stack_base;
+        uint8_t page = (phys_addr_t)proc->kernel_stack_base;
 
         for (uint32_t i = 0; i < pages; i++) {
             pmm_free_frame(page + i * PAGE_SIZE);
@@ -328,17 +343,20 @@ pcb_t *proc_create(void (*entry)(void *), void *arg, const char *name) {
     }
 
     /* allocate a memory page as kernel stack to process */
-    void *kernel_stack_block = pmm_alloc_frame();
+    phys_addr_t kernel_stack_block = pmm_alloc_frame();
     if (!kernel_stack_block) {
         proc_free(proc);
         return NULL;
     }
-    proc->kernel_stack_base = kernel_stack_block;
+
+    /* Identity map between kernel physical and virtual address space */
+    proc->kernel_stack_base =
+        (uint8_t *)phys_to_virt_identity(kernel_stack_block);
     proc->kernel_stack_size = KERNEL_STACK_SIZE;
     proc->kernel_stack_top = proc->kernel_stack_base + proc->kernel_stack_size;
 
     /* since stack grows downwards, stack pointer pointing to top of stack */
-    uint32_t *stack_top = (uint32_t *)proc->kernel_stack_top;
+    virt_addr_t *stack_top = (virt_addr_t *)proc->kernel_stack_top;
 
     /*
      Update the stack to call the thread_entry_wrapper (entry, arg)
@@ -350,12 +368,12 @@ pcb_t *proc_create(void (*entry)(void *), void *arg, const char *name) {
     /* push a fake return address (will never be used) */
     *(--stack_top) = 0;
     /* push the entry function to be used by thread_entry_wrapper */
-    *(--stack_top) = (uint32_t)entry;
+    *(--stack_top) = (virt_addr_t)entry;
     /* push the argument pointer */
-    *(--stack_top) = (uint32_t)arg;
+    *(--stack_top) = (virt_addr_t)arg;
 
-    proc->context.esp = (uint32_t)(uintptr_t)stack_top;
-    proc->context.eip = (uint32_t)(uintptr_t)thread_entry_wrapper;
+    proc->context.esp = (virt_addr_t)(uintptr_t)stack_top;
+    proc->context.eip = (virt_addr_t)(uintptr_t)thread_entry_wrapper;
     proc->context.ebp = 0;
 
     // Initialize EFLAGS with interrupts enabled
@@ -403,59 +421,65 @@ const char *proc_type_to_string(proc_type_t type) {
 }
 
 // =========================================
-//  PROCESS SLEEP / WAIT
+//  PROCESS SLEEP
 // =========================================
 
-/*
- * proc_wait_prepare - move current_proc into WAITING and onto the wait list,
- * recording WHY (reason) and, for object waits, on WHAT (channel). Does NOT
- * yield, so it can be used to arm a wait without switching (e.g. under a lock).
- */
-static void proc_wait_prepare(proc_wait_reason_t reason, uint32_t ticks,
-                              void *channel) {
+static void proc_wait_prepare(proc_wait_reason_t reason, uint32_t ticks) {
     if (!current_proc) {
         return;
     }
 
-    /* Only timer-driven sleeps carry a tick count. */
     if (reason != PROC_WAIT_SLEEP) {
         ticks = 0;
     }
 
     current_proc->state = PROC_WAITING;
+
     current_proc->wait_info.wait_reason = reason;
     current_proc->wait_info.wait_tick_count = ticks;
+    current_proc->wait_info.wait_channel = NULL;
+
+    dequeue_ready(current_proc);
+    enqueue_wait(current_proc);
+}
+
+static void proc_wait_prepare_yeild(proc_wait_reason_t reason, uint32_t ticks) {
+    uint32_t flags;
+
+    flags = irq_save();
+    proc_wait_prepare(reason, ticks);
+    irq_restore(flags);
+
+    yield();
+}
+
+void proc_wait_sleep(uint32_t ticks) {
+    proc_wait_prepare_yeild(PROC_WAIT_SLEEP, ticks);
+}
+void proc_wait_console_input(void) {
+    proc_wait_prepare_yeild(PROC_WAIT_CONSOLE_INPUT, 0);
+}
+void proc_wait_prepare_console_input(void) {
+    proc_wait_prepare(PROC_WAIT_CONSOLE_INPUT, 0);
+}
+
+void proc_wait_prepare_on(proc_wait_reason_t reason, void *channel) {
+    if (!current_proc) {
+        return;
+    }
+
+    /* object based wait. they are never timer driver so wait tick = 0 */
+    current_proc->state = PROC_WAITING;
+    current_proc->wait_info.wait_reason = reason;
+    current_proc->wait_info.wait_tick_count = 0;
     current_proc->wait_info.wait_channel = channel;
 
     dequeue_ready(current_proc);
     enqueue_wait(current_proc);
 }
 
-/*
- * proc_wait_prepare_yield - arm a wait and immediately yield the CPU.
- * Interrupts are held across the prepare so a waker (possibly an IRQ) cannot
- * fire between "enqueue on wait list" and "leave ready queue" and strand us
- * (the lost-wakeup race).
- */
-static void proc_wait_prepare_yield(proc_wait_reason_t reason, uint32_t ticks,
-                                    void *channel) {
-    irq_flags_t flags = irq_save();
-    proc_wait_prepare(reason, ticks, channel);
-    irq_restore(flags);
-
-    yield();
-}
-
-void proc_sleep(uint32_t ticks) {
-    proc_wait_prepare_yield(PROC_WAIT_SLEEP, ticks, NULL);
-}
-
-void proc_wait_prepare_on(proc_wait_reason_t reason, void *channel) {
-    proc_wait_prepare(reason, 0, channel);
-}
-
 // =========================================
-//  PROCESS WAKE UP
+// PROCESS WAKE UP
 // =========================================
 
 void proc_wakeup(pcb_t *proc) {
@@ -466,25 +490,30 @@ void proc_wakeup(pcb_t *proc) {
     dequeue_wait(proc);
 
     proc->state = PROC_READY;
-    proc->wait_info.wait_reason = PROC_WAIT_NONE;
     proc->wait_info.wait_tick_count = 0;
+    proc->wait_info.wait_reason = PROC_WAIT_NONE;
     proc->wait_info.wait_channel = NULL;
 
     enqueue_ready(proc);
 }
 
-void proc_wakeup_one_reason(proc_wait_reason_t reason) {
-    irq_flags_t flags = irq_save();
+void proc_wakeup_one_reason(uint32_t reason) {
+    irq_flags_t flags;
+    pcb_t *p;
+    pcb_t *next;
 
-    pcb_t *p = wait_list_head;
+    flags = irq_save();
+
+    p = wait_list_head;
     while (p) {
-        /* capture next before proc_wakeup unlinks p from the wait list */
-        pcb_t *next = p->next;
+        next = p->next;
+
         if (p->state == PROC_WAITING && p->wait_info.wait_reason == reason) {
             proc_wakeup(p);
             irq_restore(flags);
             return;
         }
+
         p = next;
     }
 
@@ -492,15 +521,20 @@ void proc_wakeup_one_reason(proc_wait_reason_t reason) {
 }
 
 void proc_wakeup_all_on(void *channel) {
-    irq_flags_t flags = irq_save();
+    irq_flags_t flags;
+    pcb_t *p;
+    pcb_t *next;
 
-    pcb_t *p = wait_list_head;
+    flags = irq_save();
+
+    p = wait_list_head;
     while (p) {
-        /* capture next before proc_wakeup unlinks p from the wait list */
-        pcb_t *next = p->next;
+        next = p->next;
+
         if (p->state == PROC_WAITING && p->wait_info.wait_channel == channel) {
             proc_wakeup(p);
         }
+
         p = next;
     }
 
@@ -526,6 +560,71 @@ void proc_exit(void) {
     }
 }
 
+int proc_handle_pending_signals() {
+    pcb_t *p = current_proc;
+
+    /* No pending signals to handle */
+    if (!p || p->sigpending == SIG_MASK_EMPTY) {
+        return 0;
+    }
+
+    /* snapshot + clear under IRQ guard: a producer may |= a new bit
+     * concurrently from IRQ context, we must not loose it or double act */
+    irq_flags_t flags = irq_save();
+    uint32_t pending = p->sigpending;
+    p->sigpending = SIG_MASK_EMPTY;
+    irq_restore(flags);
+
+    /* multiple signals to be handled - we need to define PRIORITY ORDER.
+     * SIGKILL first, then lowest numbered. All three defaults = terminate, but
+     * we log specific ones */
+    uint32_t sig = SIG_NONE;
+    if (pending & SIG_BIT(SIGKILL)) {
+        sig = SIGKILL;
+    } else if (pending & SIG_BIT(SIGINT)) {
+        sig = SIGINT;
+    } else if (pending & SIG_BIT(SIGQUIT)) {
+        sig = SIGQUIT;
+    }
+
+    /* if none of the handled signals bits are set */
+    if (sig == SIG_NONE) {
+        return 0;
+    }
+
+    /* no handler exists yet -> default action = terminate process
+     * POSIX status: exit status = 128 + signo. */
+    KLOG_INFO("SIGNAL", "pid=%u terminated by signal %u\n", p->pid, sig);
+    proc_mark_terminated(p, 128 + (int)sig);
+
+    return 1;
+}
+
+void proc_signal_channel(void *channel, int signo) {
+    irq_flags_t flags = irq_save();
+
+    pcb_t *proc_now = wait_list_head;
+    while (proc_now) {
+        pcb_t *proc_next = proc_now->next;
+
+        if (proc_now->state == PROC_WAITING &&
+            proc_now->wait_info.wait_channel == channel) {
+            proc_now->sigpending |= SIG_BIT(signo);
+            /* wake up the proces - expectation isit wakes up and marks
+             * terminated and yeilds */
+            proc_wakeup(proc_now);
+        }
+
+        proc_now = proc_next;
+    }
+
+    irq_restore(flags);
+}
+
+// =========================================
+// PROCESS TYPES
+// =========================================
+
 int proc_is_special(const pcb_t *proc) {
     if (!proc) {
         return 0;
@@ -536,6 +635,10 @@ int proc_is_special(const pcb_t *proc) {
 
 int proc_is_reclaimable(const pcb_t *proc) {
     if (!proc || !proc->has_exited || proc->state != PROC_TERMINATED) {
+        return 0;
+    }
+
+    if (proc->reap_blocked) {
         return 0;
     }
 
@@ -644,13 +747,8 @@ pcb_t *scheduler_pick_next(void) {
                 return p;
             }
         }
-    }
-
-    /* If no READY process found, return the idle process */
-    for (pcb_t *p = ready_list_head; p; p = p->next) {
-        if (strcmp(p->name, "idle") == 0) {
-            return p;
-        }
+        panik(
+            "idle process missing from ready list - no process to schedule!\n");
     }
 
     return proc_now;
@@ -697,6 +795,7 @@ void yield(void) {
         }
     }
 
+    /* Do a context switch if new scheduled process != current process */
     if (proc_next && proc_next != proc_now) {
 
         KLOG_VERBOSE("PROCESS_MGMT",
@@ -729,6 +828,19 @@ void yield(void) {
         /* Mark the selected Process as Running */
         proc_next->state = PROC_RUNNING;
         current_proc = proc_next;
+
+        /* Restore the incoming process's trace id so its sc survives across
+         * this context switch. If proc_next was preempted/yielded mid-syscall
+         * this is the syscall's unique id; otherwise it is the background id.
+         *
+         * Placed HERE - under cli, immediately after current_proc is updated -
+         * so current_proc and log_trace_id flip together atomically. If set
+         * before cli, a timer interrupt in that window would log under
+         * proc_next's sc while current_proc is still proc_now (pid/sc mismatch,
+         * i.e. two processes appearing to share one sc). The pre-cli
+         * announcement logs above still ran as proc_now, so they correctly
+         * carry proc_now's own sc. */
+        log_trace_set(proc_next->trace_id);
 
         /** [START] Todo: move before switch_to */
         /* [todo] We have 1 TSS, its a good practice to have 1 per CPU */
@@ -786,11 +898,7 @@ void timer_interrupt_proc_handler(uint32_t tickcount) {
     while (p) {
         pcb_t *next_p = p->next;
 
-        /* Only timer-driven sleeps are advanced here. Object/channel waiters
-         * (wait_reason != PROC_WAIT_SLEEP) are woken explicitly by producers
-         * via proc_wakeup_all_on / proc_wakeup_one_reason - never by the sleep
-         * timer. Otherwise a channel waiter (wait_tick_count == 0) would be
-         * spuriously woken on every single tick. */
+        /* check the reason for sleep and operate on timer based sleep only */
         if (p->wait_info.wait_reason != PROC_WAIT_SLEEP) {
             p = next_p;
             continue;
@@ -800,7 +908,7 @@ void timer_interrupt_proc_handler(uint32_t tickcount) {
             p->wait_info.wait_tick_count--;
         }
 
-        /* Sleep timer has expired then enqueue to ready list */
+        /* Sleep timer has expired then enqueue to ready lit */
         if (p->wait_info.wait_tick_count == 0) {
             proc_wakeup(p);
         }
@@ -808,12 +916,19 @@ void timer_interrupt_proc_handler(uint32_t tickcount) {
         p = next_p;
     }
 
+    /* Process wakeups above are safe on every timer tick, but switching away
+     * while another interrupt handler is active strands that handler's stack
+     * frame and keeps the kernel in nested-interrupt context. */
+    if (nested_interrupt_count != 0) {
+        return;
+    }
+
     /* Process premption scheduling */
     /* Premption - Kernel to context switch automatically on timer tick */
     if (current_proc != NULL && current_proc->state == PROC_RUNNING) {
         current_proc->timeslice_ticks--;
-        pr_info("[TICK %u] %s: timeslice ticks = %u\n",
-                PRINT_UINT32(tickcount), current_proc->name,
+        pr_info("[TICK %u] %s: timeslice ticks = %u\n", PRINT_UINT32(tickcount),
+                current_proc->name,
                 PRINT_UINT32(current_proc->timeslice_ticks));
         if (current_proc->timeslice_ticks <= 0) {
             pr_info("%s out of timeslice! Switching...\n", current_proc->name);
@@ -926,46 +1041,42 @@ void print_proc_info(const pcb_t *proc) {
             "[Identity] pid=%u name=%s type=%s state=%s\n\t"
             "[Lifecycle] exited=%u exit_code=0x%08x\n\t"
             "[Kernel Stack] base=0x%08x top=0x%08x size=0x%08x\n\t"
-            "[Scheduling] timeslice=%u wait_ticks=%u\n\t"
-            "[Context] eip=0x%08x esp=0x%08x ebp=0x%08x eflags=0x%08x(IF=%s)\n\t"
+            "[Scheduling] timeslice=%u wait_ticks=%u (reason=%u)\n\t"
+            "[Context] eip=0x%08x esp=0x%08x ebp=0x%08x "
+            "eflags=0x%08x(IF=%s)\n\t"
             "[Linkage] parent=%s(pid=%u)\n\t"
-            "[User Space] entry=0x%08x code_size=0x%08x stack_top=0x%08x stack_size=0x%08x\n\t"
+            "[User Space] entry=0x%08x code_size=0x%08x stack_top=0x%08x "
+            "stack_size=0x%08x\n\t"
             "[Address Space] pd_virt=0x%08x pd_phys=0x%08x\n",
-            proc->pid, proc->name,
-            proc_type_to_string(proc->type),
-            proc_state_to_string(proc->state),
-            proc->has_exited, proc->exit_code,
-            proc->kernel_stack_base, proc->kernel_stack_top,
-            proc->kernel_stack_size,
-            proc->timeslice_ticks, proc->wait_info.wait_tick_count,
-            proc->context.eip, proc->context.esp,
-            proc->context.ebp, proc->context.eflags,
-            (proc->context.eflags & 0x200) ? "on" : "off",
+            proc->pid, proc->name, proc_type_to_string(proc->type),
+            proc_state_to_string(proc->state), proc->has_exited,
+            proc->exit_code, proc->kernel_stack_base, proc->kernel_stack_top,
+            proc->kernel_stack_size, proc->timeslice_ticks,
+            proc->wait_info.wait_tick_count, proc->wait_info.wait_reason,
+            proc->context.eip, proc->context.esp, proc->context.ebp,
+            proc->context.eflags, (proc->context.eflags & 0x200) ? "on" : "off",
             proc->parent ? proc->parent->name : "none",
-            proc->parent ? proc->parent->pid : 0,
-            proc->user_entry, proc->user_code_size,
-            proc->user_stack_top, proc->user_stack_size,
+            proc->parent ? proc->parent->pid : 0, proc->user_entry,
+            proc->user_code_size, proc->user_stack_top, proc->user_stack_size,
             proc->page_directory_virt, proc->page_directory_phys);
     } else {
-        KLOG_VERBOSE(
-            "PROC",
-            "[Identity] pid=%u name=%s type=%s state=%s\n\t"
-            "[Lifecycle] exited=%u exit_code=0x%08x\n\t"
-            "[Kernel Stack] base=0x%08x top=0x%08x size=0x%08x\n\t"
-            "[Scheduling] timeslice=%u wait_ticks=%u\n\t"
-            "[Context] eip=0x%08x esp=0x%08x ebp=0x%08x eflags=0x%08x(IF=%s)\n\t"
-            "[Linkage] parent=%s(pid=%u)\n",
-            proc->pid, proc->name,
-            proc_type_to_string(proc->type),
-            proc_state_to_string(proc->state),
-            proc->has_exited, proc->exit_code,
-            proc->kernel_stack_base, proc->kernel_stack_top,
-            proc->kernel_stack_size,
-            proc->timeslice_ticks, proc->wait_info.wait_tick_count,
-            proc->context.eip, proc->context.esp,
-            proc->context.ebp, proc->context.eflags,
-            (proc->context.eflags & 0x200) ? "on" : "off",
-            proc->parent ? proc->parent->name : "none",
-            proc->parent ? proc->parent->pid : 0);
+        KLOG_VERBOSE("PROC",
+                     "[Identity] pid=%u name=%s type=%s state=%s\n\t"
+                     "[Lifecycle] exited=%u exit_code=0x%08x\n\t"
+                     "[Kernel Stack] base=0x%08x top=0x%08x size=0x%08x\n\t"
+                     "[Scheduling] timeslice=%u wait_ticks=%u (reason %u)\n\t"
+                     "[Context] eip=0x%08x esp=0x%08x ebp=0x%08x "
+                     "eflags=0x%08x(IF=%s)\n\t"
+                     "[Linkage] parent=%s(pid=%u)\n",
+                     proc->pid, proc->name, proc_type_to_string(proc->type),
+                     proc_state_to_string(proc->state), proc->has_exited,
+                     proc->exit_code, proc->kernel_stack_base,
+                     proc->kernel_stack_top, proc->kernel_stack_size,
+                     proc->timeslice_ticks, proc->wait_info.wait_tick_count,
+                     proc->wait_info.wait_reason, proc->context.eip,
+                     proc->context.esp, proc->context.ebp, proc->context.eflags,
+                     (proc->context.eflags & 0x200) ? "on" : "off",
+                     proc->parent ? proc->parent->name : "none",
+                     proc->parent ? proc->parent->pid : 0);
     }
 }
