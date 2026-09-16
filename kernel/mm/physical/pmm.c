@@ -58,7 +58,8 @@ void pmm_init(void) {
 
     /* Calculate the max index of the frame bitmap to cover all the usable
      * regions */
-    frame_bitmap = (uint8_t *)0x90000;
+    extern char kernel_end;
+    frame_bitmap = (uint8_t *)PAGE_ALIGN_UP((uint32_t)&kernel_end);
     uint32_t max_frame_bitmap_idx = (max_frame_idx / 8) + 1;
 
     /* Set all bits in the frame bitmap as 1 (occupied) */

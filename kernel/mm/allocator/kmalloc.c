@@ -2,6 +2,7 @@
 #include "core/panik.h"
 #include "lib/printk.h"
 #include "lib/string.h"
+#include "mm/paging.h"
 #include "mm/pmm.h"
 
 #ifdef DEBUG
@@ -56,6 +57,66 @@ static uint8_t g_size8_to_class[KMEM_LOOKUP_ENTRIES];
 
 /** cache list storing free_list of each class of slub */
 static kmem_chache_t g_kmem_caches[KMEM_NUM_CLASSES];
+
+static uint32_t g_heap_brk = KERNEL_HEAP_START;
+static void *g_heap_page_cache = NULL;
+
+/**
+ * @kmem_get_page - Heap-window page source.
+ * KAlloc page comes from the reserved kernel HEAP virtual window.
+ * (KERNEL_HEAP_START ... KERNEL_HEAP_END), not raw physical frames.
+ *
+ * Issue:
+ * Only the first 4 MB of RAM is identity-mapped, so a physical frame from
+ * pmm_alloc_frame() isn't directly derefrencable once we grow past low memory.
+ *
+ * Fix:
+ * We bump a virtual address in the window and back it with a physical frame via
+ * paging_map_page(). Pages stay aligned to 4KB so KMEM_PAGE_OF() works.
+ * Freed pages are cached (kept mapped) and is reused first - O(1), no remap
+ * churn
+ *
+ * @return - virtual memory of the page.
+ */
+static void *kmem_get_page(void) {
+    if (g_heap_page_cache) {
+        /* pop the first entry of the g_heap_page_cache */
+        void *page = g_heap_page_cache;
+        g_heap_page_cache = *(void **)page;
+        return page;
+    }
+
+    /** No page in cache:
+     * grow: claim a fresh virtual page, back it with a physical frame */
+
+    /* exhausted the 16MB heap window */
+    if (g_heap_brk >= KERNEL_HEAP_END) {
+        return NULL;
+    }
+
+    /* allocate a free frame */
+    phys_addr_t page = pmm_alloc_frame();
+    if (!page) {
+        return NULL;
+    }
+
+    /* map it to the virtual memory */
+    virt_addr_t page_virt = g_heap_brk;
+    g_heap_brk += PAGE_SIZE;
+    paging_map_page(page_virt, (uint32_t)page, PAGE_PRESENT | PAGE_WRITE);
+    return (void *)page_virt;
+}
+
+/**
+ * @kmem_put_page - Releast the page to the Heap-window page source
+ *
+ * @page - page to release.
+ */
+static void kmem_put_page(void *page) {
+    /* Add the page back to the start of the cache */
+    *(void **)page = g_heap_page_cache;
+    g_heap_page_cache = page;
+}
 
 /** Build up the slab index to size */
 static void kmem_build_lookup(void) {
@@ -150,7 +211,7 @@ static int kmem_cache_grow(kmem_chache_t *cache, uint32_t class_idx) {
         panik("kmalloc: memory used before initialization.\n");
     }
 
-    phys_addr_t page = pmm_alloc_frame();
+    phys_addr_t page = (phys_addr_t)kmem_get_page();
     if (!page)
         return -1;
 
@@ -287,7 +348,7 @@ static void kmem_slab_free(void *ptr, kmem_page_desc_t *desc) {
         kmem_partial_remove(cache, desc);
         cache->free_objs -= kmem_slots_per_page(desc->obj_size);
         cache->pages--;
-        pmm_free_frame((phys_addr_t)desc);
+        kmem_put_page((void *)desc);
     }
 }
 
@@ -304,7 +365,7 @@ static void *kmem_large_alloc(size_t size) {
     }
 
     /* allocate a page */
-    phys_addr_t page = pmm_alloc_frame();
+    phys_addr_t page = (phys_addr_t)kmem_get_page();
     if (!page) {
         return NULL;
     }
@@ -468,7 +529,7 @@ void kfree(void *ptr) {
         desc->magic = 0;
         g_large_pages--;
         g_large_bytes -= desc->obj_size;
-        pmm_free_frame((phys_addr_t)desc);
+        kmem_put_page((void *)desc);
         return;
     }
 

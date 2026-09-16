@@ -80,12 +80,6 @@ void high_stack_entry() {
     debug_module(STACK_HEAP, "ESP after stack switch: 0x%08x\n",
                  PRINT_UINT32(cur_esp));
 
-    //  Test demand-paged heap access
-    debug_module(STACK_HEAP, "Triggering demand-paged heap access...\n");
-    volatile int *heap_ptr = (int *)(KERNEL_HEAP_START + 0x1234);
-    *heap_ptr = 42;
-    debug_module(STACK_HEAP, "Heap page mapped and write succeeded!\n");
-
     //  Stack overflow testing (debug only)
     if (DEBUG_STACK_HEAP) {
         debug_module(STACK_HEAP, "Testing stack overflow detection...\n");
