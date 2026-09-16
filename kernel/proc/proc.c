@@ -402,24 +402,109 @@ const char *proc_type_to_string(proc_type_t type) {
     }
 }
 
-void proc_sleep(uint32_t ticks) {
+// =========================================
+//  PROCESS SLEEP / WAIT
+// =========================================
+
+/*
+ * proc_wait_prepare - move current_proc into WAITING and onto the wait list,
+ * recording WHY (reason) and, for object waits, on WHAT (channel). Does NOT
+ * yield, so it can be used to arm a wait without switching (e.g. under a lock).
+ */
+static void proc_wait_prepare(proc_wait_reason_t reason, uint32_t ticks,
+                              void *channel) {
+    if (!current_proc) {
+        return;
+    }
+
+    /* Only timer-driven sleeps carry a tick count. */
+    if (reason != PROC_WAIT_SLEEP) {
+        ticks = 0;
+    }
+
     current_proc->state = PROC_WAITING;
-    current_proc->sleep_ticks = ticks;
+    current_proc->wait_info.wait_reason = reason;
+    current_proc->wait_info.wait_tick_count = ticks;
+    current_proc->wait_info.wait_channel = channel;
 
     dequeue_ready(current_proc);
     enqueue_wait(current_proc);
+}
 
-    /* Current process is put to sleep, schedule a new process to run */
+/*
+ * proc_wait_prepare_yield - arm a wait and immediately yield the CPU.
+ * Interrupts are held across the prepare so a waker (possibly an IRQ) cannot
+ * fire between "enqueue on wait list" and "leave ready queue" and strand us
+ * (the lost-wakeup race).
+ */
+static void proc_wait_prepare_yield(proc_wait_reason_t reason, uint32_t ticks,
+                                    void *channel) {
+    irq_flags_t flags = irq_save();
+    proc_wait_prepare(reason, ticks, channel);
+    irq_restore(flags);
+
     yield();
 }
 
+void proc_sleep(uint32_t ticks) {
+    proc_wait_prepare_yield(PROC_WAIT_SLEEP, ticks, NULL);
+}
+
+void proc_wait_prepare_on(proc_wait_reason_t reason, void *channel) {
+    proc_wait_prepare(reason, 0, channel);
+}
+
+// =========================================
+//  PROCESS WAKE UP
+// =========================================
+
 void proc_wakeup(pcb_t *proc) {
+    if (!proc) {
+        return;
+    }
+
     dequeue_wait(proc);
 
     proc->state = PROC_READY;
-    proc->sleep_ticks = 0;
+    proc->wait_info.wait_reason = PROC_WAIT_NONE;
+    proc->wait_info.wait_tick_count = 0;
+    proc->wait_info.wait_channel = NULL;
 
     enqueue_ready(proc);
+}
+
+void proc_wakeup_one_reason(proc_wait_reason_t reason) {
+    irq_flags_t flags = irq_save();
+
+    pcb_t *p = wait_list_head;
+    while (p) {
+        /* capture next before proc_wakeup unlinks p from the wait list */
+        pcb_t *next = p->next;
+        if (p->state == PROC_WAITING && p->wait_info.wait_reason == reason) {
+            proc_wakeup(p);
+            irq_restore(flags);
+            return;
+        }
+        p = next;
+    }
+
+    irq_restore(flags);
+}
+
+void proc_wakeup_all_on(void *channel) {
+    irq_flags_t flags = irq_save();
+
+    pcb_t *p = wait_list_head;
+    while (p) {
+        /* capture next before proc_wakeup unlinks p from the wait list */
+        pcb_t *next = p->next;
+        if (p->state == PROC_WAITING && p->wait_info.wait_channel == channel) {
+            proc_wakeup(p);
+        }
+        p = next;
+    }
+
+    irq_restore(flags);
 }
 
 void proc_exit(void) {
@@ -700,12 +785,23 @@ void timer_interrupt_proc_handler(uint32_t tickcount) {
     /* For each process update the timer */
     while (p) {
         pcb_t *next_p = p->next;
-        if (p->sleep_ticks > 0) {
-            p->sleep_ticks--;
+
+        /* Only timer-driven sleeps are advanced here. Object/channel waiters
+         * (wait_reason != PROC_WAIT_SLEEP) are woken explicitly by producers
+         * via proc_wakeup_all_on / proc_wakeup_one_reason - never by the sleep
+         * timer. Otherwise a channel waiter (wait_tick_count == 0) would be
+         * spuriously woken on every single tick. */
+        if (p->wait_info.wait_reason != PROC_WAIT_SLEEP) {
+            p = next_p;
+            continue;
         }
 
-        /* Sleep timer has expired then enqueue to ready lit */
-        if (p->sleep_ticks == 0) {
+        if (p->wait_info.wait_tick_count > 0) {
+            p->wait_info.wait_tick_count--;
+        }
+
+        /* Sleep timer has expired then enqueue to ready list */
+        if (p->wait_info.wait_tick_count == 0) {
             proc_wakeup(p);
         }
 
@@ -830,7 +926,7 @@ void print_proc_info(const pcb_t *proc) {
             "[Identity] pid=%u name=%s type=%s state=%s\n\t"
             "[Lifecycle] exited=%u exit_code=0x%08x\n\t"
             "[Kernel Stack] base=0x%08x top=0x%08x size=0x%08x\n\t"
-            "[Scheduling] timeslice=%u sleep_ticks=%u\n\t"
+            "[Scheduling] timeslice=%u wait_ticks=%u\n\t"
             "[Context] eip=0x%08x esp=0x%08x ebp=0x%08x eflags=0x%08x(IF=%s)\n\t"
             "[Linkage] parent=%s(pid=%u)\n\t"
             "[User Space] entry=0x%08x code_size=0x%08x stack_top=0x%08x stack_size=0x%08x\n\t"
@@ -841,7 +937,7 @@ void print_proc_info(const pcb_t *proc) {
             proc->has_exited, proc->exit_code,
             proc->kernel_stack_base, proc->kernel_stack_top,
             proc->kernel_stack_size,
-            proc->timeslice_ticks, proc->sleep_ticks,
+            proc->timeslice_ticks, proc->wait_info.wait_tick_count,
             proc->context.eip, proc->context.esp,
             proc->context.ebp, proc->context.eflags,
             (proc->context.eflags & 0x200) ? "on" : "off",
@@ -856,7 +952,7 @@ void print_proc_info(const pcb_t *proc) {
             "[Identity] pid=%u name=%s type=%s state=%s\n\t"
             "[Lifecycle] exited=%u exit_code=0x%08x\n\t"
             "[Kernel Stack] base=0x%08x top=0x%08x size=0x%08x\n\t"
-            "[Scheduling] timeslice=%u sleep_ticks=%u\n\t"
+            "[Scheduling] timeslice=%u wait_ticks=%u\n\t"
             "[Context] eip=0x%08x esp=0x%08x ebp=0x%08x eflags=0x%08x(IF=%s)\n\t"
             "[Linkage] parent=%s(pid=%u)\n",
             proc->pid, proc->name,
@@ -865,7 +961,7 @@ void print_proc_info(const pcb_t *proc) {
             proc->has_exited, proc->exit_code,
             proc->kernel_stack_base, proc->kernel_stack_top,
             proc->kernel_stack_size,
-            proc->timeslice_ticks, proc->sleep_ticks,
+            proc->timeslice_ticks, proc->wait_info.wait_tick_count,
             proc->context.eip, proc->context.esp,
             proc->context.ebp, proc->context.eflags,
             (proc->context.eflags & 0x200) ? "on" : "off",

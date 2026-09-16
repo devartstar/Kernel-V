@@ -47,6 +47,7 @@ void run_kernel_tests(void) {
 #ifdef INTEGRATION_TEST
     KLOG_VERBOSE("TEST", "Running Process/Integration Tests...\n");
     create_test_processes();
+    create_sync_test_process();
     KLOG_VERBOSE("TEST", "Process Tests Complete.\n");
 
     KLOG_VERBOSE("TEST", "Running Usermode Process/Syscall Tests...\n");
