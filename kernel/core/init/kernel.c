@@ -14,6 +14,7 @@
 #include "proc/context_switch.h"
 #include "proc/proc.h"
 #include "proc/syscall.h"
+#include "proc/workqueue.h"
 #include "tests/proc_tests.h"
 #include "tests/test_runner.h"
 #include "time/timer.h"
@@ -115,6 +116,12 @@ void high_stack_entry() {
     }
     KLOG_INFO("KERNEL", "Kernel main registered as process PID %d\n",
               kernel_main->pid);
+
+    // ==========================================
+    // DEFERRED WORK SUBSYSTEM
+    // ==========================================
+    workqueue_init();
+    KLOG_INFO("WORKQUEUE", "Kernel worker initialized.\n");
 
     // ==========================================
     // ENABLE SCHEDULING AND INTERRUPTS

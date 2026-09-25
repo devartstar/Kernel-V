@@ -23,7 +23,6 @@ Start:
     ; [si+6] [si+7]     - Segment to Load the Read content
     ; [si+8] [si+15]    - LBA to Read from the Disk
     ; 1. Load the Kernel into memory 0x10000 ()
-    ; [PMM] Reserved kernel range: 0x65536 - 0x78800 
     ; INT 0x13/AH=42h can only load up to 64KB (127 sectors) per call.
     ; Read the kernel in 127-sector chunks based on generated build size.
 LoadKernel:
@@ -80,9 +79,19 @@ GetMemoryMap:
     mov word [memmap_count], 0
 
 .e820_loop:
-    mov eax, 0xe820
+    mov eax, 0xe820             ; function to get the map from BIOS
     mov edx, 0x534D4150         ; "SMAP" signature
     mov ecx, 24                 ; size of the E820 entry
+    ; Each entry of the e820 map is a usage region entry.
+    ; 8 Byte - Base address for the region
+    ; 8 Byte - Length of the region
+    ; 4 Byte - Type of region. Below are the different types.
+    ;   1    Usable RAM
+    ;   2    Reserved
+    ;   3    ACPI reclaimable
+    ;   4    ACPI NVS
+    ;   5    Bad memory
+    ; 4 Byte - Usuable attributes
     int 0x15
     jc .e820_done
     cmp eax, 0x534D4150         ; Check if the signature matches

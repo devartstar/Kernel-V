@@ -105,6 +105,7 @@ static const ktest_t unit_tests[] = {
 static const ktest_t integration_tests[] = {
     {"kernel_processes", "integration", create_test_processes},
     {"sync_primitives", "integration", create_sync_test_process},
+    {"kernel_deferred_work", "integration", create_work_test_process},
     {"usermode_syscall", "integration", test_usermode_process},
 };
 #endif
