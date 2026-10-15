@@ -5,6 +5,28 @@
 #include "drivers/tty.h"
 #include "fs/vfs.h"
 #include "lib/printk.h"
+#include "proc/workqueue.h"
+
+#define SERIAL_RX_RING_SIZE 256u
+#define SERIAL_RX_RING_MASK (SERIAL_RX_RING_SIZE - 1)
+
+/* Software Serial Rx Ring - a small buffer to hold bytes from the UART.
+ * UART contains a small (~16B) FIFO buffer. We constantly check for data
+ * present and get the data to run the tty pipeline on it.
+ *
+ * Issue: tty pipeline might take some time and the small UART buffer can
+ * overflow before we stage/commit the data in pipeline to handle new data.
+ *
+ * This is perfect case for deferred work.
+ * High half will just get the data from UART buffer copy the data into serial
+ * buffer and schedule a work to handle this data in tty pipeline.
+ * Lower half will run the tty pipeline.
+ */
+static volatile uint8_t g_serial_rx_ring[SERIAL_RX_RING_SIZE];
+static volatile uint32_t g_serial_rx_head;
+static volatile uint32_t g_serial_rx_tail;
+/* count of bytes dropped when buffer is full */
+static volatile uint32_t g_serial_rx_overrun;
 
 /* serial counters */
 static volatile uint32_t g_serial_irq_count;
@@ -139,21 +161,60 @@ uint32_t serial_dump_input_to_console(void) {
     return dump_count;
 }
 
+static void serial_rx_bottom_half(void *args) {
+    (void)args;
+    for (;;) {
+        /* pop one byte at a time from the buffer and process it */
+        irq_flags_t flags = irq_save();
+        if (g_serial_rx_head == g_serial_rx_tail) {
+            /* nothing to process */
+            irq_restore(flags);
+            return;
+        }
+
+        /* get the byte to process */
+        uint8_t ch = g_serial_rx_ring[g_serial_rx_head & SERIAL_RX_RING_MASK];
+        KLOG_VERBOSE("SERIAL", "rx byte 0x%02x -> tty_active\n", ch);
+        g_serial_rx_head++;
+        irq_restore(flags);
+
+        /* process the byte */
+        g_serial_rx_byte_count++;
+        tty_input_byte(ch);
+    }
+}
+
 uint32_t serial_dump_input_to_tty(void) {
     char ch;
     uint32_t dump_count = 0;
+    uint8_t got_data = false;
 
+    /* TOP HALF: drain the UART hardware FIFO into the software ring FAST, so
+     * the FIFO can't overflow. Do NOT touch the tty here (it may block/echo).
+     */
     while (serial_is_data_ready(SERIAL_COM1)) {
         if (serial_getc_nonblocking(&ch) != VFS_OK) {
             break;
         }
-        g_serial_rx_byte_count++;
+
+        /* Check if serial buffer has space to copy the byte */
+        uint32_t next = g_serial_rx_tail + 1;
+        if ((next - g_serial_rx_head) > SERIAL_RX_RING_SIZE) {
+            g_serial_rx_overrun++;
+            break;
+        }
+
+        /* copy the byte to the serial buffer */
+        g_serial_rx_ring[g_serial_rx_tail & SERIAL_RX_RING_MASK] = (uint8_t)ch;
+        g_serial_rx_tail = next;
         dump_count++;
-        KLOG_VERBOSE("SERIAL", "rx byte 0x%02x -> tty_active\n", (uint8_t)ch);
-        /* dump input to the active tty session input port */
-        tty_input_byte((uint8_t)ch);
+        got_data = true;
     }
 
+    /* Defer the heavy tty processing to the kworker bottom half. */
+    if (got_data) {
+        work_schedule(serial_rx_bottom_half, NULL);
+    }
     KLOG_VERBOSE("SERIAL", "drained %u bytes to the tty console\n", dump_count);
 
     return dump_count;
@@ -165,7 +226,8 @@ uint32_t serial_dump_input_to_tty(void) {
  * byte arrives at COM1 UART -> UART plases byte in its RX FIFO -> #
  * # -> UART sets LSR.DR = 1 -> UART marks "recieved data available" in IIR -> #
  * # -> UART asserts IRQ4 -> PIC delivers IRQ4 vector to CPU -> #
- * # -> serial interrupt handler runs and reads RBS/RX FIFO
+ * # -> serial interrupt handler runs and reads RBS/RX FIFO into serial buffer
+ * # -> post work of handling of data via tty pipeline to worker thread.
  */
 
 /* --- enable UART to notify CPU with interrupt when data available --- */
