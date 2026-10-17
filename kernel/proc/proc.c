@@ -10,6 +10,7 @@
 #include "mm/pmm.h"
 #include "mm/pool_alloc.h"
 #include "proc/context_switch.h"
+#include "proc/preempt.h"
 #include "proc/scheduler.h"
 #include <stddef.h>
 
@@ -114,6 +115,8 @@ pcb_t *proc_alloc(const char *name) {
      * Minted without disturbing the caller's active sc. */
     new_proc->trace_id = log_trace_next();
     new_proc->trace_id_saved = new_proc->trace_id;
+
+    new_proc->preempt_count = 0;
 
     new_proc->kernel_stack_base = NULL;
     new_proc->kernel_stack_top = NULL;
@@ -760,8 +763,26 @@ pcb_t *scheduler_pick_next(void) {
  * TIMER - when the process is out of timeslice
  */
 void yield(void) {
+    /* Avoid scheduling while inside hardware interrupt context.
+     * Fail loudly
+     */
+    if (in_hardirq()) {
+        panik("yield() called from hardware IRQ context (depth=%u)",
+              g_hw_irq_depth);
+    }
+
     pcb_t *proc_now = current_proc;
     pcb_t *proc_next = NULL;
+
+    /*
+     * We are inside the scheduler. Disable process preemption in the IRQ exit
+     * path until the scheduler exits.
+     */
+    if (proc_now) {
+        proc_now->preempt_count++;
+    }
+
+    g_need_resched = false;
 
     /* If current process is invalid */
     if (!proc_now || proc_now->pid <= 0) {
@@ -797,7 +818,6 @@ void yield(void) {
 
     /* Do a context switch if new scheduled process != current process */
     if (proc_next && proc_next != proc_now) {
-
         KLOG_VERBOSE("PROCESS_MGMT",
                      "New current process: %s (pid=%u, type=%s)\n",
                      proc_next->name, proc_next->pid,
@@ -889,12 +909,16 @@ void yield(void) {
         debug_module(PROCESS_MGMT, "No context switch needed - staying in %s\n",
                      proc_now ? proc_now->name : "NULL");
     }
+
+    if (proc_now) {
+        proc_now->preempt_count--;
+    }
 }
 
 void timer_interrupt_proc_handler(uint32_t tickcount) {
     pcb_t *p = wait_list_head;
 
-    /* For each process update the timer */
+    /* For each sleeping process update the sleep timer */
     while (p) {
         pcb_t *next_p = p->next;
 
@@ -916,23 +940,19 @@ void timer_interrupt_proc_handler(uint32_t tickcount) {
         p = next_p;
     }
 
-    /* Process wakeups above are safe on every timer tick, but switching away
-     * while another interrupt handler is active strands that handler's stack
-     * frame and keeps the kernel in nested-interrupt context. */
-    if (nested_interrupt_count != 0) {
-        return;
-    }
-
-    /* Process premption scheduling */
-    /* Premption - Kernel to context switch automatically on timer tick */
+    /**
+     * PROCESS PREEMPTION: Only record the decision here.
+     * DO NOT context swtich here from inside the interrupt handler.
+     * Context swtich happens at interrupt exit preemption point in
+     * isr_common_handler after EOI is send.
+     */
     if (current_proc != NULL && current_proc->state == PROC_RUNNING) {
-        current_proc->timeslice_ticks--;
-        pr_info("[TICK %u] %s: timeslice ticks = %u\n", PRINT_UINT32(tickcount),
-                current_proc->name,
-                PRINT_UINT32(current_proc->timeslice_ticks));
+        if (current_proc->timeslice_ticks > 0) {
+            current_proc->timeslice_ticks--;
+        }
+
         if (current_proc->timeslice_ticks <= 0) {
-            pr_info("%s out of timeslice! Switching...\n", current_proc->name);
-            yield();
+            set_need_resched();
         }
     }
 }
@@ -986,6 +1006,8 @@ pcb_t *proc_create_kernel_main(const char *name) {
 
     kernel_proc->has_exited = 0;
     kernel_proc->exit_code = 0;
+
+    kernel_proc->preempt_count = 0;
 
     enqueue_proc_list(kernel_proc);
     enqueue_ready(kernel_proc);

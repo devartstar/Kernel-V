@@ -760,7 +760,9 @@ uint8_t devstdin_read_test() {
 
     /* read the console buffer content using read on fd 0 */
     ret = fd_read(&proc, 0, buf, sizeof(buf));
-    if (ret != 3) {
+
+    /* Cononical mode returns the charaters along with new_line character */
+    if (ret != 4) {
         KLOG_ERROR(
             "FD_TEST",
             "devstdin_read test failed. characters read %u, expected 3.\n",
@@ -770,7 +772,7 @@ uint8_t devstdin_read_test() {
     }
 
     /* check for the validity of the read content */
-    if (buf[0] != 'A' || buf[1] != 'B' || buf[2] != 'C') {
+    if (buf[0] != 'A' || buf[1] != 'B' || buf[2] != 'C' || buf[3] != '\n') {
         KLOG_ERROR(
             "FD_TEST",
             "devstdin_read test failed. read content %s, expected ABC.\n", buf);

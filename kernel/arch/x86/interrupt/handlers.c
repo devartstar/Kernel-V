@@ -2,17 +2,26 @@
 #include "arch/x86/pic.h"
 #include "core/io.h"
 #include "lib/printk.h"
+#include "proc/preempt.h"
+#include "proc/proc.h"
 #include "time/timer.h"
 
 #define REG_LINE(name, val)                                                    \
     printk("| %10s | 0x%08lx |\n", name, (uint32_t)(val))
 
-/**
+/*
  * An array of interrupt handlers -
  * At index = index of interrupt in IDT.
  * Contains pointer to the handler function to execute.
  */
 static interrupt_handler_metadata_t interrupt_handlers[IDT_VECTOR_COUNT] = {0};
+
+/*
+ * Initialize the hardware irq depth and if process needs to be rescheduled
+ * after timer interrupt handling.
+ */
+volatile uint32_t g_hw_irq_depth = 0;
+volatile bool g_need_resched = false;
 
 void register_interrupt_handler(uint32_t idt_index, interrupt_handler_t handler,
                                 const char *name) {
@@ -85,6 +94,12 @@ void dump_regs(regs_t *r) {
 
 void isr_common_handler(regs_t *regs) {
     uint32_t idt_index = regs->int_no;
+    uint8_t is_hw_irq = (idt_index >= 32 && idt_index < 48);
+
+    /* update hardware IRQ depthif current is an hardware generated interrupt */
+    if (is_hw_irq) {
+        g_hw_irq_depth++;
+    }
 
     /* Get the interrupt handler metadata and updare it */
     interrupt_handler_metadata_t *interrupt = &interrupt_handlers[idt_index];
@@ -108,13 +123,39 @@ void isr_common_handler(regs_t *regs) {
         default_interrupt_handler(idt_index, regs);
     }
 
-    /* CRITICAL: Send End-of-Interrupt (EOI) to PIC for hardware interrupts
+    /* CRITICAL: Send End-of-Interrupt (EOI) to PIC for hardware interrupts.
      * Before ISR Entry the CPU clears the interrupt flag, disabling the
      * interrups. Without EOI further interrupts are disabled.
+     *
+     * NOTE:
+     * Acknowledge the hardware IRQ before doing context switch.
+     * If we context switch first the EOI is stranded. Signal the EOI first
+     * before decising upon switch.
      */
-    if (idt_index >= 32 && idt_index < 48) {
+    if (is_hw_irq) {
         // Hardware interrupts (IRQs 0-15 are mapped to interrupts 32-47)
         uint8_t irq = idt_index - 32;
         pic_send_eoi(irq);
+        g_hw_irq_depth--;
+    }
+
+    /* Check for nested hardware interrupts and if context switch is scheduled
+     * by the handler routine.
+     * This is Interrupt Exit permption check. Prempt only when:
+     * 1. The Handler has requested a reschedule.
+     * 2. Execution is not nested inside another Hardware IRQ.
+     * 3. The Interrupted context had interrupt enabled. If it was inside a
+     * critical section (irq_save()), preemption would brake the critical
+     * section.
+     */
+    if (g_need_resched && !in_hardirq() && current_proc &&
+        current_proc->preempt_count == 0 && (regs->eflags & 0x200)) {
+        g_need_resched = false;
+        yield();
+
+        /* yield() re-enables interrupts after the switch. Disable them again
+         * for the rest of the exit path; iretd restores the interrupted
+         * context's original EFLAGS, including IF. */
+        __asm__ __volatile__("cli");
     }
 }

@@ -131,6 +131,11 @@ typedef struct pcb {
     uint32_t trace_id;
     uint32_t trace_id_saved;
 
+    /* Preemption Count. Preemption disabled for depth for this task.
+     * preempt_count > 0 => IRQ exit preemption isdisabled.
+     */
+    uint32_t preempt_count;
+
     /* User Space */
     uint32_t user_entry;
     uint32_t user_stack_top;
