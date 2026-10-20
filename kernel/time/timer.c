@@ -4,6 +4,7 @@
 #include "lib/printk.h"
 #include "nested_irq.h"
 #include "proc/proc.h"
+#include "time/ktimer.h"
 #include <stdint.h>
 
 volatile uint32_t tick_count = 0;
@@ -36,6 +37,9 @@ void timer_interrupt_handler(uint32_t idt_index, regs_t *regs) {
     (void)regs;
 
     tick_count++;
+
+    /* Fire due software timers (hard-IRQ context). */
+    ktimer_run_expired(tick_count);
 
     if (is_irq_debug_enabled(idt_index)) {
         KLOG_VERBOSE("TIMER", "[IRQ%u] Timer IRQ fired, nested count=%u\n",
