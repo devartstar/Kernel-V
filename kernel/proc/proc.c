@@ -12,6 +12,7 @@
 #include "proc/context_switch.h"
 #include "proc/preempt.h"
 #include "proc/scheduler.h"
+#include "time/ktimer.h"
 #include <stddef.h>
 
 //  PID starts from 1
@@ -456,9 +457,7 @@ static void proc_wait_prepare_yeild(proc_wait_reason_t reason, uint32_t ticks) {
     yield();
 }
 
-void proc_wait_sleep(uint32_t ticks) {
-    proc_wait_prepare_yeild(PROC_WAIT_SLEEP, ticks);
-}
+void proc_wait_sleep(uint32_t ticks) { proc_schedule_timeout(ticks); }
 void proc_wait_console_input(void) {
     proc_wait_prepare_yeild(PROC_WAIT_CONSOLE_INPUT, 0);
 }
@@ -482,11 +481,62 @@ void proc_wait_prepare_on(proc_wait_reason_t reason, void *channel) {
 }
 
 // =========================================
+//  PROCESS TIMEOUT
+// =========================================
+
+/**
+ * proc_timeout_wakeup - wakeup a sleeping process the the sleep timer hits 0.
+ * procss to wake up is passed in argument
+ */
+static void proc_timeout_wakeup(void *args) { proc_wakeup((pcb_t *)args); }
+
+uint32_t proc_schedule_timeout(uint32_t ticks) {
+    if (!current_proc) {
+        return 0;
+    }
+
+    pcb_t *self = current_proc;
+
+    /* initialize a timer for process to sleep on */
+    ktimer_t timer;
+    ktimer_init(&timer, proc_timeout_wakeup, current_proc);
+
+    /* initialize the deadline for the timer */
+    uint32_t deadline = ktime_ticks() + ticks;
+
+    /* we must not
+     * 1. arm the timer with deadline but context switch to another
+     * processin between
+     * 2. sleep the process but contextswitch before arming the timer.
+     * Hence sleep + arm timer should be inside critical section */
+    uint32_t flags = irq_save();
+
+    /* keeing the wait_ticks for now. todo: remove it later
+     * Not needed since now process wakes up when timer fired. */
+    proc_wait_prepare(PROC_WAIT_SLEEP, 0);
+
+    /* Arm the timer */
+    ktimer_add(&timer, ticks);
+
+    irq_restore(flags);
+
+    /* context switch to a different process while current is sleep */
+    yield();
+
+    /* if the process is woken up early, timer wont find it sleep, cancel and
+     * disarm the timer first. */
+    ktimer_cancel(&timer);
+
+    uint32_t now = ktime_ticks();
+    return time_after(deadline, now) ? (deadline - now) : 0;
+}
+
+// =========================================
 // PROCESS WAKE UP
 // =========================================
 
 void proc_wakeup(pcb_t *proc) {
-    if (!proc) {
+    if (!proc || proc->state != PROC_WAITING) {
         return;
     }
 
@@ -916,29 +966,8 @@ void yield(void) {
 }
 
 void timer_interrupt_proc_handler(uint32_t tickcount) {
-    pcb_t *p = wait_list_head;
-
-    /* For each sleeping process update the sleep timer */
-    while (p) {
-        pcb_t *next_p = p->next;
-
-        /* check the reason for sleep and operate on timer based sleep only */
-        if (p->wait_info.wait_reason != PROC_WAIT_SLEEP) {
-            p = next_p;
-            continue;
-        }
-
-        if (p->wait_info.wait_tick_count > 0) {
-            p->wait_info.wait_tick_count--;
-        }
-
-        /* Sleep timer has expired then enqueue to ready lit */
-        if (p->wait_info.wait_tick_count == 0) {
-            proc_wakeup(p);
-        }
-
-        p = next_p;
-    }
+    /* No need to decrease the process wait tick count, as we rely on process to
+     * wakeup from sleep basedon timer timeout */
 
     /**
      * PROCESS PREEMPTION: Only record the decision here.

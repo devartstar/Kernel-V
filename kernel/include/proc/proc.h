@@ -266,6 +266,13 @@ void proc_wait_prepare_console_input(void);
 void proc_wait_prepare_on(proc_wait_reason_t reason, void *channel);
 
 /**
+ * @proc_schedule_timeout - Sleeps a process for @ticks number of timer tick.
+ * The process might be woken up early by someone other than timer, in that case
+ * disarm the timer and continue.
+ */
+uint32_t proc_schedule_timeout(uint32_t ticks);
+
+/**
  * proc_wakeup - Wakes up a sleeping process and adds to ready queue.
  * @proc - process to wake up.
  *
