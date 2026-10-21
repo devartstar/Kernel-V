@@ -10,12 +10,13 @@
  *   exit 1 -> opening an existing file did not return a valid fd
  *   exit 2 -> opening a missing file did not return an error
  *
- * The kernel-side harness (syscall_itest.c) seeds the VFS with the fixture
+ * The kernel-side setup (userproc_tests.c) seeds a private fixture
  * file, spawns this blob, and asserts that it terminates with exit code 0.
  */
 
 #include <stdint.h>
 
+#include "tests/syscall_fixtures.h"
 #include "utils/user_utils.h"
 
 /* Placed first in the binary (see user.ld) so the kernel entry at 0x00400000
@@ -24,7 +25,7 @@ __attribute__((section(".text.start"), used, noreturn)) void _start(void) {
     uputs("open-test: starting\n");
 
     /* Check 1: opening an existing file yields a valid descriptor (>= 3). */
-    int32_t fd = uopen("/hello.txt", 0);
+    int32_t fd = uopen(SYSCALL_FIXTURE_PATH(SYSCALL_OPEN_FIXTURE), 0);
     if (fd < FIRST_NORMAL_FD) {
         uputs("open-test: FAIL open existing file\n");
         uexit(1);

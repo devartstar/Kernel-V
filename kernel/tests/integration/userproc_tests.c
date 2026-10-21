@@ -3,12 +3,14 @@
 #include "fs/devfs.h"
 #include "fs/ramfs.h"
 #include "fs/vfs.h"
+#include "fs/vfs_utils.h"
 #include "lib/printk.h"
 #include "lib/string.h"
 #include "mm/paging.h"
 #include "mm/pmm.h"
 #include "mm/stack_map.h"
 #include "proc/user.h"
+#include "tests/syscall_fixtures.h"
 #include "tests/syscall_itest.h"
 
 extern uint8_t _binary_userprog_start[];
@@ -38,43 +40,74 @@ extern uint8_t _binary_userprog_stdio_end[];
 extern uint8_t _binary_userprog_stdin_start[];
 extern uint8_t _binary_userprog_stdin_end[];
 
-/* Fixture file the SYS_OPEN test program expects to open successfully. */
-#define OPEN_TEST_FIXTURE_PATH "/hello.txt"
-
 static void spawn_user_test_process(void);
-static int ensure_open_test_fixture(void);
 
-/*
- * ensure_open_test_fixture - guarantee the VFS holds the fixture file that the
- * SYS_OPEN user program opens.
- *
- * The VFS is not seeded at boot, and unit tests may or may not have populated
- * it depending on the build configuration. Reuse an existing tree when the
- * fixture is already present; otherwise stand up a minimal VFS and seed the
- * default ramfs layout. Returns non-zero on success.
- */
-static int ensure_open_test_fixture(void) {
-    if (vfs_lookup_absolute(OPEN_TEST_FIXTURE_PATH) != NULL &&
-        vfs_lookup_absolute("/dev/stdin") != NULL) {
-        return 1;
-    }
+/* Storage must outlive setup and all concurrent user processes. Separate
+ * nodes alone are insufficient if their RAMFS data buffers alias. */
+static struct {
+    const char *name;
+    uint8_t data[SYSCALL_FIXTURE_CAPACITY];
+} syscall_fixtures[] = {
+    {.name = SYSCALL_OPEN_FIXTURE},
+    {.name = SYSCALL_READ_FIXTURE},
+    {.name = SYSCALL_STDIO_FIXTURE},
+    {.name = SYSCALL_RWS_FIXTURE},
+};
 
-    vfs_system_init();
-    if (vfs_init() != VFS_OK) {
-        KLOG_ERROR("TEST", "open fixture: vfs_init failed\n");
-        return 0;
-    }
-    if (ramfs_seed_root() != VFS_OK) {
-        KLOG_ERROR("TEST", "open fixture: ramfs_seed_root failed\n");
-        return 0;
+/* Prepare every fixture before spawning any case. Reuse an existing VFS
+ * without resetting other tests' nodes or the open-file pool. */
+static int prepare_syscall_fixtures(void) {
+    if (!vfs_get_root()) {
+        vfs_system_init();
+        if (vfs_init() != VFS_OK) {
+            return 0;
+        }
     }
     if (devfs_seed_root() != VFS_OK) {
-        KLOG_ERROR("TEST", "open fixture: devfs_seed_root failed\n");
         return 0;
     }
 
-    return vfs_lookup_absolute(OPEN_TEST_FIXTURE_PATH) != NULL &&
-           vfs_lookup_absolute("/dev/stdin") != NULL;
+    vfs_node_t *root = vfs_get_root();
+    vfs_node_t *dir = vfs_find_child(root, SYSCALL_FIXTURE_DIR);
+    if (!dir) {
+        dir = vfs_create_node(SYSCALL_FIXTURE_DIR, VFS_NODE_DIR, NULL, NULL);
+        if (!dir || vfs_add_child(root, dir) != VFS_OK) {
+            return 0;
+        }
+    }
+    if (dir->type != VFS_NODE_DIR) {
+        return 0;
+    }
+
+    for (uint32_t i = 0;
+         i < sizeof(syscall_fixtures) / sizeof(syscall_fixtures[0]); i++) {
+        const char *name = syscall_fixtures[i].name;
+        uint8_t *data = syscall_fixtures[i].data;
+        uint32_t size = sizeof(SYSCALL_FIXTURE_INITIAL) - 1;
+        vfs_node_t *node = vfs_find_child(dir, name);
+        if (!node) {
+            node =
+                ramfs_create_file(name, data, size, SYSCALL_FIXTURE_CAPACITY);
+            if (!node || vfs_add_child(dir, node) != VFS_OK) {
+                return 0;
+            }
+        }
+
+        /* Fail rather than adopt an unrelated node or reset an open file. */
+        if (node->type != VFS_NODE_FILE || node->ops != &ramfs_file_ops ||
+            !node->private_data || node->refcount != 1) {
+            return 0;
+        }
+        ramfs_file_t *file = node->private_data;
+        if (file->data != data ||
+            file->capacity != SYSCALL_FIXTURE_CAPACITY) {
+            return 0;
+        }
+        memset(data, 0, SYSCALL_FIXTURE_CAPACITY);
+        memcpy(data, SYSCALL_FIXTURE_INITIAL, size);
+        file->size = node->size = size;
+    }
+    return 1;
 }
 
 /*
@@ -89,8 +122,10 @@ static int ensure_open_test_fixture(void) {
 void test_usermode_process(void) {
     KLOG_VERBOSE("TEST", "RUNNING usermode process / syscall tests\n");
 
-    if (!ensure_open_test_fixture()) {
-        KLOG_ERROR("TEST", "skipping SYS_OPEN case: VFS fixture unavailable\n");
+    if (!prepare_syscall_fixtures()) {
+        KLOG_ERROR("TEST",
+                   "[FAIL] syscall fixture setup failed; no cases spawned\n");
+        return;
     }
 
     const syscall_itest_case_t cases[] = {
@@ -161,8 +196,8 @@ static __attribute__((unused)) void spawn_user_test_process(void) {
     uint32_t blob_size =
         (uint32_t)(_binary_userprog_end - _binary_userprog_start);
 
-    pcb_t *proc = userproc_create_from_blob("user_proc_test",
-                                            _binary_userprog_start, blob_size);
+    pcb_t *proc = userproc_create_from_blob(
+        "user_proc_test", _binary_userprog_start, blob_size);
 
     if (!proc) {
         panik("spawn_user_test_process: failed");

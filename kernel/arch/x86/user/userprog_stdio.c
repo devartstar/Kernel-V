@@ -4,7 +4,8 @@
  *
  * Built as a freestanding, non-PIE flat binary loaded at 0x00400000 (see
  * user.ld) and embedded into test kernel via objcopy. It runs in user mode,
- * issues real syscall through `int 0x80`, and reports vertict through SYS_EXIT
+ * issues real syscall through `int 0x80`, and reports vertict through
+ * SYS_EXIT
  *
  * NOTE:: none of the std io files supports open.
  * /dev/stdin - supports read, doesnt support write
@@ -22,9 +23,11 @@
  * exit 8 -> failed to seek within the file
  * exit 9 -> failed to write to the file
  * exit 10 -> failed to read from serial stdin to stdout
+ * exit 11 -> file readback content mismatch
  *
  */
 
+#include "tests/syscall_fixtures.h"
 #include "utils/user_utils.h"
 #include <stddef.h>
 #include <stdint.h>
@@ -57,7 +60,8 @@ __attribute__((section(".text.start"), used, noreturn)) void _start(void) {
 
     /* Case 3: Try reading from a stdin file
      * stdin file backing console buffer is empty will return ERROR_AGAIN
-     * Update: above is no longer valid as we are waiting on the data to be available in the console buffer
+     * Update: above is no longer valid as we are waiting on the data to be
+     * available in the console buffer
      */
     ret = uread(STDIN_FD, buf, sizeof(buf));
     if (ret < 0) {
@@ -72,7 +76,7 @@ __attribute__((section(".text.start"), used, noreturn)) void _start(void) {
     /* Case 4: write a known pattern to a file, read it back, echo to stdout.
      * (/dev/stdin cannot be written to, so the readback is echoed to stdout.)
      */
-    int32_t fd = uopen("/hello.txt", 0);
+    int32_t fd = uopen(SYSCALL_FIXTURE_PATH(SYSCALL_STDIO_FIXTURE), 0);
     if (fd < FIRST_NORMAL_FD) {
         msg = "failed open existing file.\n";
         uwrite(STDERR_FD, msg, ustrlen(msg));
@@ -84,28 +88,33 @@ __attribute__((section(".text.start"), used, noreturn)) void _start(void) {
 
     /* rewind and write the known pattern */
     if (ulseek(fd, 0, SEEK_SET) < 0) {
-        msg = "failed to seek /hello.txt before write.\n";
+        msg = "failed to seek stdio fixture before write.\n";
         uwrite(STDERR_FD, msg, ustrlen(msg));
         uexit(8);
     }
     ret = uwrite(fd, known, known_len);
     if (ret != (int)known_len) {
-        msg = "failed writing content to file /hello.txt.\n";
+        msg = "failed writing stdio fixture.\n";
         uwrite(STDERR_FD, msg, ustrlen(msg));
         uexit(9);
     }
+    uyield();
 
     /* rewind and read the same content back */
     if (ulseek(fd, 0, SEEK_SET) < 0) {
-        msg = "failed to seek /hello.txt before read.\n";
+        msg = "failed to seek stdio fixture before read.\n";
         uwrite(STDERR_FD, msg, ustrlen(msg));
         uexit(8);
     }
     ret = uread(fd, buf, known_len);
     if (ret != (int)known_len) {
-        msg = "failed reading content from file /hello.txt.\n";
+        msg = "failed reading stdio fixture.\n";
         uwrite(STDERR_FD, msg, ustrlen(msg));
         uexit(6);
+    }
+    if (!umemeq(buf, known, known_len)) {
+        uputs("stdio-test: FAIL readback content\n");
+        uexit(11);
     }
 
     msg = "successfully wrote and read back the known pattern.\n";
@@ -116,7 +125,7 @@ __attribute__((section(".text.start"), used, noreturn)) void _start(void) {
     int line_len = usnprintf(line, sizeof(line), "file reads: %s.\n", buf);
     ret = uwrite(STDOUT_FD, line, (uint32_t)line_len);
     if (ret < 0) {
-        msg = "failed to write read contents from /hello.txt to /dev/stdout.\n";
+        msg = "failed to echo stdio fixture to /dev/stdout.\n";
         uwrite(STDERR_FD, msg, ustrlen(msg));
     }
 
@@ -158,7 +167,7 @@ __attribute__((section(".text.start"), used, noreturn)) void _start(void) {
     /* Clean up */
     ret = uclose(fd);
     if (ret < 0) {
-        msg = "failed to close /hello.txt.\n";
+        msg = "failed to close stdio fixture.\n";
         uwrite(STDERR_FD, msg, ustrlen(msg));
         uexit(8);
     }

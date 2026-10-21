@@ -7,9 +7,9 @@
  * mode, issues real syscalls through `int 0x80`, and reports its verdict
  * through SYS_EXIT (exit 0 == every check passed).
  *
- * The test is self-contained: it rewrites the fixture file with a known
- * pattern before validating reads/seeks, so it does not depend on the
- * original fixture contents (other syscall tests may mutate it).
+ * The harness gives this case a private file and backing buffer. It writes
+ * a known pattern before validating reads/seeks and yields between operations
+ * to exercise isolation while other cases run.
  *
  * Exit codes (each distinct for diagnosability):
  *   0  -> every check passed
@@ -41,9 +41,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "tests/syscall_fixtures.h"
 #include "utils/user_utils.h"
 
-#define FIXTURE_PATH "/hello.txt"
+#define FIXTURE_PATH SYSCALL_FIXTURE_PATH(SYSCALL_RWS_FIXTURE)
 
 /* Known pattern written to the fixture before validation. */
 static const char PATTERN[] = "ABCDEFGHIJ";
@@ -75,6 +76,7 @@ __attribute__((section(".text.start"), used, noreturn)) void _start(void) {
         uputs("rws-test: FAIL write pattern\n");
         uexit(3);
     }
+    uyield();
 
     /* Step 2: rewind with SEEK_SET and read the whole pattern back. */
     if (ulseek(fd, 0, SEEK_SET) != 0) {
@@ -109,6 +111,7 @@ __attribute__((section(".text.start"), used, noreturn)) void _start(void) {
     }
 
     /* Step 4: SEEK_SET to a middle offset and read a few bytes ("CDE"). */
+    uyield();
     if (ulseek(fd, 2, SEEK_SET) != 2) {
         uputs("rws-test: FAIL lseek SET mid\n");
         uexit(10);
@@ -131,7 +134,8 @@ __attribute__((section(".text.start"), used, noreturn)) void _start(void) {
         uexit(13);
     }
 
-    /* Step 6: SEEK_END(-1) points at the final byte; a 1-byte read succeeds. */
+    /* Step 6: SEEK_END(-1) points at the final byte; a 1-byte read succeeds.
+     */
     if (ulseek(fd, -1, SEEK_END) != (end - 1)) {
         uputs("rws-test: FAIL lseek END-1\n");
         uexit(14);

@@ -318,9 +318,9 @@ $(USER_UTILS_STRING_OBJ): $(USER_UTILS_STRING_SRC) $(USER_UTILS_HDR) | $(BUILD_T
 	$(ECHO) "  CC-USER $@"
 	$(Q)$(CC) $(USER_CFLAGS) -c $< -o $@
 
-$(USERPROG_OPEN_CMPL): $(USERPROG_OPEN_SRC) $(USER_UTILS_HDR) | $(BUILD_TEST)
+$(USERPROG_OPEN_CMPL): $(USERPROG_OPEN_SRC) $(USER_UTILS_HDR) $(INCDIR)/tests/syscall_fixtures.h | $(BUILD_TEST)
 	$(ECHO) "  CC-USER $@"
-	$(Q)$(CC) $(USER_CFLAGS) -c $< -o $@
+	$(Q)$(CC) $(USER_CFLAGS) -I$(INCDIR) -c $< -o $@
 
 $(USERPROG_OPEN_ELF): $(USERPROG_OPEN_CMPL) $(USER_UTILS_OBJS) $(USER_LD) | $(BUILD_TEST)
 	$(ECHO) "  LD-USER $@"
@@ -339,9 +339,9 @@ $(USERPROG_OPEN_OBJ): $(USERPROG_OPEN_BIN) | $(BUILD_TEST)
 		--redefine-sym _binary_userprog_open_bin_end=_binary_userprog_open_end \
 		userprog_open.bin userprog_open.o)
 
-$(USERPROG_READ_CMPL): $(USERPROG_READ_SRC) $(USER_UTILS_HDR) | $(BUILD_TEST)
+$(USERPROG_READ_CMPL): $(USERPROG_READ_SRC) $(USER_UTILS_HDR) $(INCDIR)/tests/syscall_fixtures.h | $(BUILD_TEST)
 	$(ECHO) "  CC-USER $@"
-	$(Q)$(CC) $(USER_CFLAGS) -c $< -o $@
+	$(Q)$(CC) $(USER_CFLAGS) -I$(INCDIR) -c $< -o $@
 
 $(USERPROG_READ_ELF): $(USERPROG_READ_CMPL) $(USER_UTILS_OBJS) $(USER_LD) | $(BUILD_TEST)
 	$(ECHO) "  LD-USER $@"
@@ -360,9 +360,9 @@ $(USERPROG_READ_OBJ): $(USERPROG_READ_BIN) | $(BUILD_TEST)
 		--redefine-sym _binary_userprog_read_bin_end=_binary_userprog_read_end \
 		userprog_read.bin userprog_read.o)
 
-$(USERPROG_STDIO_CMPL): $(USERPROG_STDIO_SRC) $(USER_UTILS_HDR) | $(BUILD_TEST)
+$(USERPROG_STDIO_CMPL): $(USERPROG_STDIO_SRC) $(USER_UTILS_HDR) $(INCDIR)/tests/syscall_fixtures.h | $(BUILD_TEST)
 	$(ECHO) "  CC-USER $@"
-	$(Q)$(CC) $(USER_CFLAGS) -c $< -o $@
+	$(Q)$(CC) $(USER_CFLAGS) -I$(INCDIR) -c $< -o $@
 
 $(USERPROG_STDIO_ELF): $(USERPROG_STDIO_CMPL) $(USER_UTILS_OBJS) $(USER_LD) | $(BUILD_TEST)
 	$(ECHO) "  LD-USER $@"
@@ -381,9 +381,9 @@ $(USERPROG_STDIO_OBJ): $(USERPROG_STDIO_BIN) | $(BUILD_TEST)
 		--redefine-sym _binary_userprog_stdio_bin_end=_binary_userprog_stdio_end \
 		userprog_stdio.bin userprog_stdio.o)
 
-$(USERPROG_RWS_CMPL): $(USERPROG_RWS_SRC) $(USER_UTILS_HDR) | $(BUILD_TEST)
+$(USERPROG_RWS_CMPL): $(USERPROG_RWS_SRC) $(USER_UTILS_HDR) $(INCDIR)/tests/syscall_fixtures.h | $(BUILD_TEST)
 	$(ECHO) "  CC-USER $@"
-	$(Q)$(CC) $(USER_CFLAGS) -c $< -o $@
+	$(Q)$(CC) $(USER_CFLAGS) -I$(INCDIR) -c $< -o $@
 
 $(USERPROG_RWS_ELF): $(USERPROG_RWS_CMPL) $(USER_UTILS_OBJS) $(USER_LD) | $(BUILD_TEST)
 	$(ECHO) "  LD-USER $@"
@@ -497,3 +497,6 @@ $(BUILD_TEST):
 
 clean-tests: ## Clean test artifacts
 	$(Q)rm -rf $(BUILD_TEST)
+
+# Keep kernel fixture setup in sync with the embedded user programs.
+$(BUILD_TEST)/tests/integration/userproc_tests.o: $(KERNDIR)/tests/integration/userproc_tests.c $(INCDIR)/tests/syscall_fixtures.h

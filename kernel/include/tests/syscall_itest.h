@@ -17,6 +17,10 @@
  * Convention for self-checking user programs:
  *   exit code 0    -> every in-process syscall check passed
  *   exit code != 0 -> identifies which check failed (program-defined)
+ *
+ * Cases run concurrently. Prepare independent writable files and backing
+ * buffers before calling the harness; use tests/syscall_fixtures.h for paths.
+ * A write/seek/read/verify sequence is not an atomic filesystem operation.
  */
 typedef struct {
     const char *name;           /* human-readable case name (also proc name) */

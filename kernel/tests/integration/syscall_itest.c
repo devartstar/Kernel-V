@@ -1,4 +1,5 @@
 #include "tests/syscall_itest.h"
+#include "arch/x86/interrupt.h"
 #include "lib/printk.h"
 #include "proc/proc.h"
 #include "proc/user.h"
@@ -19,9 +20,10 @@
  * terminated and guards against PCB reuse with a pid check.
  */
 
-/* Upper bound on how long to wait for all processes to terminate before
- * declaring the stragglers timed-out failures. Expressed in timer ticks. */
-#define SYSCALL_ITEST_TIMEOUT_TICKS 1000
+/* Wall-clock budget for the concurrent suite after spawning. Verbose serial
+ * logging and explicit yields can make a successful run exceed ten seconds.
+ * Keep a finite bound, expressed in terms of the configured PIT frequency. */
+#define SYSCALL_ITEST_TIMEOUT_TICKS (30u * PIT_DEFAULT_HZ)
 
 typedef struct {
     const syscall_itest_case_t *spec;
@@ -41,14 +43,6 @@ static int validate_blob(const syscall_itest_case_t *c) {
         return 0;
     }
     return 1;
-}
-
-static void ensure_interrupts_enabled(void) {
-    uint32_t eflags;
-    __asm__ __volatile__("pushf; pop %0" : "=r"(eflags));
-    if (!(eflags & 0x200)) {
-        __asm__ __volatile__("sti");
-    }
 }
 
 uint32_t syscall_itest_run_all(const syscall_itest_case_t *cases,
@@ -112,8 +106,12 @@ uint32_t syscall_itest_run_all(const syscall_itest_case_t *cases,
      * exit code the first time we observe it terminated (before the idle
      * reaper can reclaim the PCB). */
     uint32_t start_tick = tick_count;
-    while (remaining > 0 &&
-           (tick_count - start_tick) < SYSCALL_ITEST_TIMEOUT_TICKS) {
+    uint32_t waited_ticks;
+    for (;;) {
+        /* On this single-CPU kernel, freeze exit/reaper state while taking
+         * the snapshot. Always inspect completion BEFORE the deadline check,
+         * including the first wakeup at or after the deadline. */
+        irq_flags_t flags = irq_save();
         for (uint32_t i = 0; i < count; i++) {
             itest_state_t *s = &states[i];
             if (s->finished || !s->spawned) {
@@ -135,8 +133,25 @@ uint32_t syscall_itest_run_all(const syscall_itest_case_t *cases,
             }
         }
 
-        ensure_interrupts_enabled();
-        __asm__ __volatile__("hlt");
+        waited_ticks = tick_count - start_tick;
+        if (remaining == 0 || waited_ticks >= SYSCALL_ITEST_TIMEOUT_TICKS) {
+            /* Freeze the verdicts before any reporting can be preempted.
+             * Release remaining reap holds now; never dereference these PCBs
+             * again, since a late exit can reclaim them while we print. */
+            for (uint32_t i = 0; i < count; i++) {
+                itest_state_t *s = &states[i];
+                if (s->spawned && !s->finished && s->proc &&
+                    s->proc->pid == s->pid) {
+                    s->proc->reap_blocked = 0;
+                }
+            }
+            irq_restore(flags);
+            break;
+        }
+
+        /* Enable IRQs and sleep atomically with respect to IRQ delivery.
+         * No logging or scheduling with IRQs disabled in the snapshot above. */
+        __asm__ __volatile__("sti; hlt" ::: "memory");
     }
 
     /* Phase 3: report a PASS/FAIL line per case and a summary. */
@@ -153,13 +168,10 @@ uint32_t syscall_itest_run_all(const syscall_itest_case_t *cases,
 
         if (!s->finished) {
             KLOG_ERROR("SYSCALL_ITEST",
-                       "[FAIL] %s (pid=%u): timed out, never terminated.\n",
-                       s->spec->name, s->pid);
-            /* Release the reap hold so a later-terminating process is not
-             * leaked (harmless if it is still running). */
-            if (s->proc && s->proc->pid == s->pid) {
-                s->proc->reap_blocked = 0;
-            }
+                       "[FAIL] %s (pid=%u): completion not observed before "
+                       "wait ended (waited=%u ticks, budget=%u ticks).\n",
+                       s->spec->name, s->pid, waited_ticks,
+                       SYSCALL_ITEST_TIMEOUT_TICKS);
             failed++;
             continue;
         }
