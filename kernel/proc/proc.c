@@ -490,30 +490,13 @@ void proc_wait_prepare_on(proc_wait_reason_t reason, void *channel) {
  */
 static void proc_timeout_wakeup(void *args) { proc_wakeup((pcb_t *)args); }
 
-uint32_t proc_schedule_timeout(uint32_t ticks) {
-    if (!current_proc) {
-        return 0;
-    }
-
-    pcb_t *self = current_proc;
-
+uint32_t proc_park_timeout(uint32_t ticks, irq_flags_t flags) {
     /* initialize a timer for process to sleep on */
     ktimer_t timer;
     ktimer_init(&timer, proc_timeout_wakeup, current_proc);
 
     /* initialize the deadline for the timer */
     uint32_t deadline = ktime_ticks() + ticks;
-
-    /* we must not
-     * 1. arm the timer with deadline but context switch to another
-     * processin between
-     * 2. sleep the process but contextswitch before arming the timer.
-     * Hence sleep + arm timer should be inside critical section */
-    uint32_t flags = irq_save();
-
-    /* keeing the wait_ticks for now. todo: remove it later
-     * Not needed since now process wakes up when timer fired. */
-    proc_wait_prepare(PROC_WAIT_SLEEP, 0);
 
     /* Arm the timer */
     ktimer_add(&timer, ticks);
@@ -529,6 +512,25 @@ uint32_t proc_schedule_timeout(uint32_t ticks) {
 
     uint32_t now = ktime_ticks();
     return time_after(deadline, now) ? (deadline - now) : 0;
+}
+
+uint32_t proc_schedule_timeout(uint32_t ticks) {
+    if (!current_proc) {
+        return 0;
+    }
+
+    /* we must not
+     * 1. arm the timer with deadline but context switch to another
+     * processin between
+     * 2. sleep the process but contextswitch before arming the timer.
+     * Hence sleep + arm timer should be inside critical section */
+    uint32_t flags = irq_save();
+
+    /* keeing the wait_ticks for now. todo: remove it later
+     * Not needed since now process wakes up when timer fired. */
+    proc_wait_prepare(PROC_WAIT_SLEEP, 0);
+
+    return proc_park_timeout(ticks, flags);
 }
 
 // =========================================

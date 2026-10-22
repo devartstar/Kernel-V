@@ -1,6 +1,7 @@
 #ifndef SEMAPHORE_H
 #define SEMAPHORE_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 /**
@@ -35,6 +36,14 @@ void sem_init(semaphore_t *s, int32_t initial);
  * this semaphore s but only some will find a unit.
  */
 void sem_wait(semaphore_t *s);
+
+/**
+ * @sem_wait_timeout: @sem_wait for a specific timeout @ticks.
+ * Check condition untill
+ * the timeout expires and gives up.
+ * @returns true if the lock was acquired else false on timeout.
+ */
+bool sem_wait_timeout(semaphore_t *s, uint32_t ticks);
 
 /**
  * @sem_post - add a unit to wake up waiters. Safe from IRQ context

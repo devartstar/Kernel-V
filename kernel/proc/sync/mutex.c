@@ -22,6 +22,19 @@ void mutex_lock(mutex_t *m) {
     m->owner = current_proc;
 }
 
+bool mutex_lock_timeout(mutex_t *m, uint32_t ticks) {
+    if (m->owner == current_proc) {
+        panik("mutex_lock: recursively lock by owner.\n");
+    }
+
+    if (!sem_wait_timeout(&m->sem, ticks)) {
+        return false;
+    }
+
+    m->owner = current_proc;
+    return true;
+}
+
 void mutex_unlock(mutex_t *m) {
     /* Only mutex holder can release the lock
      * Releasing the lock from someone else corrupts mutual exclusion property

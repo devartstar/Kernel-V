@@ -21,6 +21,7 @@ typedef struct mutex {
 
 void mutex_init(mutex_t *m);
 void mutex_lock(mutex_t *m);
+bool mutex_lock_timeout(mutex_t *m, uint32_t ticks);
 void mutex_unlock(mutex_t *m);
 
 #endif /* MUTEX_H */

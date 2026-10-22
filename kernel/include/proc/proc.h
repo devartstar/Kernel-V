@@ -1,6 +1,7 @@
 #ifndef PROC_H
 #define PROC_H
 
+#include "arch/x86/interrupt.h"
 #include "fs/ramfs.h"
 #include "proc/signal.h"
 #include <stdint.h>
@@ -264,6 +265,17 @@ void proc_wait_prepare_console_input(void);
  * process woken selectively by proc_wakeup_all_on based on @channel
  */
 void proc_wait_prepare_on(proc_wait_reason_t reason, void *channel);
+
+/**
+ * @proc_park_timeout - sleep an ALREADY-PARKED current process for up to
+ *
+ * @ticks. Caller must have marked current_proc WAITING (proc_wait_prepare*) and
+ * must hold IRQs disabled;
+ * @flags is the caller's irq_save() value. We arm the timeout BEFORE releasing
+ * IRQs (no lost-wakeup window), then yield.
+ * @returns  remaining ticks: 0 = timed out, >0 = woken early.
+ */
+uint32_t proc_park_timeout(uint32_t ticks, irq_flags_t flags);
 
 /**
  * @proc_schedule_timeout - Sleeps a process for @ticks number of timer tick.

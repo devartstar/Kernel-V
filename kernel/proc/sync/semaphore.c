@@ -1,6 +1,7 @@
 #include "proc/semaphore.h"
 #include "arch/x86/interrupt.h"
 #include "proc/proc.h"
+#include "time/ktimer.h"
 
 void sem_init(semaphore_t *s, int32_t initial) { s->count = initial; }
 
@@ -25,6 +26,33 @@ void sem_wait(semaphore_t *s) {
     /* process acquired the lock */
     s->count--;
     irq_restore(flags);
+}
+
+bool sem_wait_timeout(semaphore_t *s, uint32_t ticks) {
+    /* start the critical section */
+    irq_flags_t flags = irq_save();
+    uint32_t deadline = ktime_ticks() + ticks;
+
+    while (s->count == 0) {
+        /* check if the ticks have expired, exit */
+        uint32_t now = ktime_ticks();
+        if (!time_after(deadline, now)) {
+            /* end the critical section */
+            irq_restore(flags);
+            return false;
+        }
+
+        /* mark the process waiting for desired timeout before retry. */
+        proc_wait_prepare_on(PROC_WAIT_OBJECT, s);
+        proc_park_timeout(deadline - now, flags);
+
+        /* @proc_park_timeout will end the critical section */
+        flags = irq_save();
+    }
+
+    s->count--;
+    irq_restore(flags);
+    return true;
 }
 
 void sem_post(semaphore_t *s) {
