@@ -56,7 +56,7 @@ static void wheel_unlink(ktimer_t *t) {
 
     /* unlink the element */
     t->prev = t->next = NULL;
-    t->pending = true;
+    t->pending = false;
 }
 
 /* =============================
