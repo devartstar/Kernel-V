@@ -161,6 +161,9 @@ typedef struct pcb {
     /* Process tree */
     struct pcb *parent;
 
+    /* Thread Control Block TCB */
+    struct kthread *kthread;
+
     /* All process linkage */
     struct pcb *all_next;
     struct pcb *all_prev;

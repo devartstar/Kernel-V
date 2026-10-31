@@ -112,14 +112,14 @@ look like one machine. Resources become fluid.
 - [x] ✅ Processes, scheduler, context switch, usermode, syscalls (minimal set)
 - [x] ✅ Channel-based wait + signals (proc_signal_channel, sigpending)
 - [x] ✅ VFS + ramfs + devfs + fd table
-- [x] ✅ PCI subsystem + VirtIO Block (virtqueue/descriptor machinery) — *reused
-      directly by virtio-net later*
+- [x] ✅ PCI subsystem: enumeration, BAR/capability parsing, driver registry +
+      bind; DMA page allocator; MMIO helpers. *(No virtio yet — built in N1.)*
 - [x] ✅ TTY: pipeline line discipline, flyweight stages, multi-session,
       controlling-tty node (Phases 1–6, checkpoints 001–007)
 
-> **Leverage note:** PCI + virtio-block means the NIC (N0) is *not* greenfield —
-> it reuses existing virtqueue and PCI-config code. Biggest single accelerator
-> in the whole plan.
+> **Leverage note:** the PCI driver model, capability walker, and
+> `dma_alloc_pages` mean virtio-net (N1) plugs into existing infrastructure;
+> only the virtio transport + virtqueue library are new.
 
 ---
 
@@ -128,7 +128,7 @@ look like one machine. Resources become fluid.
 *These are the "don't skip" gaps. Each is justified by the network layer that
 immediately follows.*
 
-### Phase A0 — Dynamic kernel heap: **KAlloc**  ⬜
+### Phase A0 — Dynamic kernel heap: **KAlloc**  ✅
 *Why now:* packet buffers, connection state, remote-object tables, RPC messages
 are all variable-size and dynamic. Pools alone can't express them.
 
@@ -153,9 +153,15 @@ free; (3) arena = node-affinity/RDMA seam (designed-for, deferred).
 **Build discipline (reality check):** design the descriptor + interface for all
 four tiers now, but implement only **T1 slab + a trivial large/page-run path**
 first. Add magazines, buddy T0, and TLSF T2 later only when profiling demands.
-Ground truth: mirror `pool_alloc.c` idioms; `pmm_alloc_frame()` returns a
-directly-dereferenceable 4 KB-aligned pointer, so slab pages come straight from
-PMM and `ptr & ~0xFFF` lands on the descriptor.
+
+**Ground truth (corrected — this was a real bug, see A0.5):** KAlloc pages come
+from the reserved kernel heap **virtual** window (`KERNEL_HEAP_START..END`) and
+are explicitly backed via `paging_map_page()`. Only the first 4 MB of physical
+RAM is identity-mapped, so a raw `pmm_alloc_frame()` address is **not** directly
+dereferenceable once allocations climb past low memory — the initial "frames are
+directly dereferenceable" assumption caused a page fault post-merge. Pages stay
+4 KB aligned so `ptr & ~0xFFF` still lands on the descriptor; freed pages are
+cached mapped for O(1) reuse.
 
 - **A0.1 Design** ✅ *(locked: KAlloc, above)*
   - [x] Allocator strategy: tiered slab + TLSF + page-run under unified descriptor.
@@ -167,57 +173,100 @@ PMM and `ptr & ~0xFFF` lands on the descriptor.
   - [x] A0.2b Slab engine (**per-page free list + partial-list + O(1) reclaim**): each page owns its free list + `in_use`; cache keeps a doubly-linked partial-page list; `slab_alloc`/`slab_free` O(1); emptied pages return to PMM.
   - [x] A0.2c Public API: `kmalloc(size)`, `kfree(ptr)`, `kcalloc`, `krealloc`; large path via page-run.
   - [x] A0.2d Init + wire into build (auto-discovered `.c`).
-- **A0.3 Hardening** ⬜
-  - [ ] Magic/tier tag in descriptor; double-free detection; poison-on-free (debug).
-  - [ ] Per-class/per-tier stats: bytes in use, peak, alloc/free counts (observability seam).
-- **A0.4 Tests** ⬜
-  - [ ] Unit: size→class rounding, alignment, alloc/free reuse, cross-class isolation.
-  - [ ] **M1**: randomized alloc/free stress test survives N iterations.
-- **Exit criterion:** M1 green; a subsystem can allocate arbitrary-size objects.
+- **A0.3 Hardening** ✅
+  - [x] Magic/tier tag in descriptor; double-free detection; poison-on-free (debug).
+  - [x] Per-class/per-tier stats: bytes in use, peak, alloc/free counts (observability seam).
+- **A0.4 Tests** ✅
+  - [x] Unit: size→class rounding, alignment, alloc/free reuse, cross-class isolation.
+  - [x] **M1**: randomized alloc/free stress test survives N iterations (verified in QEMU: 19/19).
+- **Exit criterion:** ✅ M1 green; a subsystem can allocate arbitrary-size objects.
 
-### Phase A1 — Blocking primitives (wait-queues, semaphores, mutexes)  ⬜
+- **A0.5 Buddy T0 substrate**  ⬜ *(deferred — designed-for, not yet built)*
+  *Why it exists:* today T0 is a **bump pointer** (`g_heap_brk`) over the heap
+  window plus a mapped-page free cache. That is O(1) and correct, but it has two
+  limits the SSI spine will eventually hit:
+  1. **No multi-page contiguous allocations.** The large tier is capped at one
+     frame (~4064 B usable). DMA ring buffers, big RPC payloads, and page-table
+     bulk needs will want contiguous multi-page runs.
+  2. **No coalescing of the window itself.** Freed single pages are cached, but
+     the window only ever grows toward `KERNEL_HEAP_END`; there is no merging of
+     adjacent free regions into larger runs.
+  *What T0 becomes:* a **buddy allocator** managing the 16 MB heap window as
+  power-of-two page runs (orders 0..N). `alloc(order)` splits a larger block if
+  needed; `free` finds its buddy via `addr ^ block_size` and coalesces upward.
+  Slab (T1) and page-run (T3) then both draw from T0 instead of the bump.
+  *Hard lesson baked in (from the post-merge crash):* the buddy's own metadata
+  (free-list heads / order bitmaps) **must be self-placed from a source of
+  truth** — sized from the window extent and carved from the window itself or
+  anchored to `kernel_end` — **never a hardcoded address**. The PMM frame bitmap
+  was pinned at `0x90000`, silently fell inside the grown kernel `.bss`, and
+  aliased `current_proc` → page fault. T0 must not repeat that class of bug.
+  - [x] A0.5a Buddy structures: per-order free lists + a split/merge bitmap,
+        all derived from the window size (no magic addresses).
+  - [x] A0.5b `buddy_alloc(order)` / `buddy_free(ptr)` with O(log n) coalescing;
+        replace the `g_heap_brk` bump as the T0 page source.
+  - [x] A0.5c Multi-page contiguous large tier (T3) on top of T0; lift the
+        one-frame cap in `kmem_large_alloc`.
+  - [-] A0.5d Tests: contiguous runs, buddy coalescing, fragmentation stress,
+        metadata-placement assertion (bitmap never overlaps `.bss`).
+  - **Trigger to build:** first consumer needing >4064 B contiguous (DMA rings
+    for the NIC in N0, or large RPC buffers), or observed window fragmentation.
+  - **Exit criterion:** a multi-page contiguous alloc/free stress test passes;
+    T1/T3 both source pages from the buddy; no hardcoded metadata addresses.
+
+*Post-merge fixes already landed (A0 addenda):* (1) KAlloc now sources pages
+from the demand-paged heap window via `paging_map_page` (not raw physical
+frames); (2) the PMM frame bitmap is anchored to `PAGE_ALIGN_UP(kernel_end)`
+instead of hardcoded `0x90000`. Both verified in QEMU.
+
+### Phase A1 — Blocking primitives (wait-queues, semaphores, mutexes)  ✅
 *Why now:* the moment I/O blocks (`recv`, RPC call), we need a clean "sleep
-until event" primitive. We already have the seed: `proc_wait_prepare_on(channel)`.
+until event" primitive. Built on the ported channel-wait seed.
 
-- **A1.1 Generalize wait-queues** ⬜
-  - [ ] `wait_queue_t` with `wq_wait(wq)` / `wq_wake_one` / `wq_wake_all`.
-  - [ ] Refactor existing channel-wait + tty read to sit on this abstraction.
-- **A1.2 Semaphore / mutex / completion** ⬜
-  - [ ] Counting semaphore, sleeping mutex, `completion` (one-shot event).
-  - [ ] Timed variants (`wq_wait_timeout`) — needs A3.
-- **A1.3 Correctness** ⬜
-  - [ ] Lost-wakeup safety, IRQ-context rules documented, spurious-wakeup loops.
-- **A1.4 Tests** ⬜
-  - [ ] Producer/consumer, mutex mutual-exclusion, timeout wakeups.
-- **Exit criterion:** two kernel threads coordinate via semaphore + wait-queue.
+- **A1.0 Port channel-wait** ✅
+  - [x] `proc_wait_info_t {reason, tick_count, channel}` in the PCB; the wait
+        object's own address is the wait channel (no new list).
+  - [x] `proc_wait_prepare_on`, `proc_wakeup_all_on`, `proc_wakeup_one_reason`.
+  - [x] Timer handler guards on `PROC_WAIT_SLEEP` so object waiters aren't woken
+        every tick (fixed a latent bug during the port).
+- **A1.1 Semaphore** ✅
+  - [x] `sem_init/sem_wait/sem_post`; check-and-park under `irq_save` defeats the
+        lost-wakeup race; `while`-loop re-check on wake.
+- **A1.2 Mutex** ✅
+  - [x] Owner-tracked binary semaphore; `panik` on non-owner unlock and recursive
+        self-lock.
+- **A1.3 Tests** ✅
+  - [x] Producer/consumer + mutual-exclusion (counter == 10 under an in-CS
+        `yield`), **verified in QEMU**: consumer blocks on `sem_wait`, producer
+        `sem_post` wakes it across processes.
+- *Deferred:* generic `wait_queue_t` abstraction + timed variants
+  (`wq_wait_timeout`, needs A3) — fold in when a second consumer appears.
+- **Exit criterion:** ✅ two kernel threads coordinate via semaphore + mutex.
 
-### Phase A2 — Deferred work (bottom-halves + kernel threads)  ⬜
+### Phase A2 — Deferred work (bottom-halves + kernel threads)  ✅
 *Why now:* a NIC raises IRQs fast; the handler must stay tiny and defer real
 work. You learned this with serial (IRQ → drain). Generalize it.
 
-- **A2.1 Kernel threads** ⬜
-  - [ ] First-class `kthread_create(fn, arg, name)` (you have `proc_create` with
-        a kernel entry — formalize + name + lifecycle).
-- **A2.2 Deferred execution** ⬜
-  - [ ] A softirq/tasklet-style bottom half **or** a workqueue (kthread + job
-        queue). (Recommendation: **workqueue** — simpler mental model, sleeps OK.)
-  - [ ] Enqueue-from-IRQ, run-in-thread; backpressure policy.
-- **A2.3 Tests** ⬜
-  - [ ] IRQ handler enqueues N jobs; worker drains them in order.
-- **Exit criterion:** an interrupt can safely schedule blocking follow-up work.
+- **A2.1 Kernel threads** → moved to **N0.2** (`kthread_create` + stop)
+- **A2.2 Deferred execution** ✅
+  - [x] Workqueue (kthread + job ring); sleeps OK in work items.
+  - [x] Enqueue-from-IRQ, run-in-thread; backpressure = drop + count.
+- **A2.3 Tests** ✅
+  - [x] IRQ handler enqueues N jobs; worker drains them in order.
+- **Exit criterion:** ✅ an interrupt can safely schedule blocking follow-up work.
 
-### Phase A3 — Timed events & timeouts  ⬜
-*Why now:* retransmit, failure detection, and leases all need timeouts. You have
-a tick + `proc_wait_sleep(ticks)`; upgrade to programmable timers.
+### Phase A3 — Timed events & timeouts  ✅
+*Why now:* retransmit, failure detection, and leases all need timeouts.
 
-- **A3.1 Timer infrastructure** ⬜
-  - [ ] Timer objects with callbacks; a **timer wheel** or sorted list.
-  - [ ] `timer_add(delay, fn, arg)`, `timer_cancel`, monotonic clock.
-- **A3.2 Integrate with waits** ⬜
-  - [ ] `wq_wait_timeout`, `sema_wait_timeout` built on A1 + A3.
-- **A3.3 Tests** ⬜
-  - [ ] Timer fires within tolerance; cancel works; timed-wait wakes on timeout.
-- **Exit criterion:** a blocking call can time out deterministically.
+- **A3.1 Timer infrastructure** ✅
+  - [x] Caller-owned `ktimer_t`; 256-bucket hashed timer wheel; absolute deadlines.
+  - [x] `ktimer_add` (re-arm semantics), `ktimer_cancel`, wrap-safe `time_after`, monotonic `ktime_ticks`.
+- **A3.2 Integrate with waits** ✅
+  - [x] `proc_schedule_timeout` / `proc_park_timeout` (stack timer, mandatory cancel); O(n) sleep scan removed; idempotent `proc_wakeup`.
+  - [x] `sem_wait_timeout`, `mutex_lock_timeout` (absolute deadline across spurious wakes).
+- **A3.3 Tests** ✅
+  - [x] Fires within tolerance; cancel is final; re-arm; timed-wait timeout; try-lock; event-beats-timeout.
+- **Exit criterion:** ✅ a blocking call can time out deterministically.
 
 > **Part I exit:** the kernel can dynamically allocate, block/wake cleanly,
 > defer IRQ work to threads, and time things out. *Everything distributed needs
@@ -225,57 +274,87 @@ a tick + `proc_wait_sleep(ticks)`; upgrade to programmable timers.
 
 ---
 
-## PART II — Networking (the transport spine)
+## PART II — The Fabric: networking from wire to kernel RPC  🚧
+*Detailed Phase 2 plan. Decisions locked 2026-10-31.*
 
-### Phase N0 — NIC driver: virtio-net  ⬜
-*Reuses PCI + virtqueue code from virtio-block.*
+**Ground truth (2026-10-30):** PCI bus/bind/BAR/capability parsing,
+`dma_alloc_pages` (kva + phys), `mmio_*`, `irq_register_handle`, workqueue,
+ktimers and timed sem/mutex exist. **No virtio code exists yet** — the virtio
+transport and virtqueue library are built here (N1), not reused.
 
-- **N0.1 Device bring-up** ⬜
-  - [ ] PCI discover virtio-net; feature negotiation; MAC read.
-  - [ ] Set up RX/TX virtqueues (reuse virtio-block descriptor logic).
-- **N0.2 RX path** ⬜
-  - [ ] Post RX buffers; IRQ on packet; **bottom-half** (A2) drains ring.
-- **N0.3 TX path** ⬜
-  - [ ] Enqueue frame on TX vq; completion handling; buffer recycling.
-- **N0.4 Tests / bring-up** ⬜
-  - [ ] Loopback / observe frames in QEMU; RX+TX counters.
-- **Exit criterion:** node can send and receive raw Ethernet frames in QEMU.
+**Locked decisions**
+| # | Decision | Choice |
+|---|----------|--------|
+| D1 | Virtio flavor | **Modern virtio 1.x** (PCI vendor caps + MMIO); no legacy port-I/O path |
+| D2 | Carrier | **Raw Ethernet L2** + our own protocol: TCP's reliability, ordering, flow and congestion control combined with UDP's message boundaries and low overhead, and no head-of-line blocking across lanes |
+| D3 | QEMU backend | **`-netdev dgram`** (UDP-backed virtual wire, no root) |
+| D4 | Byte order / extensibility | **LE payload, BE Ethernet fields.** Carrier-agnostic header with version, `next_proto`, and TLV options, so the same frame can later ride UDP/IP, RDMA, or a gateway to other protocols |
+| D5 | Frame authentication | **SipHash-2-4** cluster-key MAC now; AEAD with per-peer keys in S1 |
+| D6 | Transport model | **Messages + planes/lanes.** Control plane (ACK, heartbeat, membership, RPC control; never flow-blocked, highest priority) and data plane (interactive and bulk lanes) |
 
-### Phase N1 — Link & framing  ⬜
-- [ ] Ethernet frame parse/build; our own EtherType for the cluster protocol.
-- [ ] MTU handling; frame validation.
-- **Decision point:** *do we ride raw Ethernet L2 with node-IDs, or implement a
-  minimal IP/UDP?* (Recommendation: **raw L2 + cluster EtherType** for the demo
-  — skips IP complexity; revisit for real deployment in Part VIII.)
-- **Exit criterion:** two QEMU nodes on a shared virtual switch exchange framed
-  cluster packets addressed by node.
+**Signature ideas:** carrier-agnostic header · seeded fault-injecting
+`simwire` (any transport bug replayable by seed) · boot incarnations (peer
+reboot detected in one RTT; in-flight calls fail fast) · planes/lanes (TTY
+never queues behind migration) · deadline *budgets* (no clock sync) ·
+at-most-once RPC reply cache · cross-node trace stitching · frames
+authenticated from the first remote byte · load-vector beacons · `/net/peers`
+as a file.
 
-### Phase N2 — Node addressing & (optional) minimal L3  ⬜
-- [ ] Node identifiers, address resolution (node-ID → MAC).
-- [ ] Optional: tiny UDP/IP if we choose routable addressing.
-- **Exit criterion:** a packet can be addressed to "node B" symbolically.
+### Phase N0 — Bench & building blocks  🚧
+- [x] N0.1 Roadmap reconcile (this section; A2/A3 status; virtio correction)
+- [ ] N0.2 `kthread_create(fn, arg, name)` + cooperative stop
+- [ ] N0.3 Two-node QEMU lab: `make node-a`/`node-b`, shared `dgram` L2, fixed MACs, per-node pcap
+- [ ] N0.4 `netbuf`: headroom/tailroom packet buffer, refcount, fixed pool (no alloc in IRQ)
+- [ ] N0.5 Wire helpers: BE/LE load/store + bounds-checked cursor reader/writer
+- **Exit:** two QEMUs boot side by side with NICs visible on PCI; netbuf + cursor unit tests green.
 
-### Phase N3 — Reliable message transport  ⬜
-*A mini reliable datagram/stream: the network is lossy; we hide it.*
+### Phase N1 — Virtio core + virtio-net  ⬜
+- [ ] N1.1 virtio-pci modern transport: vendor caps (common/notify/ISR/device), BAR mapping, status handshake, feature negotiation
+- [ ] N1.2 Split-virtqueue library (desc/avail/used, free list, barriers) + fake-device unit test
+- [ ] N1.3 virtio-net probe via PCI driver registry; MAC, link status
+- [ ] N1.4 `netdev` abstraction (ops, MAC, MTU, stats, RX hook) + loopback netdev
+- [ ] N1.5 RX path: pre-posted buffers, IRQ → workqueue, NAPI-lite interrupt suppression, repost
+- [ ] N1.6 TX path: `virtio_net_hdr` in headroom, notify, completion reclaim, ring-full backpressure
+- [ ] N1.7 Tests: raw broadcast A→B visible in pcap; RX/TX/drop counters
+- **Exit:** two nodes exchange raw Ethernet frames.
 
-- **N3.1 Segmentation & reassembly** ⬜ (messages larger than a frame)
-- **N3.2 Reliability** ⬜ sequence numbers, ACKs, retransmit (uses A3 timers)
-- **N3.3 Flow / congestion control (basic)** ⬜ windowing, backpressure
-- **N3.4 Connection state** ⬜ per-peer state in `kmalloc`'d structures (A0)
-- **N3.5 Tests** ⬜ inject loss/reorder; verify in-order, exactly-once delivery
-- **Exit criterion → M2:** two nodes exchange a large message reliably under
-  simulated loss.
+### Phase N2 — Fabric link layer (KVF)  ⬜
+- [ ] N2.1 Ethernet parse/build + EtherType demux table; KVF on `0x88B5`
+- [ ] N2.2 KVF header: version, type, flags, next_proto, src/dst node-id, incarnation, plane/lane, len, trace, TLV options
+- [ ] N2.3 Node identity: 64-bit node-id (config now, pubkey hash in C0) + boot incarnation nonce
+- [ ] N2.4 HELLO beacons + neighbor table (node-id → MAC, incarnation, last-seen, load vector)
+- [ ] N2.5 Frame authentication (SipHash-2-4); reject + count
+- [ ] N2.6 Wireshark Lua dissector for KVF
+- **Exit:** `kvf_send(node_B, …)` by symbolic id; forged or corrupt frames dropped and counted.
 
-### Phase N4 — Kernel RPC layer  ⬜
-*The programming model everything above uses.*
+### Phase N3 — Reliable message transport (KVT)  ⬜
+- [ ] N3.0 `simwire`: seeded loss/dup/reorder/delay/corrupt carrier
+- [ ] N3.1 Peer connection state machine + handshake; incarnation change ⇒ reset + fail fast
+- [ ] N3.2 Sequence numbers, cumulative ACK + SACK bitmap, dup suppression, replay window
+- [ ] N3.3 Retransmission: Jacobson/Karels RTO, Karn's rule, backoff, fast retransmit
+- [ ] N3.4 Message fragmentation + bounded-memory reassembly with timeout
+- [ ] N3.5 Planes/lanes: per-lane ordering; control > interactive > bulk scheduling
+- [ ] N3.6 Flow + congestion control: receiver credits, AIMD cwnd, timed sender backpressure
+- [ ] N3.7 Peer health: keepalive, idle probes, UP/SUSPECT/DOWN events (feeds C1)
+- [ ] N3.8 Seed-sweep tests: exactly-once, per-lane order, bounded memory under loss
+- **Exit → M2:** 256 KB message A→B over virtio under injected loss, checksum-verified.
 
-- **N4.1 Message format** ⬜ compact, versioned, endian-defined wire encoding
-- **N4.2 Marshaling** ⬜ encode/decode of typed args & results
-- **N4.3 Request/reply** ⬜ correlation IDs, blocking call (A1), async call,
-  server dispatch table
-- **N4.4 Robustness** ⬜ timeouts, retries (idempotency keys), error propagation
-- **N4.5 Tests** ⬜ round-trip typed RPC; timeout + retry; concurrent calls
-- **Exit criterion → M3:** node A calls `rpc(B, method, args)` and gets a reply.
+### Phase N4 — Kernel RPC (KRPC)  ⬜
+- [ ] N4.1 Versioned wire encoding + typed builder/cursor
+- [ ] N4.2 Service/method registry with flags (IDEMPOTENT) + server worker pool
+- [ ] N4.3 Client: correlation ids; blocking `krpc_call(node, method, req, resp, budget)` + async
+- [ ] N4.4 At-most-once reply cache keyed (node, incarnation, call-id); peer-restart error
+- [ ] N4.5 Deadline budget propagation + cancellation
+- [ ] N4.6 Trace propagation + host tool stitching node logs by trace_id
+- [ ] N4.7 Built-in services: `sys.ping`, `sys.echo`, `sys.info`
+- [ ] N4.8 Tests: round trip, timeout, retry dedupe, concurrency, peer restart
+- **Exit → M3:** `krpc_call(B, "sys.echo")` returns; a non-idempotent op runs exactly once under loss.
+
+### Phase N5 — Surface, observability, demo  ⬜
+- [ ] N5.1 `/net/peers`, `/net/stats` as devfs files
+- [ ] N5.2 Per-layer counters + latency histograms (RTT p50/p99, retransmits, drops by reason)
+- [ ] N5.3 Benchmarks: RPC RTT + bulk throughput baseline
+- [ ] N5.4 Record M2/M3 demos; list Part III/IV hooks
 
 ---
 
@@ -429,10 +508,12 @@ Part I (A0→A1→A2→A3)  ──▶ Part II (N0→N1→N2→N3→N4)  ──�
      Part VII ──▶ M9    Part VIII    Part IX ──▶ M10
 ```
 
-**Immediate next action:** Phase **A0 — kernel heap**, starting with A0.1 design
-(free-list vs. slab vs. buddy).
+**Immediate next action:** Part II, Phase **N0 — bench & building blocks**
+(N0.2 `kthread_create`). Part I (A0–A3) is ✅ done and verified in QEMU;
+buddy T0 (A0.5) is in place, its test sweep (A0.5d) still partial.
 
 ---
 
 ## 5. Change log
 - 2026-09-07 — Initial master roadmap authored (post TTY Phase 6-multi).
+- 2026-10-31 — Part I closed (A2, A3 ✅). Part II replaced with the detailed Phase 2 "Fabric" plan; decisions D1–D6 locked; corrected the nonexistent virtio-block claim.
