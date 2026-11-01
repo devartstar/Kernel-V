@@ -369,12 +369,12 @@ pcb_t *proc_create(void (*entry)(void *), void *arg, const char *name) {
      which takes entry func and args as its parameter.
     */
 
-    /* push a fake return address (will never be used) */
-    *(--stack_top) = 0;
-    /* push the entry function to be used by thread_entry_wrapper */
-    *(--stack_top) = (virt_addr_t)entry;
     /* push the argument pointer */
     *(--stack_top) = (virt_addr_t)arg;
+    /* push the entry function to be used by thread_entry_wrapper */
+    *(--stack_top) = (virt_addr_t)entry;
+    /* push a fake return address (will never be used) */
+    *(--stack_top) = 0;
 
     proc->context.esp = (virt_addr_t)(uintptr_t)stack_top;
     proc->context.eip = (virt_addr_t)(uintptr_t)thread_entry_wrapper;

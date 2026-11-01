@@ -19,7 +19,11 @@ typedef struct kthread {
  */
 static void kthread_trampoline(void *k) {
     kthread_t *t = k;
-    t->result = t->fn(t->args);
+
+    /* Case: Thread stoped before it could even run
+     * Check before invoking the thread startup routine.
+     */
+    t->result = t->should_stop ? KTHREAD_ERR_NEVER_RAN : t->fn(t->args);
     sem_post(&t->exited);
 
     /* !IMP! Do not touch thread after this: stopper may kfree it immediately.
@@ -29,6 +33,9 @@ static void kthread_trampoline(void *k) {
 
 pcb_t *kthread_create(kthread_fn_t fn, void *arg, const char *name) {
     kthread_t *k = kmalloc(sizeof(*k));
+    if (!k) {
+        return NULL;
+    }
 
     /* Initialize the TCB */
     k->fn = fn;
@@ -45,6 +52,14 @@ pcb_t *kthread_create(kthread_fn_t fn, void *arg, const char *name) {
 
     proc_set_type(p, PROC_TYPE_KERNEL);
     p->kthread = k;
+
+    /* Block reclaiming unless thread stop marks it reclaimable.
+     * 1. Thread stopped by itself.
+     * 2. Underlying PCB is marked reclaimable.
+     * 3. Idle reaper cleans up the PCB.
+     * Thread Stop routine might be invoked later has no ref to PCB.
+     */
+    p->reap_blocked = 1;
 
     return p;
 }
@@ -65,12 +80,23 @@ bool kthread_should_stop(void) {
 int kthread_stop(pcb_t *p) {
     kthread_t *k = p->kthread;
     if (!k) {
-        panik("kthread_stop: not a kthread\n");
+        panik("kthread_stop: not a kernel thread\n");
     }
 
     k->should_stop = true;
+
+    /* Case1: Thread was marked stoped before it was scheduled to run. */
+    if (p->state == PROC_NEW) {
+        proc_mark_ready(p);
+    }
+
+    /* Case2: Thread was running before it was marked stop */
     proc_wakeup(p);
+
     sem_wait(&k->exited);
+
+    /* Mark the pcb reclaimable */
+    p->reap_blocked = 0;
 
     int result = k->result;
     kfree(k);

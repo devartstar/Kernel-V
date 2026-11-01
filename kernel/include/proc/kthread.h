@@ -4,6 +4,8 @@
 #include "proc/proc.h"
 #include <stdbool.h>
 
+#define KTHREAD_ERR_NEVER_RAN (-4)
+
 typedef int (*kthread_fn_t)(void *arg);
 
 /**
