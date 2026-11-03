@@ -56,6 +56,9 @@ else
 	BUILD_TYPE := release
 endif
 
+# --- Multi Node Configuration ---
+include $(MAKE_DIR)/net.mk
+
 # --- Default Target ---
 .DEFAULT_GOAL := help
 

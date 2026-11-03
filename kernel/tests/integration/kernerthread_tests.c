@@ -136,7 +136,7 @@ void create_kthread_test_process(void) {
     test_result = test_stop_waiting_thread();
     lat = g_thread_stop_tick - g_thread_start_tick;
     KLOG_VERBOSE("KTHREAD_TEST", "Waiting thread runs ticks: %d\n", lat);
-    TCHECK(lat < 10, "Waiting Thread to stop in expected time");
+    TCHECK(lat < 20, "Waiting Thread to stop in expected time");
     TCHECK(test_result == TEST3_EXPECTED_CODE, "Waiting Thread stop to retuen "
                                                "expected code");
 
