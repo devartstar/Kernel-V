@@ -13,7 +13,7 @@ LAB_HOST ?= 127.0.0.1
 LAB_SECS ?= 30
 
 # first 5 bytes of the virtual NICs mac address
-LAB_MAC_PREFIX := 02:4b:50:00:00
+LAB_MAC_PREFIX := 02:4b:56:00:00
 
 # ============= LAB DESIGN =================
 # 
@@ -93,8 +93,8 @@ node-b: $(LAB_IMG) | $(LAB_DIR)
 
 ## Boot nodes A+B together for LAB_SECS, then report
 lab: $(LAB_IMG) | $(LAB_DIR)
-	$(Q)rm -f $(LAB-DIR)/node-*
-	$(ECHO) "Fabric lab: 2 nodes for $(LAB_SECS)s -> $(LAB-DIR)/"
+	$(Q)rm -f $(LAB_DIR)/node-*
+	$(ECHO) "Fabric lab: 2 nodes for $(LAB_SECS)s -> $(LAB_DIR)/"
 	$(Q)( timeout $(LAB_SECS) $(call lab_qemu,a,1,10001,10002) & \
 		  timeout $(LAB_SECS) $(call lab_qemu,b,2,10002,10001) & \
 		  wait ) || true
@@ -102,7 +102,7 @@ lab: $(LAB_IMG) | $(LAB_DIR)
 
 ## Summarize the last lab run
 lab-report:
-	@for n in a b;
+	@for n in a b; do	\
 		nic=$$(grep -q "vendor=1af4 device=1041" $(LAB_DIR)/node-$$n.log 2>/dev/null && echo yes || echo NO); \
 		sz=$$(stat -c %s $(LAB_DIR)/node-$$n.pcap 2>/dev/null || echo 0); \
 		printf "node-%s: virtio-net(modern) on PCI: %-3s	pcap: %6s bytes\n" $$n $$nic $$sz;	\

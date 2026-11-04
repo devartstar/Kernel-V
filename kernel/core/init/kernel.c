@@ -11,6 +11,7 @@
 #include "mm/paging.h"
 #include "mm/pmm.h"
 #include "mm/stack_map.h"
+#include "net/netbuf.h"
 #include "proc/context_switch.h"
 #include "proc/proc.h"
 #include "proc/syscall.h"
@@ -122,6 +123,11 @@ void high_stack_entry() {
     // ==========================================
     workqueue_init();
     KLOG_INFO("WORKQUEUE", "Kernel worker initialized.\n");
+
+    // ==========================================
+    // NETWORK BUFFER INITIALIZATION
+    // ==========================================
+    netbuf_pool_init();
 
     // ==========================================
     // ENABLE SCHEDULING AND INTERRUPTS
