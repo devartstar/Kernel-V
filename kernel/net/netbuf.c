@@ -192,3 +192,11 @@ bool netbuf_trim(netbuf_t *buf, uint32_t len) {
     buf->tail = buf->data + len;
     return true;
 }
+
+void netbuf_get_stats(netbuf_stats_t *out) {
+    /* Snapshot under IRQ-off: alloc/release can run from interrupt context,
+     * and a torn copy (free from before, allocs from after) would lie. */
+    irq_flags_t flags = irq_save();
+    *out = g_stats;
+    irq_restore(flags);
+}

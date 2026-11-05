@@ -8,6 +8,7 @@
 #include "tests/test_fd.h"
 #include "tests/test_irq.h"
 #include "tests/test_mmio.h"
+#include "tests/test_netbuf.h"
 #include "tests/test_pci.h"
 #include "tests/test_ramfs.h"
 #include "tests/test_spinlock.h"
@@ -98,6 +99,7 @@ static const ktest_t unit_tests[] = {
     {"tty_pipeline", "unit", run_tty_pipeline_tests},
     {"tty_multi", "unit", run_tty_multi_tests},
     {"kmalloc", "unit", run_kmalloc_tests},
+    {"netbuf", "unit", run_netbuf_tests},
 };
 #endif
 

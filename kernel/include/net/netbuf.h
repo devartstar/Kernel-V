@@ -80,6 +80,9 @@ void netbuf_hold(netbuf_t *buf);
  */
 void netbuf_release(netbuf_t *buf);
 
+/**
+ * @netbuf_get_stats returns the stats object
+ */
 void netbuf_get_stats(netbuf_stats_t *stats);
 
 /* ======= Buffer Geometry Utilities ======== */
