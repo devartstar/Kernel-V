@@ -54,7 +54,7 @@ static inline bool wire_rd_tlv(wire_rd_t *r, uint8_t *type, wire_rd_t *val) {
 static inline void wire_wr_tlv(wire_wr_t *w, uint8_t type, const void *val,
                                uint16_t len) {
     wire_wr_u8(w, type);
-    wire_wr_u8(w, len);
+    wire_wr_u16le(w, len);
     wire_wr_bytes(w, val, len);
 }
 

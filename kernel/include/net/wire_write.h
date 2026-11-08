@@ -30,7 +30,7 @@ typedef struct wire_wr {
  * @buf buffer to be sent through the wire
  * @cap max length of buffer
  */
-static inline void wire_wr_init(wire_wr_t *w, const void *buf, uint32_t cap) {
+static inline void wire_wr_init(wire_wr_t *w, void *buf, uint32_t cap) {
     w->p = (uint8_t *)buf;
     w->end = w->p + cap;
     w->err = (buf == NULL && cap != 0);
@@ -78,42 +78,42 @@ static inline void wire_wr_u8(wire_wr_t *w, uint8_t v) {
 static inline void wire_wr_u16le(wire_wr_t *w, uint16_t v) {
     uint8_t *q = wire_wr_reserve(w, 2);
     if (q) {
-        st_le16(w, v);
+        st_le16(q, v);
     }
 }
 
 static inline void wire_wr_u32le(wire_wr_t *w, uint32_t v) {
-    const uint8_t *q = wire_wr_reserve(w, 4);
+    uint8_t *q = wire_wr_reserve(w, 4);
     if (q) {
-        st_le32(w, v);
+        st_le32(q, v);
     }
 }
 
 static inline void wire_wr_u64le(wire_wr_t *w, uint64_t v) {
-    const uint8_t *q = wire_wr_reserve(w, 8);
+    uint8_t *q = wire_wr_reserve(w, 8);
     if (q) {
-        st_le64(w, v);
+        st_le64(q, v);
     }
 }
 
 static inline void wire_wr_u16be(wire_wr_t *w, uint16_t v) {
-    const uint8_t *q = wire_wr_reserve(w, 2);
+    uint8_t *q = wire_wr_reserve(w, 2);
     if (q) {
-        st_be16(w, v);
+        st_be16(q, v);
     }
 }
 
 static inline void wire_wr_u32be(wire_wr_t *w, uint32_t v) {
-    const uint8_t *q = wire_wr_reserve(w, 4);
+    uint8_t *q = wire_wr_reserve(w, 4);
     if (q) {
-        st_be32(w, v);
+        st_be32(q, v);
     }
 }
 
 static inline void wire_wr_u64be(wire_wr_t *w, uint64_t v) {
-    const uint8_t *q = wire_wr_reserve(w, 8);
+    uint8_t *q = wire_wr_reserve(w, 8);
     if (q) {
-        st_be64(w, v);
+        st_be64(q, v);
     }
 }
 
@@ -123,7 +123,7 @@ static inline void wire_wr_u64be(wire_wr_t *w, uint64_t v) {
  */
 static inline void wire_wr_bytes(wire_wr_t *w, const void *src, uint32_t n) {
     uint8_t *q = wire_wr_reserve(w, n);
-    if (q) {
+    if (q && n) {
         memcpy(q, src, n);
     }
 }

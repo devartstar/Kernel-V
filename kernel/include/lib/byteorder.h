@@ -45,7 +45,7 @@ static inline uint32_t ld_be32(const void *p) {
             ((uint32_t)b[2] << 8) | ((uint32_t)b[3]));
 }
 
-static inline uint32_t ld_be64(const void *p) {
+static inline uint64_t ld_be64(const void *p) {
     const uint8_t *b = p;
     return (((uint64_t)ld_be32(b) << 32) | (uint64_t)ld_be32(b + 4));
 }
@@ -64,7 +64,7 @@ static inline uint32_t ld_le32(const void *p) {
             ((uint32_t)b[1] << 8) | ((uint32_t)b[0]));
 }
 
-static inline uint32_t ld_le64(const void *p) {
+static inline uint64_t ld_le64(const void *p) {
     const uint8_t *b = p;
     return ((uint64_t)ld_le32(b) | ((uint64_t)ld_le32(b + 4) << 32));
 }

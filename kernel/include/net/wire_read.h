@@ -13,13 +13,15 @@
  * wire. these bytes cannot be trusted so needs to read via cursor and verify.
  * Note! it is not a memory in storage or memory. (ie. doesnt hold bytes)
  *
- * @p is the next unread byte
- * @end is the one past the last byte
+ * @p stores the physical adress of the next byte to be read in wire.
+ * the byte itself cannot be modified through p, hence const
+ * @end is the address of one past the last byte, byte is un-modifiable hence
+ * const
  * @err sticky set on first out of bound access
  */
 typedef struct wire_rd {
-    uint8_t *p;
-    uint8_t *end;
+    const uint8_t *p;
+    const uint8_t *end;
 
     bool err;
 } wire_rd_t;
@@ -34,7 +36,7 @@ typedef struct wire_rd {
 static inline void wire_rd_init(wire_rd_t *r, const void *buf, uint32_t len) {
     r->p = (uint8_t *)buf;
     r->end = r->p + len;
-    r->err = (buf == NULL && len == 0);
+    r->err = (buf == NULL && len != 0);
 }
 
 /**
@@ -90,32 +92,32 @@ static inline uint8_t wire_rd_u8(wire_rd_t *r) {
 
 static inline uint16_t wire_rd_u16le(wire_rd_t *r) {
     const uint8_t *q = wire_rd_take(r, 2);
-    return q ? ld_le16(r) : 0;
+    return q ? ld_le16(q) : 0;
 }
 
 static inline uint32_t wire_rd_u32le(wire_rd_t *r) {
     const uint8_t *q = wire_rd_take(r, 4);
-    return q ? ld_le32(r) : 0;
+    return q ? ld_le32(q) : 0;
 }
 
 static inline uint64_t wire_rd_u64le(wire_rd_t *r) {
     const uint8_t *q = wire_rd_take(r, 8);
-    return q ? ld_le64(r) : 0;
+    return q ? ld_le64(q) : 0;
 }
 
 static inline uint16_t wire_rd_u16be(wire_rd_t *r) {
     const uint8_t *q = wire_rd_take(r, 2);
-    return q ? ld_be16(r) : 0;
+    return q ? ld_be16(q) : 0;
 }
 
 static inline uint32_t wire_rd_u32be(wire_rd_t *r) {
     const uint8_t *q = wire_rd_take(r, 4);
-    return q ? ld_be32(r) : 0;
+    return q ? ld_be32(q) : 0;
 }
 
 static inline uint64_t wire_rd_u64be(wire_rd_t *r) {
     const uint8_t *q = wire_rd_take(r, 8);
-    return q ? ld_be64(r) : 0;
+    return q ? ld_be64(q) : 0;
 }
 
 /**

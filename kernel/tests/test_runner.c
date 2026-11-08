@@ -17,6 +17,7 @@
 #include "tests/test_tty_multi.h"
 #include "tests/test_tty_pipeline.h"
 #include "tests/test_vfs.h"
+#include "tests/test_wire.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -100,6 +101,7 @@ static const ktest_t unit_tests[] = {
     {"tty_multi", "unit", run_tty_multi_tests},
     {"kmalloc", "unit", run_kmalloc_tests},
     {"netbuf", "unit", run_netbuf_tests},
+    {"wire", "unit", run_wire_tests},
 };
 #endif
 
